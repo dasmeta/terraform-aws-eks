@@ -5,7 +5,7 @@ locals {
 data "aws_region" "current" {}
 
 module "vpc" {
-  source = "./vpc"
+  source = "./modules/vpc"
 
   vpc_name            = var.vpc_name
   availability_zones  = var.availability_zones
@@ -17,7 +17,7 @@ module "vpc" {
 }
 
 module "eks-cluster" {
-  source = "./eks"
+  source = "./modules/eks"
 
   cluster_name = var.cluster_name
   vpc_id       = module.vpc.vpc_id
@@ -35,7 +35,7 @@ module "eks-cluster" {
 }
 
 module "cloudwatch-metrics" {
-  source = "./cloudwatch-metrics"
+  source = "./modules/cloudwatch-metrics"
 
   eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
   oidc_provider_arn           = module.eks-cluster.oidc_provider_arn
@@ -47,7 +47,7 @@ module "cloudwatch-metrics" {
 }
 
 module "alb-ingress-controller" {
-  source = "./aws-load-balancer-controller"
+  source = "./modules/aws-load-balancer-controller"
 
   cluster_name                = var.cluster_name
   eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
@@ -62,7 +62,7 @@ module "alb-ingress-controller" {
 }
 
 module "fluent-bit" {
-  source = "./fluent-bit"
+  source = "./modules/fluent-bit"
 
   fluent_bit_name             = var.fluent_bit_name != "" ? var.fluent_bit_name : "${var.cluster_name}-fluent-bit"
   log_group_name              = var.log_group_name != "" ? var.log_group_name : "fluent-bit-cloudwatch-${var.cluster_name}"
@@ -79,7 +79,7 @@ module "fluent-bit" {
 module "metrics-server" {
   # count = var.enable_metrics_server == true ? 1 : 0
 
-  source = "./metrics-server"
+  source = "./modules/metrics-server"
   name   = var.metrics_server_name != "" ? var.metrics_server_name : "${var.cluster_name}-metrics-server"
 
   # providers = {
@@ -88,7 +88,7 @@ module "metrics-server" {
 }
 
 module "external-secrets-prod" {
-  source = "./external-secrets"
+  source = "./modules/external-secrets"
 
   namespace = var.external_secrets_namespace
   # providers = {

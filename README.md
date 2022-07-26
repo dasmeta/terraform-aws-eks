@@ -37,7 +37,7 @@ locals {
   log_group_name  = "fluent-bit-cloudwatch-env"
 }
 
-# Minimal
+# Minimum
 
 module "prod_complete_cluster" {
   source = "../"
@@ -63,6 +63,7 @@ module "prod_complete_cluster" {
 }
 
 
+# Max
 
 module "prod_complete_cluster" {
   source  = "dasmeta/modules/aws//modules/complete-eks-cluste"
@@ -130,6 +131,7 @@ module "prod_complete_cluster" {
       root_volume_size  = 50
     }
   }
+
   workers_group_defaults = {
     launch_template_use_name_prefix = true
     launch_template_name            = "default"
