@@ -25,6 +25,8 @@ module "eks-cluster" {
   vpc_id          = var.vpc_id
   subnet_ids      = var.subnets
 
+  node_security_group_additional_rules = local.node_security_group_additional_rules
+
   enable_irsa                     = var.enable_irsa
   cluster_endpoint_private_access = true
   cluster_endpoint_public_access  = var.cluster_endpoint_public_access
@@ -38,4 +40,9 @@ module "eks-cluster" {
   manage_aws_auth_configmap = true
   aws_auth_users            = local.map_users
   aws_auth_roles            = var.map_roles
+
+  tags = {
+    "k8s.io/cluster-autoscaler/dasmeta-test-new3" = "owned"
+    "k8s.io/cluster-autoscaler/enabled"           = "true"
+  }
 }

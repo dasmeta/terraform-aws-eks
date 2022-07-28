@@ -27,6 +27,11 @@ variable "create_cluster" {
   description = "Whether or not to create cluster."
 }
 
+variable "node_security_group_additional_rules" {
+  type    = any
+  default = {}
+}
+
 variable "enable_irsa" {
   type        = bool
   default     = true
