@@ -42,9 +42,9 @@ module "cloudwatch-metrics" {
   oidc_provider_arn           = module.eks-cluster.oidc_provider_arn
   cluster_name                = var.cluster_name
 
-  # providers = {
-  #   kubernetes = kubernetes
-  # }
+  depends_on = [
+    module.eks-cluster
+  ]
 }
 
 module "alb-ingress-controller" {
@@ -57,9 +57,9 @@ module "alb-ingress-controller" {
   alb_log_bucket_name         = var.alb_log_bucket_name != "" ? var.alb_log_bucket_name : "${var.cluster_name}-ingress-controller-log-bucket"
   alb_log_bucket_prefix       = var.alb_log_bucket_prefix != "" ? var.alb_log_bucket_prefix : var.cluster_name
 
-  # providers = {
-  #   kubernetes = kubernetes
-  # }
+  depends_on = [
+    module.eks-cluster
+  ]
 }
 
 module "fluent-bit" {
@@ -72,27 +72,27 @@ module "fluent-bit" {
   oidc_provider_arn           = module.eks-cluster.oidc_provider_arn
 
   region = data.aws_region.current.name
-  # providers = {
-  #   kubernetes = kubernetes
-  # }
+
+  depends_on = [
+    module.eks-cluster
+  ]
 }
 
 module "metrics-server" {
-  # count = var.enable_metrics_server == true ? 1 : 0
-
   source = "./modules/metrics-server"
   name   = var.metrics_server_name != "" ? var.metrics_server_name : "${var.cluster_name}-metrics-server"
 
-  # providers = {
-  #   kubernetes = kubernetes
-  # }
+  depends_on = [
+    module.eks-cluster
+  ]
 }
 
 module "external-secrets-prod" {
   source = "./modules/external-secrets"
 
   namespace = var.external_secrets_namespace
-  # providers = {
-  #   kubernetes = kubernetes
-  # }
+
+  depends_on = [
+    module.eks-cluster
+  ]
 }

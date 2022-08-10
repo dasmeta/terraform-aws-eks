@@ -42,7 +42,7 @@ module "eks-cluster" {
   aws_auth_roles            = var.map_roles
 
   tags = {
-    "k8s.io/cluster-autoscaler/dasmeta-test-new3" = "owned"
-    "k8s.io/cluster-autoscaler/enabled"           = "true"
+    "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
+    "k8s.io/cluster-autoscaler/enabled"             = "true"
   }
 }

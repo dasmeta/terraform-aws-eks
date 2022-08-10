@@ -49,13 +49,8 @@ variable "manage_aws_auth" {
 }
 
 variable "worker_groups" {
-  type = any
-  default = {
-    default = {
-      instance_type = "t3.medium"
-      asg_max_size  = 1
-    }
-  }
+  type        = any
+  default     = {}
   description = "Worker groups."
 }
 

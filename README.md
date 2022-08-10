@@ -8,8 +8,8 @@ Those include:
 - external secrets
 - metrics to cloudwatch
 
-# How to run
-```
+## How to run
+```hcl
 data "aws_availability_zones" "available" {}
 
 locals {
@@ -37,11 +37,15 @@ locals {
   log_group_name  = "fluent-bit-cloudwatch-env"
 }
 
+
 # Minimum
 
-module "prod_complete_cluster" {
-  source = "../"
-  ### VPC
+module "cluster_min" {
+  source  = "dasmeta/eks/aws"
+  version = "0.1.1"
+
+  cluster_name        = local.cluster_name
+  users               = local.users
   vpc_name            = local.vpc_name
   cidr                = local.cidr
   availability_zones  = local.availability_zones
@@ -49,24 +53,14 @@ module "prod_complete_cluster" {
   public_subnets      = local.public_subnets
   public_subnet_tags  = local.public_subnet_tags
   private_subnet_tags = local.private_subnet_tags
-  ### EKS
-  cluster_name              = local.cluster_name
-  manage_aws_auth           = true
-  cluster_enabled_log_types = local.cluster_enabled_log_types
-  users                     = local.users
-
-  alb_log_bucket_name = local.alb_log_bucket_name
-  fluent_bit_name     = local.fluent_bit_name
-  log_group_name      = local.log_group_name
-  metrics_server_name = "metrics-server"
-
 }
 
 
-# Max
+# Max @TODO: the max param passing setup needs to be checked/fixed
 
-module "prod_complete_cluster" {
-  source  = "dasmeta/modules/aws//modules/complete-eks-cluste"
+module "cluster_max" {
+  source  = "dasmeta/eks/aws"
+  version = "0.1.1"
 
   ### VPC
   vpc_name              = local.vpc_name
