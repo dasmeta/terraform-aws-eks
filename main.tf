@@ -40,54 +40,38 @@ module "cloudwatch-metrics" {
 
   eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
   oidc_provider_arn           = module.eks-cluster.oidc_provider_arn
-  cluster_name                = var.cluster_name
-
-  depends_on = [
-    module.eks-cluster
-  ]
+  cluster_name                = module.eks-cluster.cluster_id
 }
 
 module "alb-ingress-controller" {
   source = "./modules/aws-load-balancer-controller"
 
-  cluster_name                = var.cluster_name
+  cluster_name                = module.eks-cluster.cluster_id
   eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
   oidc_provider_arn           = module.eks-cluster.oidc_provider_arn
   create_alb_log_bucket       = true
-  alb_log_bucket_name         = var.alb_log_bucket_name != "" ? var.alb_log_bucket_name : "${var.cluster_name}-ingress-controller-log-bucket"
-  alb_log_bucket_prefix       = var.alb_log_bucket_prefix != "" ? var.alb_log_bucket_prefix : var.cluster_name
-
-  depends_on = [
-    module.eks-cluster
-  ]
+  alb_log_bucket_name         = var.alb_log_bucket_name != "" ? var.alb_log_bucket_name : "${module.eks-cluster.cluster_id}-ingress-controller-log-bucket"
+  alb_log_bucket_path         = var.alb_log_bucket_path != "" ? var.alb_log_bucket_path : module.eks-cluster.cluster_id
 }
 
 module "fluent-bit" {
   source = "./modules/fluent-bit"
 
-  fluent_bit_name             = var.fluent_bit_name != "" ? var.fluent_bit_name : "${var.cluster_name}-fluent-bit"
-  log_group_name              = var.log_group_name != "" ? var.log_group_name : "fluent-bit-cloudwatch-${var.cluster_name}"
-  cluster_name                = var.cluster_name
+  fluent_bit_name             = var.fluent_bit_name != "" ? var.fluent_bit_name : "${module.eks-cluster.cluster_id}-fluent-bit"
+  log_group_name              = var.log_group_name != "" ? var.log_group_name : "fluent-bit-cloudwatch-${module.eks-cluster.cluster_id}"
+  cluster_name                = module.eks-cluster.cluster_id
   eks_oidc_root_ca_thumbprint = module.eks-cluster.eks_oidc_root_ca_thumbprint
   oidc_provider_arn           = module.eks-cluster.oidc_provider_arn
 
   region = data.aws_region.current.name
-
-  depends_on = [
-    module.eks-cluster
-  ]
 }
 
 module "metrics-server" {
   source = "./modules/metrics-server"
-  name   = var.metrics_server_name != "" ? var.metrics_server_name : "${var.cluster_name}-metrics-server"
-
-  depends_on = [
-    module.eks-cluster
-  ]
+  name   = var.metrics_server_name != "" ? var.metrics_server_name : "${module.eks-cluster.cluster_id}-metrics-server"
 }
 
-module "external-secrets-prod" {
+module "external-secrets" {
   source = "./modules/external-secrets"
 
   namespace = var.external_secrets_namespace

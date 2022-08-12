@@ -107,7 +107,7 @@ variable "users" {
 }
 
 # ALB-INGRESS-CONTROLLER
-variable "alb_log_bucket_prefix" {
+variable "alb_log_bucket_path" {
   type    = string
   default = ""
 }

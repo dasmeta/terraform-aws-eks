@@ -42,7 +42,7 @@ variable "alb_log_bucket_name" {
   default = "ingress-logs-bucket"
 }
 
-variable "alb_log_bucket_prefix" {
+variable "alb_log_bucket_path" {
   type    = string
   default = ""
 }

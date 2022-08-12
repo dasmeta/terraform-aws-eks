@@ -1,9 +1,5 @@
-locals {
-  alb_log_bucket_name = "${var.cluster_name}-${var.alb_log_bucket_name}"
-}
-
 resource "aws_s3_bucket" "ingress-logs-bucket" {
-  bucket = local.alb_log_bucket_name
+  bucket = var.alb_log_bucket_name
   acl    = "private"
 
   # region = var.region
@@ -19,11 +15,11 @@ resource "aws_s3_bucket" "ingress-logs-bucket" {
         ]
       },
       "Action": "s3:PutObject",
-      "Resource": "arn:aws:s3:::${local.alb_log_bucket_name}/${var.alb_log_bucket_prefix}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
+      "Resource": "arn:aws:s3:::${var.alb_log_bucket_name}/${var.alb_log_bucket_path}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
     }
   ]
 }
 POLICY
 
-  tags = merge({ Name = "${var.alb_log_bucket_name}/${var.alb_log_bucket_prefix} ingress logs bucket" }, var.tags)
+  tags = merge({ Name = "${var.alb_log_bucket_name}/${var.alb_log_bucket_path} ingress logs bucket" }, var.tags)
 }
