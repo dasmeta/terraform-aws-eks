@@ -1,4 +1,5 @@
 # Why
+
 To spin up complete eks with all necessary components.
 Those include:
 - vpc
@@ -19,7 +20,7 @@ locals {
     private_subnets = ["172.16.1.0/24", "172.16.2.0/24", "172.16.3.0/24"]
     public_subnets  = ["172.16.4.0/24", "172.16.5.0/24", "172.16.6.0/24"]
     cluster_enabled_log_types = ["audit"]
-    
+
     # When you create EKS, API server endpoint access default is public. When you use private this variable value should be equal false.
     cluster_endpoint_public_access = true
     public_subnet_tags = {
@@ -72,34 +73,34 @@ module "cluster_max" {
   private_subnet_tags   = local.private_subnet_tags
   cluster_enabled_log_types = local.cluster_enabled_log_types
   cluster_endpoint_public_access = local.cluster_endpoint_public_access
-  
+
   ### EKS
   cluster_name          = local.cluster_name
   manage_aws_auth       = true
 
-  # IAM users username and group. By default value is ["system:masters"] 
+  # IAM users username and group. By default value is ["system:masters"]
   user = [
           {
             username = "devops1"
-            group    = ["system:masters"]   
+            group    = ["system:masters"]  
           },
           {
             username = "devops2"
-            group    = ["system:kube-scheduler"]   
+            group    = ["system:kube-scheduler"]  
           },
           {
             username = "devops3"
           }
   ]
-  
+
   # You can create node use node_group when you create node in specific subnet zone.(Note. This Case Ec2 Instance havn't specific name).
-  # Other case you can use worker_group variable. 
+  # Other case you can use worker_group variable.
 
   node_groups = {
     example =  {
       name  = "nodegroup"
       name-prefix     = "nodegroup"
-      additional_tags = { 
+      additional_tags = {
           "Name"      = "node"
           "ExtraTag"  = "ExtraTag"  
       }
@@ -169,7 +170,7 @@ module "cluster_max" {
 | <a name="module_alb-ingress-controller"></a> [alb-ingress-controller](#module\_alb-ingress-controller) | ./modules/aws-load-balancer-controller | n/a |
 | <a name="module_cloudwatch-metrics"></a> [cloudwatch-metrics](#module\_cloudwatch-metrics) | ./modules/cloudwatch-metrics | n/a |
 | <a name="module_eks-cluster"></a> [eks-cluster](#module\_eks-cluster) | ./modules/eks | n/a |
-| <a name="module_external-secrets-prod"></a> [external-secrets-prod](#module\_external-secrets-prod) | ./modules/external-secrets | n/a |
+| <a name="module_external-secrets"></a> [external-secrets](#module\_external-secrets) | ./modules/external-secrets | n/a |
 | <a name="module_fluent-bit"></a> [fluent-bit](#module\_fluent-bit) | ./modules/fluent-bit | n/a |
 | <a name="module_metrics-server"></a> [metrics-server](#module\_metrics-server) | ./modules/metrics-server | n/a |
 | <a name="module_vpc"></a> [vpc](#module\_vpc) | ./modules/vpc | n/a |
@@ -185,7 +186,7 @@ module "cluster_max" {
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_alb_log_bucket_name"></a> [alb\_log\_bucket\_name](#input\_alb\_log\_bucket\_name) | n/a | `string` | `""` | no |
-| <a name="input_alb_log_bucket_prefix"></a> [alb\_log\_bucket\_prefix](#input\_alb\_log\_bucket\_prefix) | ALB-INGRESS-CONTROLLER | `string` | `""` | no |
+| <a name="input_alb_log_bucket_path"></a> [alb\_log\_bucket\_path](#input\_alb\_log\_bucket\_path) | ALB-INGRESS-CONTROLLER | `string` | `""` | no |
 | <a name="input_availability_zones"></a> [availability\_zones](#input\_availability\_zones) | List of VPC availability zones, e.g. ['eu-west-1a', 'eu-west-1b', 'eu-west-1c']. | `list(string)` | n/a | yes |
 | <a name="input_cidr"></a> [cidr](#input\_cidr) | CIDR ip range. | `string` | n/a | yes |
 | <a name="input_cluster_enabled_log_types"></a> [cluster\_enabled\_log\_types](#input\_cluster\_enabled\_log\_types) | A list of the desired control plane logs to enable. For more information, see Amazon EKS Control Plane Logging documentation (https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html) | `list(string)` | <pre>[<br>  "audit"<br>]</pre> | no |
@@ -208,7 +209,7 @@ module "cluster_max" {
 | <a name="input_public_subnets"></a> [public\_subnets](#input\_public\_subnets) | Public subnets of VPC. | `list(string)` | n/a | yes |
 | <a name="input_users"></a> [users](#input\_users) | n/a | `any` | n/a | yes |
 | <a name="input_vpc_name"></a> [vpc\_name](#input\_vpc\_name) | Creating VPC name. | `string` | n/a | yes |
-| <a name="input_worker_groups"></a> [worker\_groups](#input\_worker\_groups) | Worker groups. | `any` | <pre>{<br>  "default": {<br>    "asg_max_size": 1,<br>    "instance_type": "t3.medium"<br>  }<br>}</pre> | no |
+| <a name="input_worker_groups"></a> [worker\_groups](#input\_worker\_groups) | Worker groups. | `any` | `{}` | no |
 | <a name="input_workers_group_defaults"></a> [workers\_group\_defaults](#input\_workers\_group\_defaults) | Worker group defaults. | `any` | <pre>{<br>  "launch_template_name": "default",<br>  "launch_template_use_name_prefix": true,<br>  "root_volume_size": 50,<br>  "root_volume_type": "gp2"<br>}</pre> | no |
 | <a name="input_write_kubeconfig"></a> [write\_kubeconfig](#input\_write\_kubeconfig) | Whether or not to create kubernetes config file. | `bool` | `false` | no |
 
