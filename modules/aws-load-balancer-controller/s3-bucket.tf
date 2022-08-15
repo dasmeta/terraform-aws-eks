@@ -1,8 +1,6 @@
 resource "aws_s3_bucket" "ingress-logs-bucket" {
   bucket = var.alb_log_bucket_name
-  acl    = "private"
 
-  # region = var.region
   policy = <<POLICY
 {
   "Version": "2012-10-17",
