@@ -11,11 +11,24 @@ locals {
       resources = ["pods"]
     }
   ]
+
+  bindings = [
+    {
+      group     = "development"
+      namespace = "development"
+      roles     = ["role1", "role2"]
+    },
+    {
+      group     = "accounting"
+      namespace = "accounting"
+      roles     = ["role1"]
+    }
+  ]
 }
 
 module "eks" {
   source = "complete-cluster"
 
-  roles       = module.roles.values
-  assignments = module.assignments.values
+  roles    = local.roles
+  bindings = local.bindings
 }
