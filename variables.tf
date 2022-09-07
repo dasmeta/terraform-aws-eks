@@ -178,6 +178,6 @@ variable "map_roles" {
 }
 
 variable "enable_sso_rbac" {
-  type = bool
+  type    = bool
   default = false
 }
