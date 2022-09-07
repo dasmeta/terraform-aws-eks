@@ -35,14 +35,6 @@ module "eks-cluster" {
   node_security_group_additional_rules = var.node_security_group_additional_rules
 }
 
-module "cloudwatch-metrics" {
-  source = "./modules/cloudwatch-metrics"
-
-  eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
-  oidc_provider_arn           = module.eks-cluster.oidc_provider_arn
-  cluster_name                = module.eks-cluster.cluster_id
-}
-
 module "alb-ingress-controller" {
   source = "./modules/aws-load-balancer-controller"
 
