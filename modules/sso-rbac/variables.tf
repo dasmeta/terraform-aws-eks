@@ -1,14 +1,16 @@
-variable "assignment" {
+variable "bindings" {
   type = list(object({
-    group     = string
+    group = string
     namespace = string
-    name      = string
+    roles = list(string)
 
-    role = list(object({
-      actions   = list(string)
-      resources = list(string)
+  }))
+}
 
-    }))
+variable "roles" {
+  type = list(object({
+    actions    = list(string)
+    resources = list(string)
   }))
 }
 

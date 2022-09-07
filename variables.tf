@@ -176,3 +176,8 @@ variable "map_roles" {
   }))
   default = []
 }
+
+variable "enable_sso_rbac" {
+  type = bool
+  default = false
+}
