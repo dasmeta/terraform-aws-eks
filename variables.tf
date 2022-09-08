@@ -143,12 +143,6 @@ variable "cluster_endpoint_public_access" {
   default = true
 }
 
-variable "write_kubeconfig" {
-  type        = bool
-  default     = false
-  description = "Whether or not to create kubernetes config file."
-}
-
 variable "external_secrets_namespace" {
   type        = string
   description = "The namespace of external-secret operator"
