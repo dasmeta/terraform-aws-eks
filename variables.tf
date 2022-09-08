@@ -181,3 +181,21 @@ variable "enable_sso_rbac" {
   type    = bool
   default = false
 }
+
+variable "bindings" {
+  default = []
+  type = list(object({
+    group     = string
+    namespace = string
+    roles     = list(string)
+
+  }))
+}
+
+variable "roles" {
+  default = []
+  type = list(object({
+    actions   = list(string)
+    resources = list(string)
+  }))
+}
