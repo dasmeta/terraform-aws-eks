@@ -148,7 +148,7 @@ module "cluster_max" {
 }
 ```
 
-<!-- BEGIN_TF_DOCS -->
+<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
 | Name | Version |
@@ -211,7 +211,6 @@ module "cluster_max" {
 | <a name="input_vpc_name"></a> [vpc\_name](#input\_vpc\_name) | Creating VPC name. | `string` | n/a | yes |
 | <a name="input_worker_groups"></a> [worker\_groups](#input\_worker\_groups) | Worker groups. | `any` | `{}` | no |
 | <a name="input_workers_group_defaults"></a> [workers\_group\_defaults](#input\_workers\_group\_defaults) | Worker group defaults. | `any` | <pre>{<br>  "launch_template_name": "default",<br>  "launch_template_use_name_prefix": true,<br>  "root_volume_size": 50,<br>  "root_volume_type": "gp2"<br>}</pre> | no |
-| <a name="input_write_kubeconfig"></a> [write\_kubeconfig](#input\_write\_kubeconfig) | Whether or not to create kubernetes config file. | `bool` | `false` | no |
 
 ## Outputs
 
@@ -232,4 +231,4 @@ module "cluster_max" {
 | <a name="output_vpc_id"></a> [vpc\_id](#output\_vpc\_id) | n/a |
 | <a name="output_vpc_private_subnets"></a> [vpc\_private\_subnets](#output\_vpc\_private\_subnets) | n/a |
 | <a name="output_vpc_public_subnets"></a> [vpc\_public\_subnets](#output\_vpc\_public\_subnets) | n/a |
-<!-- END_TF_DOCS -->
+<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
