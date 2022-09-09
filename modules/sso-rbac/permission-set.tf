@@ -13,12 +13,16 @@ resource "aws_ssoadmin_managed_policy_attachment" "this" {
   permission_set_arn = aws_ssoadmin_permission_set.this[each.key].arn
 }
 
-resource "random_integer" "random" {
-  max = 5000
-  min = 1000
-}
+locals {
+  arns = tolist(data.aws_iam_roles.sso.arns)
 
-module "permission_set_roles" {
-  depends_on = [aws_ssoadmin_managed_policy_attachment.this]
-  source     = "github.com/thoughtbot/terraform-aws-sso-permission-set-roles.git"
+  arns_without_path = [
+  for parts in [for arn in data.aws_iam_roles.sso.arns : split("/", arn)] :
+  format("%s/%s", parts[0], element(parts, length(parts) - 1))
+  ]
+
+  names = [
+  for parts in [for arn in local.arns : split("_", arn)] :
+  join("_", slice(parts, 1, length(parts) - 1))
+  ]
 }

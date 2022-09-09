@@ -1,5 +1,3 @@
-data "aws_ssoadmin_instances" "example" {}
-
 data "aws_caller_identity" "current" {}
 
 resource "aws_ssoadmin_account_assignment" "this" {
@@ -33,5 +31,6 @@ locals {
   principal_type      = "GROUP"
   target_id           = data.aws_caller_identity.current.account_id
   target_type         = "AWS_ACCOUNT"
-  permission_set_role = module.permission_set_roles.arns_without_path
+  permission_set_role = local.arns_without_path
+
 }

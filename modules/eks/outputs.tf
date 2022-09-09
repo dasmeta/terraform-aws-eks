@@ -39,5 +39,5 @@ output "map_users_data" {
 }
 
 output "eks_module" {
-  value = module.eks-cluster[0]
+  value = try(module.eks-cluster[0], null)
 }
