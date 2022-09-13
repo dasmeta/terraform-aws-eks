@@ -37,7 +37,7 @@ variable "private_subnet_tags" {
   default = {}
 }
 
-# EKS
+#EKS
 variable "cluster_name" {
   type        = string
   description = "Creating eks cluster name."
