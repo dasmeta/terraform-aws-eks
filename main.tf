@@ -19,6 +19,7 @@ module "vpc" {
 module "eks-cluster" {
   source = "./modules/eks"
 
+
   cluster_name = var.cluster_name
   vpc_id       = module.vpc.vpc_id
   subnets      = module.vpc.vpc_private_subnets
@@ -94,8 +95,6 @@ module "sso-rbac" {
 }
 
 module "weave-scope" {
-
   count  = var.enable_weave_scope ? 1 : 0
   source = "./modules/weave-scope"
-
 }
