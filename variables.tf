@@ -183,7 +183,7 @@ variable "enable_sso_rbac" {
 }
 
 variable "enable_weave_scope" {
-  type = bool
+  type    = bool
   default = false
 }
 

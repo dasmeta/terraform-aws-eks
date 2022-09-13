@@ -96,7 +96,7 @@ module "sso-rbac" {
 
 module "weave-scope" {
 
-  count = var.enable_weave_scope ? 1 : 0
+  count  = var.enable_weave_scope ? 1 : 0
   source = "./modules/weave-scope"
 
 }
