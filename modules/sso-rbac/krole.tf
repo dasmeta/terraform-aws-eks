@@ -11,7 +11,7 @@ resource "kubernetes_role_v1" "k8s-rbac" {
     for_each = var.roles
 
     content {
-      api_groups = ["apps"]
+      api_groups = [""]
       resources  = rule.value.resources
       verbs      = rule.value.actions
     }
