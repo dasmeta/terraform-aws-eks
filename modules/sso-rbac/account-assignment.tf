@@ -1,16 +1,17 @@
 data "aws_caller_identity" "current" {}
 
-resource "aws_ssoadmin_account_assignment" "this" {
-  for_each = { for as in var.bindings : "${as.namespace}-${as.group}" => as }
-
-  instance_arn       = local.instance_arn
-  permission_set_arn = aws_ssoadmin_permission_set.this[each.key].arn
-
-  principal_id   = data.aws_identitystore_group.this[each.key].id
-  principal_type = local.principal_type
-
-  target_id   = data.aws_caller_identity.current.account_id
-  target_type = local.target_type
+module "sso_account_assignments" {
+  source = "github.com/cloudposse/terraform-aws-sso.git//modules/account-assignments?ref=master"
+  for_each           = { for kr in var.bindings : "${kr.namespace}-${kr.group}" => kr }
+  account_assignments = [
+    {
+      permission_set_name = "ps-${each.value.namespace}-${each.value.group}"
+      account = data.aws_caller_identity.current.account_id,
+      permission_set_arn = module.permission_sets[each.key].permission_sets["ps-${each.key}"].arn
+      principal_type = "GROUP",
+      principal_name = "${each.value.group}"
+    }
+  ]
 }
 
 data "aws_identitystore_group" "this" {
@@ -32,5 +33,4 @@ locals {
   target_id           = data.aws_caller_identity.current.account_id
   target_type         = "AWS_ACCOUNT"
   permission_set_role = local.arns_without_path
-
 }

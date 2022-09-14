@@ -1,11 +1,10 @@
 data "aws_iam_roles" "sso" {
-  depends_on  = [aws_ssoadmin_managed_policy_attachment.this]
+  depends_on  = [module.permission_sets]
   path_prefix = "/aws-reserved/sso.amazonaws.com/"
 }
 
 module "eks_auth" {
   source = "aidanmelen/eks-auth/aws"
-  #depends_on = [var.eks_module]
   eks = var.eks_module
 
   map_roles = [for role_binding in var.bindings : {
