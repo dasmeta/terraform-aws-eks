@@ -1,0 +1,1 @@
+{"Modules":[{"Key":"","Source":"","Dir":"."},{"Key":"eks_auth","Source":"registry.terraform.io/aidanmelen/eks-auth/aws","Version":"1.0.0","Dir":".terraform/modules/eks_auth"}]}

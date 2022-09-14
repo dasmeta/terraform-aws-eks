@@ -80,3 +80,22 @@ module "external-secrets" {
     module.eks-cluster
   ]
 }
+
+module "sso-rbac" {
+
+  count      = var.enable_sso_rbac ? 1 : 0
+  depends_on = [module.eks-cluster]
+  source     = "./modules/sso-rbac"
+
+  roles      = var.roles
+  bindings   = var.bindings
+  eks_module = module.eks-cluster.eks_module[0]
+
+}
+
+module "weave-scope" {
+
+  count  = var.enable_weave_scope ? 1 : 0
+  source = "./modules/weave-scope"
+
+}
