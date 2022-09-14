@@ -15,7 +15,7 @@ module "sso_account_assignments" {
 }
 
 data "aws_identitystore_group" "this" {
-  for_each = { for as in var.bindings : "${as.namespace}-${as.group}" => as }
+  for_each          = { for as in var.bindings : "${as.namespace}-${as.group}" => as }
   identity_store_id = local.identity_store_id
 
   filter {
