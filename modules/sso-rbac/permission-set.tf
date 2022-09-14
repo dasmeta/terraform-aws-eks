@@ -3,17 +3,17 @@ data "aws_ssoadmin_instances" "this" {}
 module "permission_sets" {
   source = "github.com/cloudposse/terraform-aws-sso.git//modules/permission-sets?ref=master"
 
-  for_each           = { for kr in var.bindings : "${kr.namespace}-${kr.group}" => kr }
+  for_each = { for kr in var.bindings : "${kr.namespace}-${kr.group}" => kr }
   permission_sets = [
     {
-      name = "ps-${each.value.namespace}-${each.value.group}"
+      name                                = "ps-${each.value.namespace}-${each.value.group}"
       tags                                = {},
       policy_attachments                  = ["arn:aws:iam::aws:policy/PowerUserAccess"]
       customer_managed_policy_attachments = []
       description                         = ""
-      inline_policy = ""
-      session_duration = "PT12H"
-      relay_state = ""
+      inline_policy                       = ""
+      session_duration                    = "PT12H"
+      relay_state                         = ""
     }
   ]
 }
