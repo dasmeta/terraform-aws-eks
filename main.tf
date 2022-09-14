@@ -89,6 +89,6 @@ module "sso-rbac" {
 
   roles      = var.roles
   bindings   = var.bindings
-  eks_module = module.eks-cluster.eks_module[0]
+  eks_module = module.eks-cluster.eks_module
 
 }

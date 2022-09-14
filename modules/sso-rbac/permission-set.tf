@@ -1,6 +1,7 @@
 data "aws_ssoadmin_instances" "this" {}
 
 resource "aws_ssoadmin_permission_set" "this" {
+  session_duration = "PT12H"
   for_each     = { for kr in var.bindings : "${kr.namespace}-${kr.group}" => kr }
   name         = "ps-${each.value.namespace}-${each.value.group}"
   instance_arn = tolist(data.aws_ssoadmin_instances.this.arns)[0]
@@ -26,3 +27,4 @@ locals {
     join("_", slice(parts, 1, length(parts) - 1))
   ]
 }
+

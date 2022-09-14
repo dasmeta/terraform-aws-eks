@@ -4,7 +4,7 @@ resource "kubernetes_role_binding" "example" {
 
 
   metadata {
-    name      = each.key
+    name      = each.value.group
     namespace = each.value.namespace
   }
 
