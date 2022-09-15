@@ -1,3 +1,23 @@
+## Example
+This is an example of usage `weave-scope` module
+
+
+```
+module "weave-scope" {
+  source = "../terraform-aws-eks/modules/weave-scope"
+  namespace = "weave"
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = cluster.host
+    cluster_ca_certificate = cluster.certificate
+    token                  = cluster.token
+  }
+}
+```
+
+
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
@@ -17,11 +37,13 @@ No modules.
 
 | Name | Type |
 |------|------|
-| [helm_release.nginx_ingress](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
+| [helm_release.weave-scope](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 
 ## Inputs
 
-No inputs.
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_namespace"></a> [namespace](#input\_namespace) | n/a | `string` | `"default"` | no |
 
 ## Outputs
 
