@@ -1,8 +1,17 @@
 variable "namespace" {
-  type    = string
-  default = "default"
+  description = "Kubernetes namespace, in which Weave Scope will be deployed"
+  type        = string
+  default     = "meta-system"
 }
+
 variable "create_namespace" {
-  type    = bool
-  default = true
+  description = "Weather create namespace or not"
+  type        = bool
+  default     = true
+}
+
+variable "release_name" {
+  description = "Helm chart release name"
+  type        = string
+  default     = "weave-scope"
 }

@@ -80,10 +80,3 @@ module "external-secrets" {
     module.eks-cluster
   ]
 }
-
-module "weave-scope" {
-  count            = var.weave_scope[0].enabled ? 1 : 0
-  source           = "./modules/weave-scope"
-  namespace        = var.weave_scope[0].namespace
-  create_namespace = var.weave_scope[0].create_namespace
-}

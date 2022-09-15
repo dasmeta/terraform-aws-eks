@@ -171,30 +171,26 @@ variable "map_roles" {
   default = []
 }
 
-variable "enable_weave_scope" {
-  description = "Enable or disable Weave scope monitoring"
+variable "weave_scope_config" {
+  description = "Weave scope namespace configuration variables"
+  type = object({
+    create_namespace = bool
+    namespace        = string
+  })
+  default = {
+    create_namespace = true
+    namespace        = "meta-system"
+  }
+}
+
+variable "weave_scope_enabled" {
+  description = "Weather enable Weave Scope or not"
   type        = bool
   default     = false
 }
 
-variable "namespace" {
-  type    = string
-  default = "default"
-}
-
-variable "weave_scope" {
-  description = "Additional IAM roles to add to the aws-auth configmap."
-  type = list(object({
-    enabled          = bool
-    create_namespace = bool
-    namespace        = string
-  }))
-  default = [
-    {
-      enabled          = false
-      create_namespace = true
-      namespace        = "default"
-
-    }
-  ]
+variable "weave_helm_release_name" {
+  description = "Helm chart release name"
+  type        = string
+  default     = "weave-scope"
 }
