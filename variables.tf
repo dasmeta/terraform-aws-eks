@@ -170,3 +170,9 @@ variable "map_roles" {
   }))
   default = []
 }
+
+variable "enable_weave_scope" {
+  description = "Enable or disable Weave scope monitoring"
+  type        = bool
+  default     = false
+}
