@@ -4,8 +4,9 @@ This is an example of usage `weave-scope` module
 
 ```
 module "weave-scope" {
-  source = "../terraform-aws-eks/modules/weave-scope"
+  source = "./modules/weave-scope"
   namespace = "weave"
+  create_namespace = true
 }
 
 provider "helm" {
@@ -43,6 +44,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | n/a | `bool` | `true` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | n/a | `string` | `"default"` | no |
 
 ## Outputs

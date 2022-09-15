@@ -176,3 +176,25 @@ variable "enable_weave_scope" {
   type        = bool
   default     = false
 }
+
+variable "namespace" {
+  type    = string
+  default = "default"
+}
+
+variable "weave_scope" {
+  description = "Additional IAM roles to add to the aws-auth configmap."
+  type = list(object({
+    enabled          = bool
+    create_namespace = bool
+    namespace        = string
+  }))
+  default = [
+    {
+      enabled          = false
+      create_namespace = true
+      namespace        = "default"
+
+    }
+  ]
+}
