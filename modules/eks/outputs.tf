@@ -37,3 +37,7 @@ output "token" {
 output "map_users_data" {
   value = local.map_users
 }
+
+output "eks_module" {
+  value = try(module.eks-cluster[0], null)
+}

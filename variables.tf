@@ -37,7 +37,7 @@ variable "private_subnet_tags" {
   default = {}
 }
 
-# EKS
+#EKS
 variable "cluster_name" {
   type        = string
   description = "Creating eks cluster name."
@@ -193,4 +193,5 @@ variable "weave_helm_release_name" {
   description = "Helm chart release name"
   type        = string
   default     = "weave-scope"
+
 }

@@ -6,6 +6,7 @@ locals {
       groups   = lookup(user, "group", ["system:masters"])
     }
   ])
+
   node_security_group_rules = {
     ingress_cluster_8443 = {
       description                   = "Metric server to node groups"
