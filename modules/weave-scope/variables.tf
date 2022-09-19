@@ -15,3 +15,22 @@ variable "release_name" {
   type        = string
   default     = "weave-scope"
 }
+
+# variable "enabl_auth" {
+#   type    = bool
+#   default = true
+# }
+
+variable "annotations" {
+  type    = map(string)
+  default = {}
+}
+
+variable "ingress_class" {
+  type    = string
+  default = "nginx"
+}
+
+variable "ingress_host" {
+  type = string
+}
