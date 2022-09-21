@@ -51,6 +51,7 @@ No modules.
 | <a name="input_ingress_host"></a> [ingress\_host](#input\_ingress\_host) | n/a | `string` | n/a | yes |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | Kubernetes namespace, in which Weave Scope will be deployed | `string` | `"meta-system"` | no |
 | <a name="input_release_name"></a> [release\_name](#input\_release\_name) | Helm chart release name | `string` | `"weave-scope"` | no |
+| <a name="input_service_type"></a> [service\_type](#input\_service\_type) | n/a | `string` | `"ClusterIP"` | no |
 
 ## Outputs
 

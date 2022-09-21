@@ -34,3 +34,8 @@ variable "ingress_class" {
 variable "ingress_host" {
   type = string
 }
+
+variable "service_type" {
+  type    = string
+  default = "ClusterIP"
+}
