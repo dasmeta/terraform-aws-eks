@@ -63,3 +63,11 @@ output "cluster_certificate" {
 output "cluster_token" {
   value = module.eks-cluster.token
 }
+
+output "ps-arns" {
+  value = module.sso-rbac[0].arns
+}
+
+output "ps-arns-without-path" {
+  value = module.sso-rbac[0].arns_without_path
+}

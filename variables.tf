@@ -199,3 +199,7 @@ variable "roles" {
     resources = list(string)
   }))
 }
+
+variable "account_id" {
+  type = string
+}
