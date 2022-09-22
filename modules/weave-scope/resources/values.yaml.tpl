@@ -26,12 +26,12 @@ weave-scope-frontend:
     servicePort: 80
     externalPort: 8080
 
-  hosts:
-    - name: chartmuseum.domain1.com
-      path: /
-      tls: false
-    - name: chartmuseum.domain2.com
-      path: /
+#  hosts:
+#    - name: chartmuseum.domain1.com
+#      path: /
+#      tls: false
+#    - name: chartmuseum.domain2.com
+#     path: /
 weave-scope-agent:
   enabled: true
   dockerBridge: "docker0"

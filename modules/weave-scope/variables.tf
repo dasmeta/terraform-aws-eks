@@ -17,24 +17,27 @@ variable "release_name" {
 }
 
 variable "annotations" {
-  type    = map(string)
-  default = {}
+  description = "Annotations to pass, used for Ingress configuration"
+  type        = map(string)
+  default     = {}
 }
 
 variable "ingress_class" {
-  type    = string
-  default = ""
+  description = "Ingress class name used for Ingress configuration"
+  type        = string
+  default     = ""
 }
 
 variable "ingress_host" {
-  type    = string
-  default = ""
+  description = "Ingress host name used for Ingress configuration"
+  type        = string
+  default     = ""
 }
 
 variable "service_type" {
-  #Service type configuration (Valid attributes are "NodePort", "LoadBalancer", "ClusterIP")
-  type    = string
-  default = "ClusterIP"
+  description = "Service type configuration Valid attributes are NodePort, LoadBalancer, ClusterIP"
+  type        = string
+  default     = "ClusterIP"
   validation {
     condition     = contains(["NodePort", "LoadBalancer", "ClusterIP"], var.service_type)
     error_message = "The valid attributes are [NodePort], [LoadBalancer], [ClusterIP]"

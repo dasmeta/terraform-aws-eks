@@ -18,7 +18,6 @@ module "weave-scope" {
   service_type = "NodePort"
 
 }
-}
 
 provider "helm" {
   kubernetes {
@@ -56,13 +55,13 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_annotations"></a> [annotations](#input\_annotations) | n/a | `map(string)` | `{}` | no |
+| <a name="input_annotations"></a> [annotations](#input\_annotations) | Annotations to pass, used for Ingress configuration | `map(string)` | `{}` | no |
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | Weather create namespace or not | `bool` | `true` | no |
-| <a name="input_ingress_class"></a> [ingress\_class](#input\_ingress\_class) | n/a | `string` | `""` | no |
-| <a name="input_ingress_host"></a> [ingress\_host](#input\_ingress\_host) | n/a | `string` | `""` | no |
+| <a name="input_ingress_class"></a> [ingress\_class](#input\_ingress\_class) | Ingress class name used for Ingress configuration | `string` | `""` | no |
+| <a name="input_ingress_host"></a> [ingress\_host](#input\_ingress\_host) | Ingress host name used for Ingress configuration | `string` | `""` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | Kubernetes namespace, in which Weave Scope will be deployed | `string` | `"meta-system"` | no |
 | <a name="input_release_name"></a> [release\_name](#input\_release\_name) | Helm chart release name | `string` | `"weave-scope"` | no |
-| <a name="input_service_type"></a> [service\_type](#input\_service\_type) | n/a | `string` | `"ClusterIP"` | no |
+| <a name="input_service_type"></a> [service\_type](#input\_service\_type) | Service type configuration Valid attributes are NodePort, LoadBalancer, ClusterIP | `string` | `"ClusterIP"` | no |
 
 ## Outputs
 
