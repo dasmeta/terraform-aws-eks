@@ -16,11 +16,6 @@ variable "release_name" {
   default     = "weave-scope"
 }
 
-# variable "enabl_auth" {
-#   type    = bool
-#   default = true
-# }
-
 variable "annotations" {
   type    = map(string)
   default = {}
@@ -28,9 +23,20 @@ variable "annotations" {
 
 variable "ingress_class" {
   type    = string
-  default = "nginx"
+  default = ""
 }
 
 variable "ingress_host" {
-  type = string
+  type    = string
+  default = ""
+}
+
+variable "service_type" {
+  #Service type configuration (Valid attributes are "NodePort", "LoadBalancer", "ClusterIP")
+  type    = string
+  default = "ClusterIP"
+  validation {
+    condition     = contains(["NodePort", "LoadBalancer", "ClusterIP"], var.service_type)
+    error_message = "The valid attributes are [NodePort], [LoadBalancer], [ClusterIP]"
+  }
 }
