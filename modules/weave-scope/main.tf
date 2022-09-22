@@ -4,8 +4,7 @@ resource "helm_release" "weave-scope" {
   name             = var.release_name
   chart            = "weave-scope"
   repository       = "https://dasmeta.github.io/helm/"
-
-  reuse_values = true
+  reuse_values     = true
   values = [
     templatefile("${path.module}/resources/values.yaml.tpl",
       {
