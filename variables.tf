@@ -195,3 +195,8 @@ variable "weave_helm_release_name" {
   default     = "weave-scope"
 
 }
+
+variable "enable_cloudwatch_metrics_for_prometheus" {
+  type    = bool
+  default = false
+}
