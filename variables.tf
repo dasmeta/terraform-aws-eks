@@ -200,7 +200,7 @@ variable "weave_scope_enabled" {
 }
 
 variable "bindings" {
-  #Write description
+  description = "Variable which describes group and role binding"
   type = list(object({
     group     = string
     namespace = string
@@ -211,7 +211,7 @@ variable "bindings" {
 }
 
 variable "roles" {
-  #Write description
+  description = "Variable describes which role will user have K8s"
   type = list(object({
     actions   = list(string)
     resources = list(string)
