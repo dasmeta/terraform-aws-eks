@@ -91,6 +91,4 @@ module "sso-rbac" {
   bindings   = var.bindings
   eks_module = module.eks-cluster.eks_module
 
-  # account_id = ""
-
 }

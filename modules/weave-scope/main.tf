@@ -3,6 +3,7 @@ resource "helm_release" "weave-scope" {
   create_namespace = var.create_namespace
   name             = var.release_name
   chart            = "weave-scope"
+  version          = "1.0.1"
   repository       = "https://dasmeta.github.io/helm/"
   reuse_values     = true
   values = [
