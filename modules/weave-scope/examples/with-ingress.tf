@@ -1,6 +1,6 @@
 module "weave-scope-with-ingress" {
-  source = "../"
-
-  ingress_enabled = true
-  ingress_host    = "some.domain.name"
+  source        = "./modules/weave-scope"
+  ingress_class = "nginx"
+  ingress_host  = "www.weave-scope.com"
+  ingress_name  = "weave-ingress"
 }

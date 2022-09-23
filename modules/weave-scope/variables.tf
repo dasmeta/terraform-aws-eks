@@ -43,3 +43,9 @@ variable "service_type" {
     error_message = "The valid attributes are [NodePort], [LoadBalancer], [ClusterIP]"
   }
 }
+
+variable "ingress_name" {
+  description = "Ingress name to configure in helm chart"
+  type        = string
+  default     = "weave-ingress"
+}

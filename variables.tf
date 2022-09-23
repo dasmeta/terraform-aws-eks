@@ -179,6 +179,7 @@ variable "weave_scope_config" {
     annotations             = map(string)
     ingress_host            = string
     ingress_class           = string
+    ingress_name            = string
     service_type            = string
     weave_helm_release_name = string
   })
@@ -190,6 +191,7 @@ variable "weave_scope_config" {
     ingress_class           = ""
     service_type            = "NodePort"
     weave_helm_release_name = "weave"
+    ingress_name            = "weave-ingress"
   }
 }
 

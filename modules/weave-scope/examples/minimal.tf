@@ -1,3 +1,3 @@
-module "weave-scope-with-ingress" {
-  source = "../"
+module "weave-scope-minimal" {
+  source = "./modules/weave-scope"
 }

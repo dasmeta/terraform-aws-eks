@@ -11,10 +11,10 @@ weave-scope-frontend:
 
   ingress:
     enabled: enabled
-    name: ingress-name
-    host: weave.miandevops.xyz
+    name: ${ingress_name}
+    host: ${ingress_host}
     path: "/"
-    className: ""
+    className: ${ingress_class}
     extraPaths: ""
     annotations:
       %{~ for config_key, config_value in config ~}
@@ -26,12 +26,6 @@ weave-scope-frontend:
     servicePort: 80
     externalPort: 8080
 
-#  hosts:
-#    - name: chartmuseum.domain1.com
-#      path: /
-#      tls: false
-#    - name: chartmuseum.domain2.com
-#     path: /
 weave-scope-agent:
   enabled: true
   dockerBridge: "docker0"
