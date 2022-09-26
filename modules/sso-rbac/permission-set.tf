@@ -1,7 +1,5 @@
-data "aws_ssoadmin_instances" "this" {}
-
 module "permission_sets" {
-  source = "github.com/cloudposse/terraform-aws-sso.git//modules/permission-sets?ref=master"
+  source = "./terraform-aws-sso/modules/permission-sets"
 
   for_each = { for kr in var.bindings : "${kr.namespace}-${kr.group}" => kr }
   permission_sets = [
@@ -40,12 +38,3 @@ data "aws_iam_roles" "sso" {
   depends_on = [module.permission_sets]
   name_regex = "AWSReservedSSO_.*"
 }
-
-#resource "aws_ssoadmin_permission_set" "DevOps_DevEnv" {
-#  instance_arn = tolist(data.aws_ssoadmin_instances.this.arns)[0]
-#  name         = "DevOps_DevEnv"
-#  description  = "Provides access for members of the DevOps team to the development env"
-#  tags = {
-#    Environment = "Development"
-#  }
-#}
