@@ -226,3 +226,7 @@ variable "enable_sso_rbac" {
   type        = bool
   default     = false
 }
+
+variable "account_id" {
+  type = string
+}

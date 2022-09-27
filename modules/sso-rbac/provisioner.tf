@@ -1,8 +1,3 @@
-data "aws_iam_roles" "sso" {
-  depends_on  = [module.permission_sets]
-  path_prefix = "/aws-reserved/sso.amazonaws.com/"
-}
-
 module "eks_auth" {
   source = "aidanmelen/eks-auth/aws"
   eks    = var.eks_module

@@ -1,7 +1,5 @@
-data "aws_ssoadmin_instances" "this" {}
-
 module "permission_sets" {
-  source = "github.com/cloudposse/terraform-aws-sso.git//modules/permission-sets?ref=master"
+  source = "./terraform-aws-sso/modules/permission-sets"
 
   for_each = { for kr in var.bindings : "${kr.namespace}-${kr.group}" => kr }
   permission_sets = [
@@ -10,7 +8,7 @@ module "permission_sets" {
       tags                                = {},
       policy_attachments                  = ["arn:aws:iam::aws:policy/PowerUserAccess"]
       customer_managed_policy_attachments = []
-      description                         = ""
+      description                         = "ps-${each.value.namespace}-${each.value.group}"
       inline_policy                       = ""
       session_duration                    = "PT12H"
       relay_state                         = ""
@@ -34,4 +32,9 @@ locals {
     for parts in [for arn in local.arns : split("_", arn)] :
     join("_", slice(parts, 1, length(parts) - 1))
   ]
+}
+
+data "aws_iam_roles" "sso" {
+  depends_on = [module.permission_sets]
+  name_regex = "AWSReservedSSO_.*"
 }
