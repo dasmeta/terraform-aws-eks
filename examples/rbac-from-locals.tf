@@ -11,6 +11,21 @@ module "terraform-aws-eks" {
   vpc_name        = "eks-vpc"
   enable_sso_rbac = true
 
+  weave_scope_config = {
+    namespace        = "weave"
+    create_namespace = true
+    ingress_class    = "ingressClass"
+    ingress_host     = "www.example.com"
+    annotations = {
+      "key1" = "value1"
+      "key2" = "value2"
+    }
+    service_type            = "NodePort"
+    weave_helm_release_name = "weave"
+  }
+
+  weave_scope_enabled = true
+
   roles    = local.roles
   bindings = local.bindings
 
