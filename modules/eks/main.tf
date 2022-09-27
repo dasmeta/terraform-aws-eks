@@ -11,7 +11,7 @@ module "eks-cluster" {
   count = var.create_cluster ? 1 : 0
 
   source  = "terraform-aws-modules/eks/aws"
-  version = "18.26.6"
+  version = "18.29.0"
 
   # per Upgrade from v17.x to v18.x, see here for details https://github.com/terraform-aws-modules/terraform-aws-eks/blob/681e00aafea093be72ec06ada3825a23a181b1c5/docs/UPGRADE-18.0.md
   prefix_separator                   = ""

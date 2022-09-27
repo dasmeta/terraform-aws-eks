@@ -77,7 +77,7 @@ variable "node_security_group_additional_rules" {
       to_port                       = 8443
       type                          = "ingress"
       source_cluster_security_group = true
-    }
+    },
   }
 }
 
@@ -143,12 +143,6 @@ variable "cluster_endpoint_public_access" {
   default = true
 }
 
-variable "write_kubeconfig" {
-  type        = bool
-  default     = false
-  description = "Whether or not to create kubernetes config file."
-}
-
 variable "external_secrets_namespace" {
   type        = string
   description = "The namespace of external-secret operator"
@@ -177,27 +171,60 @@ variable "map_roles" {
   default = []
 }
 
-variable "enable_sso_rbac" {
-  type    = bool
-  default = false
+variable "weave_scope_config" {
+  description = "Weave scope namespace configuration variables"
+  type = object({
+    create_namespace        = bool
+    namespace               = string
+    annotations             = map(string)
+    ingress_host            = string
+    ingress_class           = string
+    ingress_name            = string
+    service_type            = string
+    weave_helm_release_name = string
+  })
+  default = {
+    create_namespace        = true
+    namespace               = "meta-system"
+    annotations             = {}
+    ingress_host            = ""
+    ingress_class           = ""
+    service_type            = "NodePort"
+    weave_helm_release_name = "weave"
+    ingress_name            = "weave-ingress"
+  }
+}
+
+variable "weave_scope_enabled" {
+  description = "Weather enable Weave Scope or not"
+  type        = bool
+  default     = false
 }
 
 variable "bindings" {
-  default = []
+  description = "Variable which describes group and role binding"
   type = list(object({
     group     = string
     namespace = string
     roles     = list(string)
 
   }))
+  default = []
 }
 
 variable "roles" {
-  default = []
+  description = "Variable describes which role will user have K8s"
   type = list(object({
     actions   = list(string)
     resources = list(string)
   }))
+  default = []
+}
+
+variable "enable_sso_rbac" {
+  description = "Enable SSO RBAC integration or not"
+  type        = bool
+  default     = false
 }
 
 variable "account_id" {

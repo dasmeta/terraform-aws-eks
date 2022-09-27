@@ -4,7 +4,8 @@
 - re-consider namespace
 
 https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/ingress/annotations/
-<!-- BEGIN_TF_DOCS -->
+
+<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
 | Name | Version |
@@ -47,7 +48,7 @@ https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/ingr
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_alb_log_bucket_name"></a> [alb\_log\_bucket\_name](#input\_alb\_log\_bucket\_name) | n/a | `string` | `"ingress-logs-bucket"` | no |
-| <a name="input_alb_log_bucket_prefix"></a> [alb\_log\_bucket\_prefix](#input\_alb\_log\_bucket\_prefix) | n/a | `string` | `""` | no |
+| <a name="input_alb_log_bucket_path"></a> [alb\_log\_bucket\_path](#input\_alb\_log\_bucket\_path) | n/a | `string` | `""` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | eks cluster name | `string` | `""` | no |
 | <a name="input_create_alb_log_bucket"></a> [create\_alb\_log\_bucket](#input\_create\_alb\_log\_bucket) | wether or no to create alb s3 logs bucket | `bool` | `false` | no |
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | wether or no to create namespace | `bool` | `false` | no |
@@ -60,4 +61,4 @@ https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/ingr
 ## Outputs
 
 No outputs.
-<!-- END_TF_DOCS -->
+<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
