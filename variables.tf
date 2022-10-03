@@ -230,3 +230,8 @@ variable "enable_sso_rbac" {
 variable "account_id" {
   type = string
 }
+
+variable "enable_cloudwatch_metrics_for_prometheus" {
+  type    = bool
+  default = false
+}
