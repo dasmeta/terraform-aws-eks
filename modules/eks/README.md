@@ -53,6 +53,7 @@
 | <a name="output_cluster_id"></a> [cluster\_id](#output\_cluster\_id) | n/a |
 | <a name="output_cluster_primary_security_group_id"></a> [cluster\_primary\_security\_group\_id](#output\_cluster\_primary\_security\_group\_id) | n/a |
 | <a name="output_cluster_security_group_id"></a> [cluster\_security\_group\_id](#output\_cluster\_security\_group\_id) | n/a |
+| <a name="output_eks_module"></a> [eks\_module](#output\_eks\_module) | n/a |
 | <a name="output_eks_oidc_root_ca_thumbprint"></a> [eks\_oidc\_root\_ca\_thumbprint](#output\_eks\_oidc\_root\_ca\_thumbprint) | Grab eks\_oidc\_root\_ca\_thumbprint from oidc\_provider\_arn. |
 | <a name="output_host"></a> [host](#output\_host) | n/a |
 | <a name="output_map_users_data"></a> [map\_users\_data](#output\_map\_users\_data) | n/a |
