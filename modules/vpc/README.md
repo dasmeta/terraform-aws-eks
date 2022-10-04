@@ -38,9 +38,10 @@ No resources.
 
 | Name | Description |
 |------|-------------|
-| <a name="output_default_security_group_id"></a> [default\_security\_group\_id](#output\_default\_security\_group\_id) | n/a |
-| <a name="output_vpc_cidr_block"></a> [vpc\_cidr\_block](#output\_vpc\_cidr\_block) | n/a |
-| <a name="output_vpc_id"></a> [vpc\_id](#output\_vpc\_id) | n/a |
-| <a name="output_vpc_private_subnets"></a> [vpc\_private\_subnets](#output\_vpc\_private\_subnets) | n/a |
-| <a name="output_vpc_public_subnets"></a> [vpc\_public\_subnets](#output\_vpc\_public\_subnets) | n/a |
+| <a name="output_cidr_block"></a> [cidr\_block](#output\_cidr\_block) | The cidr block of the vpc |
+| <a name="output_default_security_group_id"></a> [default\_security\_group\_id](#output\_default\_security\_group\_id) | The ID of default security group created |
+| <a name="output_id"></a> [id](#output\_id) | The newly created vpc id |
+| <a name="output_nat_public_ips"></a> [nat\_public\_ips](#output\_nat\_public\_ips) | The list of elastic public IPs |
+| <a name="output_private_subnets"></a> [private\_subnets](#output\_private\_subnets) | The newly created vpc private subnets IDs list |
+| <a name="output_public_subnets"></a> [public\_subnets](#output\_public\_subnets) | The newly created vpc public subnets IDs list |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

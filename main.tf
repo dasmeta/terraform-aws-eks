@@ -20,8 +20,8 @@ module "eks-cluster" {
   source = "./modules/eks"
 
   cluster_name = var.cluster_name
-  vpc_id       = module.vpc.vpc_id
-  subnets      = module.vpc.vpc_private_subnets
+  vpc_id       = module.vpc.id
+  subnets      = module.vpc.private_subnets
 
   users                                = var.users
   node_groups                          = var.node_groups

@@ -147,7 +147,6 @@ module "cluster_max" {
   metrics_server_name     = "metrics-server"
 }
 ```
-
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
@@ -224,14 +223,13 @@ module "cluster_max" {
 
 | Name | Description |
 |------|-------------|
-| <a name="output_cluster_certificate"></a> [cluster\_certificate](#output\_cluster\_certificate) | n/a |
-| <a name="output_cluster_host"></a> [cluster\_host](#output\_cluster\_host) | n/a |
+| <a name="output_cluster_certificate"></a> [cluster\_certificate](#output\_cluster\_certificate) | EKS cluster certificate used for authentication/access in helm/kubectl/kubernetes providers |
+| <a name="output_cluster_host"></a> [cluster\_host](#output\_cluster\_host) | EKS cluster host name used for authentication/access in helm/kubectl/kubernetes providers |
 | <a name="output_cluster_iam_role_name"></a> [cluster\_iam\_role\_name](#output\_cluster\_iam\_role\_name) | n/a |
 | <a name="output_cluster_id"></a> [cluster\_id](#output\_cluster\_id) | n/a |
 | <a name="output_cluster_primary_security_group_id"></a> [cluster\_primary\_security\_group\_id](#output\_cluster\_primary\_security\_group\_id) | n/a |
 | <a name="output_cluster_security_group_id"></a> [cluster\_security\_group\_id](#output\_cluster\_security\_group\_id) | n/a |
-| <a name="output_cluster_token"></a> [cluster\_token](#output\_cluster\_token) | n/a |
-| <a name="output_default_security_group_id"></a> [default\_security\_group\_id](#output\_default\_security\_group\_id) | n/a |
+| <a name="output_cluster_token"></a> [cluster\_token](#output\_cluster\_token) | EKS cluster token used for authentication/access in helm/kubectl/kubernetes providers |
 | <a name="output_eks_auth_configmap"></a> [eks\_auth\_configmap](#output\_eks\_auth\_configmap) | n/a |
 | <a name="output_eks_module"></a> [eks\_module](#output\_eks\_module) | n/a |
 | <a name="output_eks_oidc_root_ca_thumbprint"></a> [eks\_oidc\_root\_ca\_thumbprint](#output\_eks\_oidc\_root\_ca\_thumbprint) | Grab eks\_oidc\_root\_ca\_thumbprint from oidc\_provider\_arn. |
@@ -239,8 +237,10 @@ module "cluster_max" {
 | <a name="output_oidc_provider_arn"></a> [oidc\_provider\_arn](#output\_oidc\_provider\_arn) | ## CLUSTER |
 | <a name="output_role_arns"></a> [role\_arns](#output\_role\_arns) | n/a |
 | <a name="output_role_arns_without_path"></a> [role\_arns\_without\_path](#output\_role\_arns\_without\_path) | n/a |
-| <a name="output_vpc_cidr_block"></a> [vpc\_cidr\_block](#output\_vpc\_cidr\_block) | ## VPC |
-| <a name="output_vpc_id"></a> [vpc\_id](#output\_vpc\_id) | n/a |
-| <a name="output_vpc_private_subnets"></a> [vpc\_private\_subnets](#output\_vpc\_private\_subnets) | n/a |
-| <a name="output_vpc_public_subnets"></a> [vpc\_public\_subnets](#output\_vpc\_public\_subnets) | n/a |
+| <a name="output_vpc_cidr_block"></a> [vpc\_cidr\_block](#output\_vpc\_cidr\_block) | The cidr block of the vpc |
+| <a name="output_vpc_default_security_group_id"></a> [vpc\_default\_security\_group\_id](#output\_vpc\_default\_security\_group\_id) | The ID of default security group created for vpc |
+| <a name="output_vpc_id"></a> [vpc\_id](#output\_vpc\_id) | The newly created vpc id |
+| <a name="output_vpc_nat_public_ips"></a> [vpc\_nat\_public\_ips](#output\_vpc\_nat\_public\_ips) | The list of elastic public IPs for vpc |
+| <a name="output_vpc_private_subnets"></a> [vpc\_private\_subnets](#output\_vpc\_private\_subnets) | The newly created vpc private subnets IDs list |
+| <a name="output_vpc_public_subnets"></a> [vpc\_public\_subnets](#output\_vpc\_public\_subnets) | The newly created vpc public subnets IDs list |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
