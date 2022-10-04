@@ -11,7 +11,7 @@ module "eks-cluster" {
   count = var.create_cluster ? 1 : 0
 
   source  = "terraform-aws-modules/eks/aws"
-  version = "18.29.0"
+  version = "18.29.1"
 
   # per Upgrade from v17.x to v18.x, see here for details https://github.com/terraform-aws-modules/terraform-aws-eks/blob/681e00aafea093be72ec06ada3825a23a181b1c5/docs/UPGRADE-18.0.md
   prefix_separator                   = ""
@@ -45,4 +45,16 @@ module "eks-cluster" {
     "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
     "k8s.io/cluster-autoscaler/enabled"             = "true"
   }
+}
+
+resource "null_resource" "enable_cloudwatch_metrics_autoscaling" {
+  count = length(var.node_groups)
+
+  provisioner "local-exec" {
+    command     = "aws autoscaling enable-metrics-collection --granularity \"1Minute\" --auto-scaling-group-name  ${compact(flatten([for group in module.eks-cluster : group.eks_managed_node_groups_autoscaling_group_names]))[count.index]}"
+    interpreter = ["bash", "-c"]
+  }
+  depends_on = [
+    module.eks-cluster
+  ]
 }

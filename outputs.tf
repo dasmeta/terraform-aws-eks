@@ -77,3 +77,19 @@ output "vpc_nat_public_ips" {
   value       = module.vpc.nat_public_ips
   description = "The list of elastic public IPs for vpc"
 }
+
+output "role_arns" {
+  value = try(module.sso-rbac[0].role_arns, "")
+}
+
+output "role_arns_without_path" {
+  value = try(module.sso-rbac[0].role_arns_without_path, "")
+}
+
+output "eks_auth_configmap" {
+  value = try(module.sso-rbac[0].config_yaml, "")
+}
+
+output "eks_module" {
+  value = module.eks-cluster.eks_module
+}

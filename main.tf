@@ -82,7 +82,6 @@ module "external-secrets" {
 }
 
 module "sso-rbac" {
-
   count      = var.enable_sso_rbac ? 1 : 0
   depends_on = [module.eks-cluster]
   source     = "./modules/sso-rbac"
@@ -90,5 +89,5 @@ module "sso-rbac" {
   roles      = var.roles
   bindings   = var.bindings
   eks_module = module.eks-cluster.eks_module
-
+  account_id = var.account_id
 }
