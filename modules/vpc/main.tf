@@ -1,8 +1,6 @@
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "2.77.0"
-
-  count = var.create_vpc ? 1 : 0
+  version = "3.16.0"
 
   name                 = var.vpc_name
   cidr                 = var.cidr
@@ -16,13 +14,4 @@ module "vpc" {
 
   public_subnet_tags  = var.public_subnet_tags
   private_subnet_tags = var.private_subnet_tags
-  # public_subnet_tags = {
-  #   "kubernetes.io/cluster/${local.cluster_name}" = "shared"
-  #   "kubernetes.io/role/elb"                      = "1"
-  # }
-
-  # private_subnet_tags = {
-  #   "kubernetes.io/cluster/${local.cluster_name}" = "shared"
-  #   "kubernetes.io/role/internal-elb"             = "1"
-  # }
 }

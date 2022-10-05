@@ -1,7 +1,3 @@
-data "aws_caller_identity" "current" {}
-
-data "aws_region" "current" {}
-
 module "lambda" {
   source  = "raymondbutcher/lambda-builder/aws"
   version = "1.1.0"
@@ -41,7 +37,7 @@ data "aws_iam_policy_document" "lambda" {
   statement {
     actions   = ["logs:CreateLogStream", "logs:DeleteLogStream", "logs:PutLogEvents"]
     effect    = "Allow"
-    resources = ["arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:${var.log_group_name}:log-stream:*"]
+    resources = ["arn:aws:logs:${var.region}:${var.account_id}:log-group:${var.log_group_name}:log-stream:*"]
   }
 }
 

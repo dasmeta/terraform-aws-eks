@@ -1,3 +1,9 @@
+variable "create" {
+  type        = bool
+  default     = true
+  description = "Whether to create cluster and other resources or not"
+}
+
 # VPC
 variable "vpc_name" {
   type        = string
@@ -103,7 +109,9 @@ variable "workers_group_defaults" {
 }
 
 variable "users" {
-  type = any
+  type        = list(any)
+  default     = []
+  description = "List of users to open eks cluster api access"
 }
 
 # ALB-INGRESS-CONTROLLER
@@ -228,5 +236,13 @@ variable "enable_sso_rbac" {
 }
 
 variable "account_id" {
-  type = string
+  type        = string
+  default     = null
+  description = "AWS Account Id to apply changes into"
+}
+
+variable "region" {
+  type        = string
+  default     = null
+  description = "AWS Region name."
 }

@@ -1,11 +1,13 @@
-data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
+variable "account_id" {
+  type        = string
+  description = "AWS Account Id to apply changes into"
+}
 
 variable "region" {
   type        = string
-  default     = "eu-central-1"
-  description = "AWS Region fluent-bit will be streaming logs to."
+  description = "AWS Region name."
 }
+
 variable "fluent_bit_name" {
   type        = string
   default     = "fluent-bit"
@@ -36,20 +38,6 @@ variable "eks_oidc_root_ca_thumbprint" {
 variable "oidc_provider_arn" {
   type = string
 }
-
-# Auth data
-
-# variable "cluster_host" {
-#   type = string
-# }
-
-# variable "cluster_certificate" {
-#   type = string
-# }
-
-# variable "cluster_token" {
-#   type = string
-# }
 
 variable "log_group_name" {
   type        = string

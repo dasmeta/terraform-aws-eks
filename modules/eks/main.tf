@@ -1,17 +1,10 @@
-data "aws_eks_cluster_auth" "cluster" {
-  name = module.eks-cluster[0].cluster_id
-}
-
-data "aws_iam_user" "user_arn" {
-  for_each  = { for user in var.users : user.username => user }
-  user_name = each.value.username
-}
+/**
+ * # Main complete cluster submodule which will create eks common resources
+ */
 
 module "eks-cluster" {
-  count = var.create_cluster ? 1 : 0
-
   source  = "terraform-aws-modules/eks/aws"
-  version = "18.29.1"
+  version = "18.30.0"
 
   # per Upgrade from v17.x to v18.x, see here for details https://github.com/terraform-aws-modules/terraform-aws-eks/blob/681e00aafea093be72ec06ada3825a23a181b1c5/docs/UPGRADE-18.0.md
   prefix_separator                   = ""
@@ -51,7 +44,7 @@ resource "null_resource" "enable_cloudwatch_metrics_autoscaling" {
   count = length(var.node_groups)
 
   provisioner "local-exec" {
-    command     = "aws autoscaling enable-metrics-collection --granularity \"1Minute\" --auto-scaling-group-name  ${compact(flatten([for group in module.eks-cluster : group.eks_managed_node_groups_autoscaling_group_names]))[count.index]}"
+    command     = "aws autoscaling enable-metrics-collection --region ${var.region} --granularity \"1Minute\" --auto-scaling-group-name  ${compact(flatten([for group in module.eks-cluster : group.eks_managed_node_groups_autoscaling_group_names]))[count.index]}"
     interpreter = ["bash", "-c"]
   }
   depends_on = [

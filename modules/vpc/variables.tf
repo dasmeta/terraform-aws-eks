@@ -1,9 +1,3 @@
-variable "create_vpc" {
-  type        = bool
-  default     = true
-  description = "Whether or not to create a VPC."
-}
-
 variable "vpc_name" {
   type        = string
   description = "VPC name."

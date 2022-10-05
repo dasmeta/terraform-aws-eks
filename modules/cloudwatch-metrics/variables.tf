@@ -1,6 +1,12 @@
-data "aws_caller_identity" "current" {}
+variable "account_id" {
+  type        = string
+  description = "AWS Account Id to apply changes into"
+}
 
-data "aws_region" "current" {}
+variable "region" {
+  type        = string
+  description = "AWS Region name."
+}
 
 variable "cluster_name" {
   type        = string
@@ -20,7 +26,7 @@ variable "create_namespace" {
   description = "wether or no to create namespace"
 }
 
-variable "containerdSockPath" {
+variable "containerd_sock_path" {
   type    = string
   default = "/run/dockershim.sock"
 }

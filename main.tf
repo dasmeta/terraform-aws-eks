@@ -1,11 +1,6 @@
-locals {
-  eks_oidc_root_ca_thumbprint = replace(module.eks-cluster.oidc_provider_arn, "/.*id//", "")
-}
-
-data "aws_region" "current" {}
-
 module "vpc" {
   source = "./modules/vpc"
+  count  = var.create ? 1 : 0
 
   vpc_name            = var.vpc_name
   availability_zones  = var.availability_zones
@@ -19,9 +14,13 @@ module "vpc" {
 module "eks-cluster" {
   source = "./modules/eks"
 
+  count = var.create ? 1 : 0
+
+  region = local.region
+
   cluster_name = var.cluster_name
-  vpc_id       = module.vpc.id
-  subnets      = module.vpc.private_subnets
+  vpc_id       = module.vpc[0].id
+  subnets      = module.vpc[0].private_subnets
 
   users                                = var.users
   node_groups                          = var.node_groups
@@ -38,41 +37,59 @@ module "eks-cluster" {
 module "cloudwatch-metrics" {
   source = "./modules/cloudwatch-metrics"
 
+  count = var.create ? 1 : 0
+
+  account_id = local.account_id
+  region     = local.region
+
   eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
-  oidc_provider_arn           = module.eks-cluster.oidc_provider_arn
-  cluster_name                = module.eks-cluster.cluster_id
+  oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
+  cluster_name                = module.eks-cluster[0].cluster_id
 }
 
 module "alb-ingress-controller" {
   source = "./modules/aws-load-balancer-controller"
 
-  cluster_name                = module.eks-cluster.cluster_id
+  count = var.create ? 1 : 0
+
+  account_id = local.account_id
+  region     = local.region
+
+  cluster_name                = module.eks-cluster[0].cluster_id
   eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
-  oidc_provider_arn           = module.eks-cluster.oidc_provider_arn
+  oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
   create_alb_log_bucket       = true
-  alb_log_bucket_name         = var.alb_log_bucket_name != "" ? var.alb_log_bucket_name : "${module.eks-cluster.cluster_id}-ingress-controller-log-bucket"
-  alb_log_bucket_path         = var.alb_log_bucket_path != "" ? var.alb_log_bucket_path : module.eks-cluster.cluster_id
+  alb_log_bucket_name         = var.alb_log_bucket_name != "" ? var.alb_log_bucket_name : "${module.eks-cluster[0].cluster_id}-ingress-controller-log-bucket"
+  alb_log_bucket_path         = var.alb_log_bucket_path != "" ? var.alb_log_bucket_path : module.eks-cluster[0].cluster_id
 }
 
 module "fluent-bit" {
   source = "./modules/fluent-bit"
 
-  fluent_bit_name             = var.fluent_bit_name != "" ? var.fluent_bit_name : "${module.eks-cluster.cluster_id}-fluent-bit"
-  log_group_name              = var.log_group_name != "" ? var.log_group_name : "fluent-bit-cloudwatch-${module.eks-cluster.cluster_id}"
-  cluster_name                = module.eks-cluster.cluster_id
-  eks_oidc_root_ca_thumbprint = module.eks-cluster.eks_oidc_root_ca_thumbprint
-  oidc_provider_arn           = module.eks-cluster.oidc_provider_arn
+  count = var.create ? 1 : 0
 
-  region = data.aws_region.current.name
+  account_id = local.account_id
+  region     = local.region
+
+  fluent_bit_name             = var.fluent_bit_name != "" ? var.fluent_bit_name : "${module.eks-cluster[0].cluster_id}-fluent-bit"
+  log_group_name              = var.log_group_name != "" ? var.log_group_name : "fluent-bit-cloudwatch-${module.eks-cluster[0].cluster_id}"
+  cluster_name                = module.eks-cluster[0].cluster_id
+  eks_oidc_root_ca_thumbprint = module.eks-cluster[0].eks_oidc_root_ca_thumbprint
+  oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
 }
 
 module "metrics-server" {
   source = "./modules/metrics-server"
-  name   = var.metrics_server_name != "" ? var.metrics_server_name : "${module.eks-cluster.cluster_id}-metrics-server"
+
+  count = var.create ? 1 : 0
+
+  name = var.metrics_server_name != "" ? var.metrics_server_name : "${module.eks-cluster[0].cluster_id}-metrics-server"
 }
 
 module "external-secrets" {
   source = "./modules/external-secrets"
+
+  count = var.create ? 1 : 0
 
   namespace = var.external_secrets_namespace
 
@@ -82,12 +99,17 @@ module "external-secrets" {
 }
 
 module "sso-rbac" {
-  count      = var.enable_sso_rbac ? 1 : 0
-  depends_on = [module.eks-cluster]
-  source     = "./modules/sso-rbac"
+  source = "./modules/sso-rbac"
+
+  count = var.enable_sso_rbac && var.create ? 1 : 0
+
+  account_id = local.account_id
 
   roles      = var.roles
   bindings   = var.bindings
-  eks_module = module.eks-cluster.eks_module
-  account_id = var.account_id
+  eks_module = module.eks-cluster[0].eks_module
+
+  depends_on = [
+    module.eks-cluster
+  ]
 }

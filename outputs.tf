@@ -1,6 +1,6 @@
 ### CLUSTER
 output "oidc_provider_arn" {
-  value = module.eks-cluster.oidc_provider_arn
+  value = try(module.eks-cluster[0].oidc_provider_arn, null)
 }
 
 output "eks_oidc_root_ca_thumbprint" {
@@ -9,72 +9,72 @@ output "eks_oidc_root_ca_thumbprint" {
 }
 
 output "cluster_id" {
-  value = module.eks-cluster.cluster_id
+  value = try(module.eks-cluster[0].cluster_id, null)
 }
 
 output "cluster_iam_role_name" {
-  value = module.eks-cluster.cluster_iam_role_name
+  value = try(module.eks-cluster[0].cluster_iam_role_name, null)
 }
 
 output "cluster_security_group_id" {
-  value = module.eks-cluster.cluster_security_group_id
+  value = try(module.eks-cluster[0].cluster_security_group_id, null)
 }
 
 output "cluster_primary_security_group_id" {
-  value = module.eks-cluster.cluster_primary_security_group_id
+  value = try(module.eks-cluster[0].cluster_primary_security_group_id, null)
 }
 
 output "map_user_data" {
-  value = module.eks-cluster.map_users_data
+  value = try(module.eks-cluster[0].map_users_data, null)
 }
 
 # output "cluster_name" {
-#   value = module.eks-cluster.cluster_name
+#   value = module.eks-cluster[0].cluster_name
 # }
 
 output "cluster_host" {
-  value       = module.eks-cluster.host
+  value       = try(module.eks-cluster[0].host, null)
   description = "EKS cluster host name used for authentication/access in helm/kubectl/kubernetes providers"
 }
 
 output "cluster_certificate" {
-  value       = module.eks-cluster.certificate
+  value       = try(module.eks-cluster[0].certificate, null)
   description = "EKS cluster certificate used for authentication/access in helm/kubectl/kubernetes providers"
 }
 
 output "cluster_token" {
-  value       = module.eks-cluster.token
+  value       = try(module.eks-cluster[0].token, null)
   description = "EKS cluster token used for authentication/access in helm/kubectl/kubernetes providers"
 }
 
 ### VPC
 output "vpc_cidr_block" {
-  value       = module.vpc.cidr_block
+  value       = try(module.vpc[0].cidr_block, null)
   description = "The cidr block of the vpc"
 }
 
 output "vpc_id" {
-  value       = module.vpc.id
+  value       = try(module.vpc[0].id, null)
   description = "The newly created vpc id"
 }
 
 output "vpc_private_subnets" {
-  value       = module.vpc.private_subnets
+  value       = try(module.vpc[0].private_subnets, null)
   description = "The newly created vpc private subnets IDs list"
 }
 
 output "vpc_public_subnets" {
-  value       = module.vpc.public_subnets
+  value       = try(module.vpc[0].public_subnets, null)
   description = "The newly created vpc public subnets IDs list"
 }
 
 output "vpc_default_security_group_id" {
-  value       = module.vpc.default_security_group_id
+  value       = try(module.vpc[0].default_security_group_id, null)
   description = "The ID of default security group created for vpc"
 }
 
 output "vpc_nat_public_ips" {
-  value       = module.vpc.nat_public_ips
+  value       = try(module.vpc[0].nat_public_ips, null)
   description = "The list of elastic public IPs for vpc"
 }
 
@@ -91,5 +91,5 @@ output "eks_auth_configmap" {
 }
 
 output "eks_module" {
-  value = module.eks-cluster.eks_module
+  value = try(module.eks-cluster[0].eks_module, null)
 }
