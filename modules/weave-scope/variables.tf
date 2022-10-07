@@ -40,7 +40,7 @@ variable "service_type" {
   default     = "ClusterIP"
   validation {
     condition     = contains(["NodePort", "LoadBalancer", "ClusterIP"], var.service_type)
-    error_message = "The valid attributes are [NodePort], [LoadBalancer], [ClusterIP]"
+    error_message = "The valid attributes are [NodePort], [LoadBalancer], [ClusterIP]."
   }
 }
 
@@ -48,4 +48,10 @@ variable "ingress_name" {
   description = "Ingress name to configure in helm chart"
   type        = string
   default     = "weave-ingress"
+}
+
+variable "read_only" {
+  description = "Whether to disable write operations in weave frontend"
+  type        = bool
+  default     = false
 }
