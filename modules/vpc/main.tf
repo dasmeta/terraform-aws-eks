@@ -1,3 +1,7 @@
+/**
+* # create vpc setup for using in eks cluster
+**/
+
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "3.16.0"

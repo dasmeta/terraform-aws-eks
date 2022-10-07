@@ -1,3 +1,23 @@
+/**
+ * # Allows to enable container/application metrics on k8s cluster
+ *
+ * ## basic example
+ * ```
+ * module "cloudwatch-metrics" {
+ *   source = "dasmeta/modules/aws//modules/cloudwatch-metrics" # change to the correct one.
+ *
+ *   eks_oidc_root_ca_thumbprint = ""
+ *   oidc_provider_arn           = module.eks-cluster.oidc_provider_arn
+ *   cluster_name                = "cluster_name"
+ *   enable_prometheus_metrics = false
+ *
+ *   providers = {
+ *     kubernetes = kubernetes
+ *   }
+ * }
+ * ```
+ */
+
 resource "helm_release" "aws-cloudwatch-metrics" {
   name       = "aws-cloudwatch-metrics"
   repository = "https://aws.github.io/eks-charts"

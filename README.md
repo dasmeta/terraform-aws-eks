@@ -1,3 +1,5 @@
+<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+
 # Why
 
 To spin up complete eks with all necessary components.
@@ -15,10 +17,10 @@ data "aws_availability_zones" "available" {}
 
 locals {
     vpc_name = "dasmeta-prod-1"
-    cidr     = "172.16.0.0/16"
+    cidr     = "10.1.0.0/16"
     availability_zones = data.aws_availability_zones.available.names
-    private_subnets = ["172.16.1.0/24", "172.16.2.0/24", "172.16.3.0/24"]
-    public_subnets  = ["172.16.4.0/24", "172.16.5.0/24", "172.16.6.0/24"]
+    private_subnets = ["10.1.1.0/24", "10.1.2.0/24", "10.1.3.0/24"]
+    public_subnets  = ["10.1.4.0/24", "10.1.5.0/24", "10.1.6.0/24"]
     cluster_enabled_log_types = ["audit"]
 
     # When you create EKS, API server endpoint access default is public. When you use private this variable value should be equal false.
@@ -38,7 +40,6 @@ locals {
   log_group_name  = "fluent-bit-cloudwatch-env"
 }
 
-
 # Minimum
 
 module "cluster_min" {
@@ -55,7 +56,6 @@ module "cluster_min" {
   public_subnet_tags  = local.public_subnet_tags
   private_subnet_tags = local.private_subnet_tags
 }
-
 
 # Max @TODO: the max param passing setup needs to be checked/fixed
 
@@ -82,11 +82,11 @@ module "cluster_max" {
   user = [
           {
             username = "devops1"
-            group    = ["system:masters"]  
+            group    = ["system:masters"]
           },
           {
             username = "devops2"
-            group    = ["system:kube-scheduler"]  
+            group    = ["system:kube-scheduler"]
           },
           {
             username = "devops3"
@@ -102,7 +102,7 @@ module "cluster_max" {
       name-prefix     = "nodegroup"
       additional_tags = {
           "Name"      = "node"
-          "ExtraTag"  = "ExtraTag"  
+          "ExtraTag"  = "ExtraTag"
       }
 
       instance_type   = "t3.xlarge"
@@ -147,7 +147,8 @@ module "cluster_max" {
   metrics_server_name     = "metrics-server"
 }
 ```
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+**/
+
 ## Requirements
 
 | Name | Version |

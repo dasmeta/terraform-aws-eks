@@ -1,23 +1,19 @@
-# data "http" "ingress-policy" {
-#   url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.2.3/docs/install/iam_policy.json"
-
-#   request_headers = {
-#     Accept = "application/json"
-#   }
-# }
+/**
+ * # Creates aws load balancer controller on eks cluster
+ *
+ * # todo
+ * - automate shell script contents via terraform
+ * - test and remove waf related values from helm
+ * - re-consider namespace
+ *
+ * https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/ingress/annotations/
+ *
+ */
 
 resource "aws_iam_policy" "this" {
   name        = "${var.cluster_name}-alb-management"
   description = "Permissions that are required to manage AWS Application Load Balancers."
-  # path        = "."
-  # We use a heredoc for the policy JSON so that we can more easily diff and
-  # copy/paste from upstream.
-  # Source: `curl -o iam-policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.2.3/docs/install/iam_policy.json`
-  # policy = data.local_file.iam-policy-json.content
-  # policy = file("${path.module}/iam-policy.json")
-
-  policy = file("${path.module}/iam-policy.json")
-  # policy = data.http.ingress-policy.body
+  policy      = file("${path.module}/iam-policy.json")
 }
 
 resource "aws_iam_role" "aws-load-balancer-role" {

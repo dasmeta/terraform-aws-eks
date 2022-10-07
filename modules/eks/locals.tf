@@ -1,7 +1,7 @@
 locals {
   map_users = flatten([
     for user in var.users : {
-      userarn  = data.aws_iam_user.user_arn[user.username].arn
+      userarn  = try(data.aws_iam_user.user_arn[user.username].arn, null)
       username = user.username
       groups   = lookup(user, "group", ["system:masters"])
     }

@@ -41,10 +41,10 @@ module "eks-cluster" {
 }
 
 resource "null_resource" "enable_cloudwatch_metrics_autoscaling" {
-  count = length(var.node_groups)
+  for_each = { for key, name in keys(var.node_groups) : name => compact(module.eks-cluster.eks_managed_node_groups_autoscaling_group_names)[key] }
 
   provisioner "local-exec" {
-    command     = "aws autoscaling enable-metrics-collection --region ${var.region} --granularity \"1Minute\" --auto-scaling-group-name  ${compact(flatten([for group in module.eks-cluster : group.eks_managed_node_groups_autoscaling_group_names]))[count.index]}"
+    command     = "aws autoscaling enable-metrics-collection --region ${var.region} --granularity \"1Minute\" --auto-scaling-group-name  ${each.value}"
     interpreter = ["bash", "-c"]
   }
   depends_on = [

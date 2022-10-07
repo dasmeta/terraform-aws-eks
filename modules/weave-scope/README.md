@@ -1,6 +1,6 @@
+<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Example
 This is an example of usage `weave-scope` module
-
 
 ```
 module "weave-scope" {
@@ -27,10 +27,8 @@ provider "helm" {
   }
 }
 ```
+**/
 
-
-
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
 | Name | Version |

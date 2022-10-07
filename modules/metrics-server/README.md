@@ -1,4 +1,6 @@
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+# Installs metrics-server helm chart
+
 ## Requirements
 
 | Name | Version |

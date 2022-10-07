@@ -1,3 +1,6 @@
+<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+# Creates aws load balancer controller on eks cluster
+
 # todo
 - automate shell script contents via terraform
 - test and remove waf related values from helm
@@ -5,7 +8,6 @@
 
 https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/ingress/annotations/
 
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
 | Name | Version |

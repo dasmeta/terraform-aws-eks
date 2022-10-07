@@ -1,3 +1,7 @@
+<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+# Allows to enable container/application metrics on k8s cluster
+
+## basic example
 ```
 module "cloudwatch-metrics" {
   source = "dasmeta/modules/aws//modules/cloudwatch-metrics" # change to the correct one.
@@ -13,7 +17,6 @@ module "cloudwatch-metrics" {
 }
 ```
 
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
 | Name | Version |

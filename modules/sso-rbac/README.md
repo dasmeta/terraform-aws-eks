@@ -1,3 +1,4 @@
+<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ### This is basic usage of module `sso-rbac`
 
 ```
@@ -33,7 +34,8 @@ locals {
  }]
 }
 ```
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+**/
+
 ## Requirements
 
 | Name | Version |
