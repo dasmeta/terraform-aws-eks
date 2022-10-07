@@ -1,6 +1,12 @@
-data "aws_caller_identity" "current" {}
+variable "account_id" {
+  type        = string
+  description = "AWS Account Id to apply changes into"
+}
 
-data "aws_region" "current" {}
+variable "region" {
+  type        = string
+  description = "AWS Region name."
+}
 
 // s3 bucket configs for ALB
 data "aws_elb_service_account" "main" {}
@@ -46,26 +52,6 @@ variable "alb_log_bucket_path" {
   type    = string
   default = ""
 }
-
-variable "region" {
-  type        = string
-  default     = "eu-central-1"
-  description = "Default region"
-}
-
-# Auth data
-
-# variable "cluster_host" {
-#   type = string
-# }
-
-# variable "cluster_certificate" {
-#   type = string
-# }
-
-# variable "cluster_token" {
-#   type = string
-# }
 
 variable "tags" {
   description = "A mapping of tags to assign to the object."

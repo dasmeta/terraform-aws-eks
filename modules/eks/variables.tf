@@ -21,11 +21,6 @@ variable "cluster_version" {
 }
 
 # Optional arguments
-variable "create_cluster" {
-  type        = bool
-  default     = true
-  description = "Whether or not to create cluster."
-}
 
 variable "node_security_group_additional_rules" {
   type    = any
@@ -82,7 +77,9 @@ variable "cluster_endpoint_public_access" {
 }
 
 variable "users" {
-  type = any
+  type        = list(any)
+  default     = []
+  description = "List of users to open eks cluster api access"
 }
 
 variable "cluster_enabled_log_types" {
@@ -99,4 +96,9 @@ variable "map_roles" {
     groups   = list(string)
   }))
   default = []
+}
+
+variable "region" {
+  type        = string
+  description = "AWS Region name."
 }

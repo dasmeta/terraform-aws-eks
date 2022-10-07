@@ -1,3 +1,35 @@
+/**
+ * ## Example
+ * This is an example of usage `weave-scope` module
+ *
+ *
+ * ```
+ * module "weave-scope" {
+ *   count            = var.weave_scope_enabled ? 1 : 0
+ *   source           = "./modules/weave-scope"
+ *
+ *   namespace        = "Weave"
+ *   create_namespace = true
+ *   ingress_class = "nginx"
+ *   ingress_host = "www.example.com"
+ *   annotations = {
+ *     "key1" = "value1"
+ *     "key2" = "value2"
+ *   }
+ *   service_type = "NodePort"
+ *
+ * }
+ *
+ * provider "helm" {
+ *   kubernetes {
+ *     host                   = cluster.host
+ *     cluster_ca_certificate = cluster.certificate
+ *     token                  = cluster.token
+ *   }
+ * }
+ * ```
+ **/
+
 resource "helm_release" "weave-scope" {
   namespace        = var.namespace
   create_namespace = var.create_namespace

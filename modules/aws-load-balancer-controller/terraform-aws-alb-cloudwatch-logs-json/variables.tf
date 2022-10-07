@@ -1,3 +1,13 @@
+variable "account_id" {
+  type        = string
+  description = "AWS Account Id to apply changes into"
+}
+
+variable "region" {
+  type        = string
+  description = "AWS Region name."
+}
+
 variable "function_name" {
   type    = string
   default = ""
@@ -27,13 +37,3 @@ variable "create_alarm" {
   type    = bool
   default = false
 }
-
-# variable "alarm_actions" {
-#   type    = list(string)
-#   default = []
-# }
-
-# variable "ok_actions" {
-#   type    = list(string)
-#   default = []
-# }

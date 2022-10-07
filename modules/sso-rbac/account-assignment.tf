@@ -1,5 +1,3 @@
-data "aws_caller_identity" "current" {}
-
 module "sso_account_assignments" {
   source   = "./terraform-aws-sso/modules/account-assignments"
   for_each = { for kr in var.bindings : "${kr.namespace}-${kr.group}" => kr }
