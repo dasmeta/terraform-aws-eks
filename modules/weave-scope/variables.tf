@@ -40,7 +40,7 @@ variable "service_type" {
   default     = "ClusterIP"
   validation {
     condition     = contains(["NodePort", "LoadBalancer", "ClusterIP"], var.service_type)
-    error_message = "The valid attributes are [NodePort], [LoadBalancer], [ClusterIP]"
+    error_message = "The valid attributes are [NodePort], [LoadBalancer], [ClusterIP]."
   }
 }
 
