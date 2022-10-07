@@ -49,3 +49,9 @@ variable "ingress_name" {
   type        = string
   default     = "weave-ingress"
 }
+
+variable "read_only" {
+  description = "Whether to disable write operations in weave frontend"
+  type        = bool
+  default     = false
+}

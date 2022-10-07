@@ -14,6 +14,7 @@ resource "helm_release" "weave-scope" {
         ingress_host  = var.ingress_host
         ingress_name  = var.ingress_name
         ingress_class = var.ingress_class
+        read_only     = var.read_only
     })
   ]
 }

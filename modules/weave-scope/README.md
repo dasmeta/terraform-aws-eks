@@ -61,6 +61,7 @@ No modules.
 | <a name="input_ingress_host"></a> [ingress\_host](#input\_ingress\_host) | Ingress host name used for Ingress configuration | `string` | `""` | no |
 | <a name="input_ingress_name"></a> [ingress\_name](#input\_ingress\_name) | Ingress name to configure in helm chart | `string` | `"weave-ingress"` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | Kubernetes namespace, in which Weave Scope will be deployed | `string` | `"meta-system"` | no |
+| <a name="input_read_only"></a> [read\_only](#input\_read\_only) | Whether to disable write operations in weave frontend | `bool` | `false` | no |
 | <a name="input_release_name"></a> [release\_name](#input\_release\_name) | Helm chart release name | `string` | `"weave-scope"` | no |
 | <a name="input_service_type"></a> [service\_type](#input\_service\_type) | Service type configuration Valid attributes are NodePort, LoadBalancer, ClusterIP | `string` | `"ClusterIP"` | no |
 

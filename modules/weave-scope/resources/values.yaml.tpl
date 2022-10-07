@@ -33,6 +33,6 @@ weave-scope-agent:
   probeToken: ""
   rbac:
     create: true
-  readOnly: false
+  readOnly: ${read_only}
   serviceAccount:
     create: true
