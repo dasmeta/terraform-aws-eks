@@ -20,7 +20,6 @@ variable "availability_zones" {
   type        = list(string)
   description = "List of VPC availability zones, e.g. ['eu-west-1a', 'eu-west-1b', 'eu-west-1c']."
 }
-
 variable "private_subnets" {
   type = list(string)
   # default = ["172.16.1.0/24", "172.16.2.0/24", "172.16.3.0/24"]
@@ -68,7 +67,8 @@ variable "node_groups" {
       min_size       = 2
       max_size       = 4
       desired_size   = 2
-      instance_types = ["t3.medium"]
+      instance_types = ["t2.medium"]
+      capacity_type  = "SPOT"
     }
   }
 }
@@ -92,7 +92,8 @@ variable "node_groups_default" {
   type        = any
   default = {
     disk_size      = 50
-    instance_types = ["t3.medium"]
+    instance_types = ["t2.medium"]
+    capacity_type  = "SPOT"
   }
 }
 
