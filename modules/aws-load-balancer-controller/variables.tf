@@ -43,6 +43,12 @@ variable "create_alb_log_bucket" {
   description = "wether or no to create alb s3 logs bucket"
 }
 
+variable "send_alb_logs_to_cloudwatch" {
+  type        = bool
+  default     = true
+  description = "Whether send alb logs to CloudWatch or not."
+}
+
 variable "alb_log_bucket_name" {
   type    = string
   default = "ingress-logs-bucket"

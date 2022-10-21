@@ -120,6 +120,12 @@ variable "alb_log_bucket_path" {
   default = ""
 }
 
+variable "send_alb_logs_to_cloudwatch" {
+  type        = bool
+  default     = true
+  description = "Whether send alb logs to CloudWatch or not."
+}
+
 variable "alb_log_bucket_name" {
   type    = string
   default = ""
