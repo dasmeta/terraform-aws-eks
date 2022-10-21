@@ -26,21 +26,16 @@ https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/ingr
 
 ## Modules
 
-| Name | Source | Version |
-|------|--------|---------|
-| <a name="module_alb_logs_to_cloudwatch"></a> [alb\_logs\_to\_cloudwatch](#module\_alb\_logs\_to\_cloudwatch) | ./terraform-aws-alb-cloudwatch-logs-json | n/a |
+No modules.
 
 ## Resources
 
 | Name | Type |
 |------|------|
-| [aws_cloudwatch_log_group.test](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
 | [aws_iam_policy.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
 | [aws_iam_role.aws-load-balancer-role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role_policy_attachment.AWSLoadBalancerControllerIAMPolicy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_lambda_permission.bucket](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_permission) | resource |
 | [aws_s3_bucket.ingress-logs-bucket](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket) | resource |
-| [aws_s3_bucket_notification.logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_notification) | resource |
 | [helm_release.aws-load-balancer-controller](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 | [kubernetes_namespace.namespace](https://registry.terraform.io/providers/hashicorp/kubernetes/2.12.1/docs/resources/namespace) | resource |
 | [aws_elb_service_account.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/elb_service_account) | data source |
@@ -59,6 +54,7 @@ https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/ingr
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | namespace load balancer controller should be deployed into | `string` | `"kube-system"` | no |
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | n/a | `string` | n/a | yes |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region name. | `string` | n/a | yes |
+| <a name="input_send_alb_logs_to_cloudwatch"></a> [send\_alb\_logs\_to\_cloudwatch](#input\_send\_alb\_logs\_to\_cloudwatch) | Whether send alb logs to CloudWatch or not. | `bool` | `true` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | A mapping of tags to assign to the object. | `any` | `null` | no |
 
 ## Outputs
