@@ -21,7 +21,7 @@ module "alb_logs_to_cloudwatch" {
 resource "aws_lambda_permission" "bucket" {
   statement_id  = "AllowExecutionFromS3Bucket"
   action        = "lambda:InvokeFunction"
-  function_name = module.alb_logs_to_cloudwatch.function_name
+  function_name = module.alb_logs_to_cloudwatch[0].function_name
   principal     = "s3.amazonaws.com"
   source_arn    = aws_s3_bucket.ingress-logs-bucket.arn
 }
@@ -33,7 +33,7 @@ resource "aws_s3_bucket_notification" "logs" {
   ]
 
   lambda_function {
-    lambda_function_arn = module.alb_logs_to_cloudwatch.function_arn
+    lambda_function_arn = module.alb_logs_to_cloudwatch[0].function_arn
     events              = ["s3:ObjectCreated:*"]
   }
 }
