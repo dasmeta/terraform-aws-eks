@@ -19,6 +19,8 @@ module "alb_logs_to_cloudwatch" {
 }
 
 resource "aws_lambda_permission" "bucket" {
+  count  = var.send_alb_logs_to_cloudwatch ? 1 : 0
+
   statement_id  = "AllowExecutionFromS3Bucket"
   action        = "lambda:InvokeFunction"
   function_name = module.alb_logs_to_cloudwatch[0].function_name
@@ -27,6 +29,8 @@ resource "aws_lambda_permission" "bucket" {
 }
 
 resource "aws_s3_bucket_notification" "logs" {
+  count  = var.send_alb_logs_to_cloudwatch ? 1 : 0
+  
   bucket = aws_s3_bucket.ingress-logs-bucket.bucket
   depends_on = [
     aws_lambda_permission.bucket
