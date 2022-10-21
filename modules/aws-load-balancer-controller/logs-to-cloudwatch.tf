@@ -3,8 +3,11 @@ resource "aws_cloudwatch_log_group" "test" {
   retention_in_days = 365
 }
 
+
+//This module usage causes error in Terraform Cloud, as there is not Python. Set send_alb_logs to false to disable this momdule.
 module "alb_logs_to_cloudwatch" {
   source = "./terraform-aws-alb-cloudwatch-logs-json"
+  count  = var.send_alb_logs_to_cloudwatch ? 1 : 0
 
   account_id = var.account_id
   region     = var.region
