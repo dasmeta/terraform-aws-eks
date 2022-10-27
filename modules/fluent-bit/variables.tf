@@ -45,6 +45,12 @@ variable "log_group_name" {
   description = "Log group name fluent-bit will be streaming logs into."
 }
 
+variable "create_log_group" {
+  type        = bool
+  default     = true
+  description = "Wether or no to create log group."
+}
+
 variable "log_retention_days" {
   description = "If set to a number greater than zero, and newly create log group's retention policy is set to this many days. Valid values are: [0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]"
   type        = number

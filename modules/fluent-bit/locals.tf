@@ -6,5 +6,6 @@ locals {
     log_group_name     = local.log_group_name,
     region             = local.region,
     log_retention_days = var.log_retention_days
+    auto_create_group  = var.create_log_group ? "On" : "Off"
   }
 }
