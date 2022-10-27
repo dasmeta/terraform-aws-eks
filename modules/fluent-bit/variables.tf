@@ -44,3 +44,13 @@ variable "log_group_name" {
   default     = "fluentbit-default-log-group"
   description = "Log group name fluent-bit will be streaming logs into."
 }
+
+variable "log_retention_days" {
+  description = "If set to a number greater than zero, and newly create log group's retention policy is set to this many days. Valid values are: [0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]"
+  type        = number
+  default     = 0
+  validation {
+    condition     = contains([0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653], var.log_retention_days)
+    error_message = "Invalid value for log_retention days '${var.log_retention_days}'. Valid values are: [0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]"
+  }
+}

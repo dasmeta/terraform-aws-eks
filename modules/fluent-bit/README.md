@@ -52,6 +52,7 @@ No modules.
 | <a name="input_eks_oidc_root_ca_thumbprint"></a> [eks\_oidc\_root\_ca\_thumbprint](#input\_eks\_oidc\_root\_ca\_thumbprint) | n/a | `string` | n/a | yes |
 | <a name="input_fluent_bit_name"></a> [fluent\_bit\_name](#input\_fluent\_bit\_name) | Container resource name. | `string` | `"fluent-bit"` | no |
 | <a name="input_log_group_name"></a> [log\_group\_name](#input\_log\_group\_name) | Log group name fluent-bit will be streaming logs into. | `string` | `"fluentbit-default-log-group"` | no |
+| <a name="input_log_retention_days"></a> [log\_retention\_days](#input\_log\_retention\_days) | If set to a number greater than zero, and newly create log group's retention policy is set to this many days. Valid values are: [0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653] | `number` | `0` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | k8s namespace fluent-bit should be deployed into. | `string` | `"kube-system"` | no |
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | n/a | `string` | n/a | yes |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region name. | `string` | n/a | yes |
