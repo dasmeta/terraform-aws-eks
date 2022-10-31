@@ -7,3 +7,4 @@ config:
         log_group_name ${log_group_name}
         log_stream_prefix from-fluent-bit-
         auto_create_group On
+        log_retention_days ${log_retention_days}
