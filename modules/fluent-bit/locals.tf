@@ -8,4 +8,5 @@ locals {
     log_retention_days = var.log_retention_days
     auto_create_group  = var.create_log_group ? "On" : "Off"
   }
+  values = var.values_yaml == null ? templatefile("${path.module}/values.yaml", local.config_settings) : var.values_yaml
 }

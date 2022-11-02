@@ -21,7 +21,7 @@ resource "helm_release" "fluent-bit" {
   namespace  = var.namespace
 
   values = [
-    templatefile("${path.module}/values.yaml", local.config_settings)
+    local.values
   ]
 
   set {

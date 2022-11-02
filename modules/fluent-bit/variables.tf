@@ -60,3 +60,9 @@ variable "log_retention_days" {
     error_message = "Invalid value for log_retention days '${var.log_retention_days}'. Valid values are: [0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]"
   }
 }
+
+variable "values_yaml" {
+  description = "Content of the values.yaml given to the helm chart. This disables the rendered values.yaml file from this module."
+  default     = null
+  type        = string
+}
