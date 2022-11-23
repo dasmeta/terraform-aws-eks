@@ -265,3 +265,10 @@ module "sso-rbac" {
     module.eks-cluster
   ]
 }
+
+module "portainer" {
+  source         = "./modules/portainer"
+  count          = var.enable_portainer && var.create ? 1 : 0
+  host           = var.portainer_host
+  enable_ingress = var.portainer_ingress
+}

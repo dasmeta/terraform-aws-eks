@@ -252,3 +252,21 @@ variable "region" {
   default     = null
   description = "AWS Region name."
 }
+
+variable "enable_portainer" {
+  description = "Enable Portainer provisioning or not"
+  type        = bool
+  default     = false
+}
+
+variable "portainer_host" {
+  description = "Portainer hostname to apply to ingress"
+  type        = string
+  default     = "portainer.dasmeta.com"
+}
+
+variable "portainer_ingress" {
+  description = "Weather to enable portainer ingress or  not"
+  type        = bool
+  default     = true
+}
