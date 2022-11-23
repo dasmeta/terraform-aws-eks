@@ -18,7 +18,7 @@ resource "helm_release" "portainer" {
 
   set {
     name  = "ingress.enabled"
-    value = "false"
+    value = "true" ? var.enable_ingress : "false"
   }
 
   set {
