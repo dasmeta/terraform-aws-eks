@@ -48,7 +48,7 @@ resource "helm_release" "portainer" {
 
   set {
     name  = "persistence.size"
-    value = "5Gi"
+    value = "10Gi"
   }
 
   set {
