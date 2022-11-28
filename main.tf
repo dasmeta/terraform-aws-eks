@@ -268,7 +268,7 @@ module "sso-rbac" {
 
 module "portainer" {
   source         = "./modules/portainer"
-  count          = var.enable_portainer
+  count          = var.enable_portainer ? 1 : 0
   host           = var.portainer_host
   enable_ingress = var.portainer_ingress
 }
