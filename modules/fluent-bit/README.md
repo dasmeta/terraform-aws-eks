@@ -57,6 +57,7 @@ No modules.
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | k8s namespace fluent-bit should be deployed into. | `string` | `"kube-system"` | no |
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | n/a | `string` | n/a | yes |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region name. | `string` | n/a | yes |
+| <a name="input_values_yaml"></a> [values\_yaml](#input\_values\_yaml) | Content of the values.yaml given to the helm chart. This disables the rendered values.yaml file from this module. | `string` | `null` | no |
 
 ## Outputs
 

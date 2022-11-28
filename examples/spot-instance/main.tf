@@ -13,42 +13,42 @@ locals {
 
   users = [
     {
-      userarn  = "arn:aws:iam::xxxxxxx:user/test"  # change this whit your account 
+      userarn  = "arn:aws:iam::xxxxxxx:user/test" # change this whit your account
       username = "test"
       groups   = ["system:masters"]
     }
   ]
   node_groups = {
-    example =  {
-      name  = "nodegroup"
-      name-prefix     = "nodegroup"
+    example = {
+      name        = "nodegroup"
+      name-prefix = "nodegroup"
       additional_tags = {
-          "Name"      = "node"
-          "ExtraTag"  = "ExtraTag"
+        "Name"     = "node"
+        "ExtraTag" = "ExtraTag"
       }
 
-      instance_type   = "t3.xlarge"
-      max_capacity    = 1
-      disk_size       = 50
+      instance_type          = "t3.xlarge"
+      max_capacity           = 1
+      disk_size              = 50
       create_launch_template = false
-      subnet = ["subnet_id"]
-      capacity_type = "SPOT"
+      subnet                 = ["subnet_id"]
+      capacity_type          = "SPOT"
     }
   }
 
   node_groups_default = {
-      disk_size      = 50
-      instance_types = ["t3.medium"]
-      capacity_type = "SPOT"
-    }
+    disk_size      = 50
+    instance_types = ["t3.medium"]
+    capacity_type  = "SPOT"
+  }
 
   worker_groups = {
     default = {
-      name              = "nodes"
-      instance_type     = "t3.xlarge"
-      capacity_type = "SPOT"
-      asg_max_size      = 3
-      root_volume_size  = 50
+      name             = "nodes"
+      instance_type    = "t3.xlarge"
+      capacity_type    = "SPOT"
+      asg_max_size     = 3
+      root_volume_size = 50
     }
   }
 

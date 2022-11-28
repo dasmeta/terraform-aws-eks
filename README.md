@@ -173,6 +173,7 @@ module "cluster_max" {
 | <a name="module_external-secrets"></a> [external-secrets](#module\_external-secrets) | ./modules/external-secrets | n/a |
 | <a name="module_fluent-bit"></a> [fluent-bit](#module\_fluent-bit) | ./modules/fluent-bit | n/a |
 | <a name="module_metrics-server"></a> [metrics-server](#module\_metrics-server) | ./modules/metrics-server | n/a |
+| <a name="module_portainer"></a> [portainer](#module\_portainer) | ./modules/portainer | n/a |
 | <a name="module_sso-rbac"></a> [sso-rbac](#module\_sso-rbac) | ./modules/sso-rbac | n/a |
 | <a name="module_vpc"></a> [vpc](#module\_vpc) | ./modules/vpc | n/a |
 | <a name="module_weave-scope"></a> [weave-scope](#module\_weave-scope) | ./modules/weave-scope | n/a |
@@ -200,6 +201,7 @@ module "cluster_max" {
 | <a name="input_cluster_version"></a> [cluster\_version](#input\_cluster\_version) | Allows to set/change kubernetes cluster version, kubernetes version needs to be updated at leas once a year. Please check here for available versions https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html | `string` | `"1.22"` | no |
 | <a name="input_create"></a> [create](#input\_create) | Whether to create cluster and other resources or not | `bool` | `true` | no |
 | <a name="input_enable_metrics_server"></a> [enable\_metrics\_server](#input\_enable\_metrics\_server) | METRICS-SERVER | `bool` | `false` | no |
+| <a name="input_enable_portainer"></a> [enable\_portainer](#input\_enable\_portainer) | Enable Portainer provisioning or not | `bool` | `false` | no |
 | <a name="input_enable_sso_rbac"></a> [enable\_sso\_rbac](#input\_enable\_sso\_rbac) | Enable SSO RBAC integration or not | `bool` | `false` | no |
 | <a name="input_external_secrets_namespace"></a> [external\_secrets\_namespace](#input\_external\_secrets\_namespace) | The namespace of external-secret operator | `string` | `"kube-system"` | no |
 | <a name="input_fluent_bit_name"></a> [fluent\_bit\_name](#input\_fluent\_bit\_name) | FLUENT-BIT | `string` | `""` | no |
@@ -210,6 +212,8 @@ module "cluster_max" {
 | <a name="input_node_groups"></a> [node\_groups](#input\_node\_groups) | Map of EKS managed node group definitions to create | `any` | <pre>{<br>  "default": {<br>    "desired_size": 2,<br>    "instance_types": [<br>      "t3.medium"<br>    ],<br>    "max_size": 4,<br>    "min_size": 2<br>  }<br>}</pre> | no |
 | <a name="input_node_groups_default"></a> [node\_groups\_default](#input\_node\_groups\_default) | Map of EKS managed node group default configurations | `any` | <pre>{<br>  "disk_size": 50,<br>  "instance_types": [<br>    "t3.medium"<br>  ]<br>}</pre> | no |
 | <a name="input_node_security_group_additional_rules"></a> [node\_security\_group\_additional\_rules](#input\_node\_security\_group\_additional\_rules) | n/a | `any` | <pre>{<br>  "ingress_cluster_8443": {<br>    "description": "Metric server to node groups",<br>    "from_port": 8443,<br>    "protocol": "tcp",<br>    "source_cluster_security_group": true,<br>    "to_port": 8443,<br>    "type": "ingress"<br>  }<br>}</pre> | no |
+| <a name="input_portainer_host"></a> [portainer\_host](#input\_portainer\_host) | Portainer hostname to apply to ingress | `string` | `"portainer.dasmeta.com"` | no |
+| <a name="input_portainer_ingress"></a> [portainer\_ingress](#input\_portainer\_ingress) | Weather to enable portainer ingress or  not | `bool` | `true` | no |
 | <a name="input_private_subnet_tags"></a> [private\_subnet\_tags](#input\_private\_subnet\_tags) | n/a | `map(any)` | `{}` | no |
 | <a name="input_private_subnets"></a> [private\_subnets](#input\_private\_subnets) | Private subnets of VPC. | `list(string)` | n/a | yes |
 | <a name="input_public_subnet_tags"></a> [public\_subnet\_tags](#input\_public\_subnet\_tags) | n/a | `map(any)` | `{}` | no |
