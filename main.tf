@@ -265,3 +265,7 @@ module "sso-rbac" {
     module.eks-cluster
   ]
 }
+
+module "efs-csi-driver" {
+  source = "./modules/efs"
+}
