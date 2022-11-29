@@ -267,5 +267,6 @@ module "sso-rbac" {
 }
 
 module "efs-csi-driver" {
+  count  = var.enable_efs_driver ? 1 : 0
   source = "./modules/efs"
 }

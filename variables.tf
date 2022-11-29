@@ -252,3 +252,9 @@ variable "region" {
   default     = null
   description = "AWS Region name."
 }
+
+variable "enable_efs_driver" {
+  type        = bool
+  default     = null
+  description = "Weather install EFS driver or not in EKS"
+}
