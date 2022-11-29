@@ -1,14 +1,24 @@
-## How to connect to EFS
+## EFS module integration example with main module
 
-_Connect to VPN with your certificate, and then login with credentials provided_
+```
+module "eks" {
+  source  = "dasmeta/eks/aws"
+  version = "1.7.1"
 
-### TL;DR
+  cluster_name        = local.cluster_name
+  users               = local.users
+  vpc_name            = local.vpc_name
+  cidr                = local.cidr
+  availability_zones  = local.availability_zones
+  private_subnets     = local.private_subnets
+  public_subnets      = local.public_subnets
+  public_subnet_tags  = local.public_subnet_tags
+  private_subnet_tags = local.private_subnet_tags
 
-`mkdir efs`
-
-`sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport 172.16.3.77:/ efs`
-
-If you are using MacOS, nfs4 might not work, you can just simply run same command above, but with `sudo mount -t nfs -o ....`
+  enable_efs_driver = true
+  efs_id = "<efs_id>"
+}
+```
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
