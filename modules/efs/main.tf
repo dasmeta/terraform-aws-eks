@@ -1,5 +1,6 @@
 module "permissions" {
-  source = "./permissions"
+  source           = "./permissions"
+  cluster_oidc_arn = var.cluster_oidc_arn
 }
 
 resource "helm_release" "efs-driver" {

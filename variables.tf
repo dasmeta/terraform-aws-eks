@@ -255,6 +255,12 @@ variable "region" {
 
 variable "enable_efs_driver" {
   type        = bool
-  default     = null
+  default     = false
   description = "Weather install EFS driver or not in EKS"
+}
+
+variable "efs_id" {
+  description = "EFS filesystem id in AWS"
+  type        = string
+  default     = null
 }
