@@ -8,6 +8,12 @@ variable "region" {
   description = "AWS Region name."
 }
 
+variable "cloudwatch_agent_chart_version" {
+  type        = string
+  description = "CloudWatch Agent Helm Chart version."
+  default     = "0.0.7"
+}
+
 variable "cluster_name" {
   type        = string
   default     = ""
@@ -42,4 +48,10 @@ variable "oidc_provider_arn" {
 variable "enable_prometheus_metrics" {
   type    = bool
   default = false
+}
+
+variable "prometheus_metrics_chart_version" {
+  description = "Version of the prometheus metrics chart to use"
+  type        = string
+  default     = "0.1.0"
 }

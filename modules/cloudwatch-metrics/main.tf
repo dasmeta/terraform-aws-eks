@@ -22,7 +22,7 @@ resource "helm_release" "aws-cloudwatch-metrics" {
   name       = "aws-cloudwatch-metrics"
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-cloudwatch-metrics"
-  version    = "0.0.7"
+  version    = var.cloudwatch_agent_chart_version
   namespace  = var.namespace
 
   set {
@@ -55,7 +55,7 @@ resource "helm_release" "aws-cloudwatch-metrics-prometheus" {
   name       = "cloudwatch-agent-prometheus"
   repository = "https://dasmeta.github.io/helm"
   chart      = "cloudwatch-agent-prometheus"
-  version    = "0.0.1"
+  version    = var.prometheus_metrics_chart_version
   namespace  = var.namespace
 
   set {
