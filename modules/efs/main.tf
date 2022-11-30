@@ -10,10 +10,6 @@ resource "helm_release" "efs-driver" {
   version    = "2.3.2"
   namespace  = "kube-system"
 
-  #  values = [
-  #    "${file("values.yaml")}"
-  #  ]
-
   set {
     name  = "image.repository"
     value = "602401143452.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/eks/aws-efs-csi-driver"
