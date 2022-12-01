@@ -16,6 +16,15 @@ jobs:
     strategy:
       matrix:
         path:
+          - aws-load-balancer-controller
+          - cloudwatch-metrics
+          - eks
+          - external-secrets
+          - fluent-bit
+          - metrics-server
+          - sso-rbac
+          - vpc
+          - weave-scope
      
     steps:
     - uses: dasmeta/reusable-actions-workflows/checkov@main
