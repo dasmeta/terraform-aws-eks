@@ -84,6 +84,14 @@ variable "node_security_group_additional_rules" {
       type                          = "ingress"
       source_cluster_security_group = true
     },
+    ingress_cluster_10250 = {
+      description = "Metric server to node groups"
+      protocol    = "tcp"
+      from_port   = 8443
+      to_port     = 8443
+      type        = "ingress"
+      self        = true
+    }
   }
 }
 
