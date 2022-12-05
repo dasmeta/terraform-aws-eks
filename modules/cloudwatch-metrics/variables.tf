@@ -53,5 +53,11 @@ variable "enable_prometheus_metrics" {
 variable "prometheus_metrics_chart_version" {
   description = "Version of the prometheus metrics chart to use"
   type        = string
-  default     = "0.1.0"
+  default     = "0.2.0"
+}
+
+variable "prometheus_metrics_debug" {
+  description = "Enable debug logging for the prometheus metrics chart"
+  type        = bool
+  default     = false
 }

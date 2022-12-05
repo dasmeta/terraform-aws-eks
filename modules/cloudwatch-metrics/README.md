@@ -61,7 +61,8 @@ No modules.
 | <a name="input_enable_prometheus_metrics"></a> [enable\_prometheus\_metrics](#input\_enable\_prometheus\_metrics) | n/a | `bool` | `false` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | namespace cloudwatch metrics should be deployed into | `string` | `"amazon-cloudwatch"` | no |
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | n/a | `string` | n/a | yes |
-| <a name="input_prometheus_metrics_chart_version"></a> [prometheus\_metrics\_chart\_version](#input\_prometheus\_metrics\_chart\_version) | Version of the prometheus metrics chart to use | `string` | `"0.1.0"` | no |
+| <a name="input_prometheus_metrics_chart_version"></a> [prometheus\_metrics\_chart\_version](#input\_prometheus\_metrics\_chart\_version) | Version of the prometheus metrics chart to use | `string` | `"0.2.0"` | no |
+| <a name="input_prometheus_metrics_debug"></a> [prometheus\_metrics\_debug](#input\_prometheus\_metrics\_debug) | Enable debug logging for the prometheus metrics chart | `bool` | `false` | no |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region name. | `string` | n/a | yes |
 
 ## Outputs

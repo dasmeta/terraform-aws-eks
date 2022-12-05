@@ -78,6 +78,11 @@ resource "helm_release" "aws-cloudwatch-metrics-prometheus" {
     value = "arn:aws:iam::${var.account_id}:role/${aws_iam_role.aws-cloudwatch-metrics-role.name}"
   }
 
+  set {
+    name  = "debug"
+    value = var.prometheus_metrics_debug
+  }
+
   depends_on = [
     kubernetes_namespace.namespace
   ]
