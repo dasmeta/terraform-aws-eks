@@ -25,7 +25,7 @@ jobs:
           - sso-rbac
           - vpc
           - weave-scope
-     
+
     steps:
     - uses: dasmeta/reusable-actions-workflows/checkov@main
       with:
