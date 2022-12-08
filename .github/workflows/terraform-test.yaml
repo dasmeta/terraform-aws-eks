@@ -24,7 +24,7 @@ jobs:
           - sso-rbac
           - vpc
           - weave-scope
-     
+
     steps:
     - uses: dasmeta/reusable-actions-workflows/terraform-test@main
       with:
