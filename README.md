@@ -116,6 +116,18 @@ module "cluster_max" {
   node_groups_default = {
       disk_size      = 50
       instance_types = ["t3.medium"]
+      create_launch_template = false
+      launch_template_name = ""
+    
+    block_device_mappings = {
+          xvda = {
+            device_name = "/dev/xvda"
+            ebs = {
+              volume_size = 100
+              volume_type = "gp2"
+            }
+          }
+        }
     }
 
   worker_groups = {
