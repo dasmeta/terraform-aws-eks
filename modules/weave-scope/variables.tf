@@ -10,6 +10,18 @@ variable "create_namespace" {
   default     = true
 }
 
+variable "chart_version" {
+  description = "Weave Scope chart version"
+  type        = string
+  default     = "1.0.2"
+}
+
+variable "weave_scope_image_version" {
+  description = "Weave Scope image version"
+  type        = string
+  default     = "1.10.1"
+}
+
 variable "release_name" {
   description = "Helm chart release name"
   type        = string
