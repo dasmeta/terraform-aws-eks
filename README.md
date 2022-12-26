@@ -97,7 +97,7 @@ module "cluster_max" {
   # Other case you can use worker_group variable.
 
   node_groups = {
-    example =  {
+    example1 =  {
       name  = "nodegroup"
       name-prefix     = "nodegroup"
       additional_tags = {
@@ -111,6 +111,22 @@ module "cluster_max" {
       create_launch_template = false
       subnet = ["subnet_id"]
     }
+      # You can also specify labels here, to add to Node manifest of nodegroup
+      # Useful when implementing affinities or NodeSelectors which require labeling nodes
+      example2 =  {
+        min_size       = 4
+        max_size       = 5
+       desired_size   = 4
+        name = "spot"
+        instance_types = ["c3.xlarge"]
+        capacity_type = "SPOT"
+        ####
+        labels = {
+          "nodetype" = "spot"
+          "key1" = "value1"
+        }
+        ####
+      }
   }
 
   node_groups_default = {
@@ -161,7 +177,7 @@ module "cluster_max" {
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 3.31 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 4.45.0 |
 
 ## Modules
 
