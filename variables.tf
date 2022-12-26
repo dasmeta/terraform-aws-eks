@@ -65,10 +65,11 @@ variable "node_groups" {
   type        = any
   default = {
     default = {
-      min_size       = 2
-      max_size       = 4
-      desired_size   = 2
-      instance_types = ["t3.medium"]
+      min_size                     = 2
+      max_size                     = 4
+      desired_size                 = 2
+      instance_types               = ["t3.medium"]
+      iam_role_additional_policies = ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"]
     }
   }
 }
@@ -99,8 +100,9 @@ variable "node_groups_default" {
   description = "Map of EKS managed node group default configurations"
   type        = any
   default = {
-    disk_size      = 50
-    instance_types = ["t3.medium"]
+    disk_size                    = 50
+    instance_types               = ["t3.medium"]
+    iam_role_additional_policies = ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"]
   }
 }
 
@@ -259,4 +261,31 @@ variable "region" {
   type        = string
   default     = null
   description = "AWS Region name."
+}
+
+variable "enable_cloudwatch_metrics" {
+  type        = bool
+  default     = true
+  description = "Enable Cloudwath metrics"
+}
+
+// Adot Config
+variable "enable_adot" {
+  type        = bool
+  default     = false
+  description = "Enable AWS Distro OpenTelemetry(ADOT)"
+}
+
+variable "adot_drop_namespace_regex" {
+  type        = string
+  default     = "(cert-manager)"
+  description = "Namespace names which metrics we don't want send cloudwatch. Example.(cert-manager|kube-public)"
+}
+
+// Cert manager
+// If you want enable ADOT you should enable cert_manager
+variable "create_cert_manager" {
+  description = "If enabled it always gets deployed to the cert-manager namespace."
+  type        = bool
+  default     = false
 }

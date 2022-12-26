@@ -189,7 +189,7 @@ module "eks-cluster" {
 module "cloudwatch-metrics" {
   source = "./modules/cloudwatch-metrics"
 
-  count = var.create ? 1 : 0
+  count = var.enable_cloudwatch_metrics ? 1 : 0
 
   account_id = local.account_id
   region     = local.region
@@ -264,4 +264,34 @@ module "sso-rbac" {
   depends_on = [
     module.eks-cluster
   ]
+}
+
+module "adot" {
+  source = "./modules/adot"
+
+  count = var.enable_adot ? 1 : 0
+
+  cluster_name                = var.cluster_name
+  eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
+  oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
+  drop_namespace_regex        = var.adot_drop_namespace_regex
+
+  depends_on = [
+    helm_release.cert-manager
+  ]
+}
+
+resource "helm_release" "cert-manager" {
+  count = var.create_cert_manager ? 1 : var.enable_adot ? 1 : 0
+
+  namespace        = "cert-manager"
+  create_namespace = true
+  name             = "cert-manager"
+  chart            = "cert-manager"
+  repository       = "https://charts.jetstack.io"
+  atomic           = true
+  set {
+    name  = "installCRDs"
+    value = "true"
+  }
 }
