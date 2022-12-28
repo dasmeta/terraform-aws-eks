@@ -261,11 +261,11 @@ variable "region" {
   description = "AWS Region name."
 }
 
-#variable "create_vpc" {
-#  description = "Weather create VPC or not"
-#  type        = bool
-#  default     = true
-#}
+variable "create_vpc" {
+  description = "Weather create VPC or not"
+  type        = bool
+  default     = true
+}
 
 variable "vpc_id" {
   description = "vpc id in which to create cluster, used when using custom VPC (e.g create_vpc is false)"

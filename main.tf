@@ -165,8 +165,8 @@ module "vpc" {
 
 module "eks-cluster" {
   source = "./modules/eks"
-
-  count = var.create ? 1 : 0
+  count  = 1
+  #  count = var.create ? 1 : 0
 
   region = local.region
 
