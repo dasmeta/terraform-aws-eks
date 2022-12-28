@@ -40,3 +40,8 @@ variable "adot_config" {
     additional_metrics   = {}
   }
 }
+
+variable "region" {
+  type        = string
+  description = "AWS Region"
+}

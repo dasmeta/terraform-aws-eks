@@ -1,10 +1,12 @@
 locals {
   adot_log_group_name  = "adot-log-group-dasmeta"
   service_account_name = "adot-collector"
+  region               = coalesce(var.region, try(data.aws_region.current[0].name, null))
 }
 
-data "aws_region" "current" {}
-
+data "aws_region" "current" {
+  count = var.region == null ? 1 : 0
+}
 
 resource "helm_release" "adot-collector" {
   name = "adot-collector"
@@ -19,7 +21,7 @@ resource "helm_release" "adot-collector" {
 
   values = [
     templatefile("${path.module}/templates/adot-values.yaml.tpl", {
-      region               = data.aws_region.current.name
+      region               = local.region
       cluster_name         = var.cluster_name
       drop_namespace_regex = var.adot_config.drop_namespace_regex
       log_group_name       = local.adot_log_group_name
@@ -31,10 +33,4 @@ resource "helm_release" "adot-collector" {
     aws_eks_addon.this,
     aws_iam_role.adot_collector
   ]
-}
-
-resource "aws_cloudwatch_log_group" "adot" {
-  name              = local.adot_log_group_name
-  retention_in_days = 3
-  #   kms_key_id        = var.cloudwatch_log_group_kms_key_id
 }

@@ -263,12 +263,6 @@ variable "region" {
   description = "AWS Region name."
 }
 
-variable "enable_cloudwatch_metrics" {
-  type        = bool
-  default     = true
-  description = "Enable Cloudwath metrics"
-}
-
 variable "metrics_exporter" {
   type        = string
   default     = "cloudwatch"
