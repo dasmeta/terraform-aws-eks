@@ -105,29 +105,10 @@ adotCollector:
               - Key: Namespace
                 Value: ${drop_namespace_regex}
     metricDeclarations: |
-      - dimensions: [[PodName, Namespace, ClusterName]]
-        metric_name_selectors:
-          - pod_number_of_container_restarts
-          - pod_cpu_utilization
-          - pod_memory_utilization
-          - pod_network_tx_bytes
-          - pod_network_rx_bytes
-      - dimensions: [[ClusterName]]
-        metric_name_selectors:
-          - cluster_failed_node_count
-          - cluster_node_count
-      - dimensions: [[InstanceId, ClusterName]]
-        metric_name_selectors:
-          - node_number_of_running_pods
-          - node_cpu_utilization
-          - node_memory_utilization
-          - node_network_tx_bytes
-          - node_network_rx_bytes
-          - node_disk_utilization
-      - dimensions: [[Deployment, Namespace, ClusterName]]
-        metric_name_selectors:
-          - kube_deployment_spec_replicas
-          - kube_deployment_status_replicas_available
+%{ for key,value in metrics }
+      - dimensions: ${key}
+        metric_name_selectors: ${jsonencode(value)}
+%{ endfor ~}
     service:
       metrics:
         receivers: ["awscontainerinsightreceiver", "prometheus"]

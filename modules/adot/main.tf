@@ -21,8 +21,9 @@ resource "helm_release" "adot-collector" {
     templatefile("${path.module}/templates/adot-values.yaml.tpl", {
       region               = data.aws_region.current.name
       cluster_name         = var.cluster_name
-      drop_namespace_regex = var.drop_namespace_regex
+      drop_namespace_regex = var.adot_config.drop_namespace_regex
       log_group_name       = local.adot_log_group_name
+      metrics              = local.merged_metrics
     })
   ]
 
@@ -37,3 +38,13 @@ resource "aws_cloudwatch_log_group" "adot" {
   retention_in_days = 3
   #   kms_key_id        = var.cloudwatch_log_group_kms_key_id
 }
+
+# output "file" {
+#   value = templatefile("${path.module}/templates/adot-values.yaml.tpl", {
+#     region               = data.aws_region.current.name
+#     cluster_name         = var.cluster_name
+#     drop_namespace_regex = var.drop_namespace_regex
+#     log_group_name       = local.adot_log_group_name
+#     metrics              = local.default_metrics
+#   })
+# }

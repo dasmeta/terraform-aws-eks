@@ -33,8 +33,10 @@ variable "adot_collector_policy_arns" {
   ]
 }
 
-variable "drop_namespace_regex" {
-  type        = string
-  default     = "(cert-manager)"
-  description = "Namespace names which metrics we don't want send cloudwatch. Example.(cert-manager|kube-public)"
+variable "adot_config" {
+  type = any
+  default = {
+    drop_namespace_regex = "(cert-manager)"
+    additional_metrics   = {}
+  }
 }

@@ -192,7 +192,7 @@ module "cluster_max" {
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | AWS Account Id to apply changes into | `string` | `null` | no |
-| <a name="input_adot_drop_namespace_regex"></a> [adot\_drop\_namespace\_regex](#input\_adot\_drop\_namespace\_regex) | Namespace names which metrics we don't want send cloudwatch. Example.(cert-manager\|kube-public) | `string` | `"(cert-manager)"` | no |
+| <a name="input_adot_config"></a> [adot\_config](#input\_adot\_config) | n/a | `any` | <pre>{<br>  "additional_metrics": {},<br>  "drop_namespace_regex": "(cert-manager)"<br>}</pre> | no |
 | <a name="input_alb_log_bucket_name"></a> [alb\_log\_bucket\_name](#input\_alb\_log\_bucket\_name) | n/a | `string` | `""` | no |
 | <a name="input_alb_log_bucket_path"></a> [alb\_log\_bucket\_path](#input\_alb\_log\_bucket\_path) | ALB-INGRESS-CONTROLLER | `string` | `""` | no |
 | <a name="input_availability_zones"></a> [availability\_zones](#input\_availability\_zones) | List of VPC availability zones, e.g. ['eu-west-1a', 'eu-west-1b', 'eu-west-1c']. | `list(string)` | n/a | yes |
@@ -204,7 +204,6 @@ module "cluster_max" {
 | <a name="input_cluster_version"></a> [cluster\_version](#input\_cluster\_version) | Allows to set/change kubernetes cluster version, kubernetes version needs to be updated at leas once a year. Please check here for available versions https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html | `string` | `"1.22"` | no |
 | <a name="input_create"></a> [create](#input\_create) | Whether to create cluster and other resources or not | `bool` | `true` | no |
 | <a name="input_create_cert_manager"></a> [create\_cert\_manager](#input\_create\_cert\_manager) | If enabled it always gets deployed to the cert-manager namespace. | `bool` | `false` | no |
-| <a name="input_enable_adot"></a> [enable\_adot](#input\_enable\_adot) | Enable AWS Distro OpenTelemetry(ADOT) | `bool` | `false` | no |
 | <a name="input_enable_cloudwatch_metrics"></a> [enable\_cloudwatch\_metrics](#input\_enable\_cloudwatch\_metrics) | Enable Cloudwath metrics | `bool` | `true` | no |
 | <a name="input_enable_metrics_server"></a> [enable\_metrics\_server](#input\_enable\_metrics\_server) | METRICS-SERVER | `bool` | `false` | no |
 | <a name="input_enable_sso_rbac"></a> [enable\_sso\_rbac](#input\_enable\_sso\_rbac) | Enable SSO RBAC integration or not | `bool` | `false` | no |
@@ -213,6 +212,7 @@ module "cluster_max" {
 | <a name="input_log_group_name"></a> [log\_group\_name](#input\_log\_group\_name) | n/a | `string` | `""` | no |
 | <a name="input_manage_aws_auth"></a> [manage\_aws\_auth](#input\_manage\_aws\_auth) | n/a | `bool` | `true` | no |
 | <a name="input_map_roles"></a> [map\_roles](#input\_map\_roles) | Additional IAM roles to add to the aws-auth configmap. | <pre>list(object({<br>    rolearn  = string<br>    username = string<br>    groups   = list(string)<br>  }))</pre> | `[]` | no |
+| <a name="input_metrics_exporter"></a> [metrics\_exporter](#input\_metrics\_exporter) | Metrics Exporter, can use cloudwatch or adot | `string` | `"cloudwatch"` | no |
 | <a name="input_metrics_server_name"></a> [metrics\_server\_name](#input\_metrics\_server\_name) | n/a | `string` | `"metrics-server"` | no |
 | <a name="input_node_groups"></a> [node\_groups](#input\_node\_groups) | Map of EKS managed node group definitions to create | `any` | <pre>{<br>  "default": {<br>    "desired_size": 2,<br>    "iam_role_additional_policies": [<br>      "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"<br>    ],<br>    "instance_types": [<br>      "t3.medium"<br>    ],<br>    "max_size": 4,<br>    "min_size": 2<br>  }<br>}</pre> | no |
 | <a name="input_node_groups_default"></a> [node\_groups\_default](#input\_node\_groups\_default) | Map of EKS managed node group default configurations | `any` | <pre>{<br>  "disk_size": 50,<br>  "iam_role_additional_policies": [<br>    "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"<br>  ],<br>  "instance_types": [<br>    "t3.medium"<br>  ]<br>}</pre> | no |

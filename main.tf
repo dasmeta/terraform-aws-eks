@@ -189,7 +189,7 @@ module "eks-cluster" {
 module "cloudwatch-metrics" {
   source = "./modules/cloudwatch-metrics"
 
-  count = var.enable_cloudwatch_metrics ? 1 : 0
+  count = var.metrics_exporter == "cloudwatch" ? 1 : 0
 
   account_id = local.account_id
   region     = local.region
@@ -269,20 +269,19 @@ module "sso-rbac" {
 module "adot" {
   source = "./modules/adot"
 
-  count = var.enable_adot ? 1 : 0
+  count = var.metrics_exporter == "adot" ? 1 : 0
 
   cluster_name                = var.cluster_name
   eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
   oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
-  drop_namespace_regex        = var.adot_drop_namespace_regex
-
+  adot_config                 = var.adot_config
   depends_on = [
     helm_release.cert-manager
   ]
 }
 
 resource "helm_release" "cert-manager" {
-  count = var.create_cert_manager ? 1 : var.enable_adot ? 1 : 0
+  count = var.create_cert_manager ? 1 : var.metrics_exporter == "adot" ? 1 : 0
 
   namespace        = "cert-manager"
   create_namespace = true

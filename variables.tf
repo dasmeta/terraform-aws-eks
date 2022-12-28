@@ -269,17 +269,18 @@ variable "enable_cloudwatch_metrics" {
   description = "Enable Cloudwath metrics"
 }
 
-// Adot Config
-variable "enable_adot" {
-  type        = bool
-  default     = false
-  description = "Enable AWS Distro OpenTelemetry(ADOT)"
+variable "metrics_exporter" {
+  type        = string
+  default     = "cloudwatch"
+  description = "Metrics Exporter, can use cloudwatch or adot"
 }
 
-variable "adot_drop_namespace_regex" {
-  type        = string
-  default     = "(cert-manager)"
-  description = "Namespace names which metrics we don't want send cloudwatch. Example.(cert-manager|kube-public)"
+variable "adot_config" {
+  type = any
+  default = {
+    drop_namespace_regex = "(cert-manager)"
+    additional_metrics   = {}
+  }
 }
 
 // Cert manager

@@ -121,9 +121,9 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_adot_collector_policy_arns"></a> [adot\_collector\_policy\_arns](#input\_adot\_collector\_policy\_arns) | List of IAM policy ARNs to attach to the ADOT collector service account. | `list(string)` | <pre>[<br>  "arn:aws:iam::aws:policy/AmazonPrometheusRemoteWriteAccess",<br>  "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",<br>  "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"<br>]</pre> | no |
+| <a name="input_adot_config"></a> [adot\_config](#input\_adot\_config) | n/a | `any` | <pre>{<br>  "additional_metrics": {},<br>  "drop_namespace_regex": "(cert-manager)"<br>}</pre> | no |
 | <a name="input_adot_version"></a> [adot\_version](#input\_adot\_version) | The version of the AWS Distro for OpenTelemetry addon to use. | `string` | `"v0.58.0-eksbuild.1"` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | n/a | `string` | n/a | yes |
-| <a name="input_drop_namespace_regex"></a> [drop\_namespace\_regex](#input\_drop\_namespace\_regex) | Namespace names which metrics we don't want send cloudwatch. Example.(cert-manager\|kube-public) | `string` | `"(cert-manager)"` | no |
 | <a name="input_eks_oidc_root_ca_thumbprint"></a> [eks\_oidc\_root\_ca\_thumbprint](#input\_eks\_oidc\_root\_ca\_thumbprint) | n/a | `string` | n/a | yes |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | The namespace to install the AWS Distro for OpenTelemetry addon. | `string` | `"adot"` | no |
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | n/a | `string` | n/a | yes |
