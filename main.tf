@@ -152,7 +152,7 @@
  **/
 module "vpc" {
   source = "./modules/vpc"
-  count  = var.create ? 1 : 0
+  count  = var.create_vpc ? 1 : 0
 
   vpc_name            = var.vpc_name
   availability_zones  = var.availability_zones
@@ -166,7 +166,7 @@ module "vpc" {
 module "eks-cluster" {
   source = "./modules/eks"
 
-  count = var.create_vpc ? 1 : 0
+  count = var.create ? 1 : 0
 
   region = local.region
 
