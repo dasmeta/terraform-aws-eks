@@ -7,10 +7,27 @@ module "adot" {
 
   count = var.enable_adot ? 1 : 0
 
-  cluster_name                = var.cluster_name
-  eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
-  oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
-  drop_namespace_regex        = var.adot_drop_namespace_regex
+  cluster_name                = "cluster_name"
+  eks_oidc_root_ca_thumbprint = "eks_oidc_root_ca_thumbprint"
+  oidc_provider_arn           = "oidc_provider_arn"
+  adot_config = {
+    drop_namespace_regex = "(cert-manager|kube-public)"
+     additional_metrics = {
+       "[[PodName, Namespace, ClusterName]]" = [
+         "pod_number_of_container_restarts"
+       ]
+
+       "[[ClusterName]]" = [
+         "cluster_failed_node_count"
+       ]
+       "[[InstanceId, ClusterName]]" = [
+         "node_number_of_running_pods"
+       ]
+       "[[Deployment, Namespace, ClusterName]]" = [
+         "kube_deployment_spec_replicas"
+       ]
+     }
+  }
 
   depends_on = [
     helm_release.cert-manager
