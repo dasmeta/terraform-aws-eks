@@ -11,8 +11,8 @@ variable "vpc_name" {
 }
 
 variable "cidr" {
-  type = string
-  # default = "172.16.0.0/16"
+  type        = string
+  default     = ""
   description = "CIDR ip range."
 }
 
