@@ -1,3 +1,32 @@
+```
+module "cluster_min" {
+  source = "dasmeta/eks/aws"
+  version = "1.10.0"
+
+  cluster_name                = local.cluster_name
+  send_alb_logs_to_cloudwatch = false
+  alb_log_bucket_name         = "log_bucket"
+  cluster_version             = "1.23"
+  users                       = local.users
+  map_roles                   = local.map_roles
+  vpc_name                    = local.vpc_name
+  cidr                        = local.cidr
+  node_groups_default = local.node_groups_default
+  node_groups = local.node_groups
+  availability_zones          = local.availability_zones
+  private_subnets             = local.private_subnets
+  public_subnets              = local.public_subnets
+  public_subnet_tags          = local.public_subnet_tags
+  private_subnet_tags         = local.private_subnet_tags
+  account_id                  = data.aws_caller_identity.current.account_id
+
+  # EFS Usage #
+  enable_efs_driver = true
+  efs_id = "fs-0cd302bd75cfc6dd8"
+
+}
+```
+
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 # Main complete cluster submodule which will create eks common resources
 

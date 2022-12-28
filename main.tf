@@ -166,13 +166,13 @@ module "vpc" {
 module "eks-cluster" {
   source = "./modules/eks"
 
-  count = var.create ? 1 : 0
+  count = var.create_vpc ? 1 : 0
 
   region = local.region
 
   cluster_name = var.cluster_name
-  vpc_id       = module.vpc[0].id
-  subnets      = module.vpc[0].private_subnets
+  vpc_id       = var.create_vpc ? module.vpc[0].id : var.vpc_id
+  subnets      = var.create_vpc ? module.vpc[0].private_subnets : var.private_subnets
 
   users                                = var.users
   node_groups                          = var.node_groups
