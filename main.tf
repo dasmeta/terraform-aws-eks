@@ -152,7 +152,7 @@
  **/
 module "vpc" {
   source = "./modules/vpc"
-  count  = var.create_vpc ? 1 : 0
+  count  = 0
 
   vpc_name            = var.vpc_name
   availability_zones  = var.availability_zones
