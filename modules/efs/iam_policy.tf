@@ -4,13 +4,13 @@ resource "aws_iam_policy" "policy" {
   path        = "/"
   description = "Policy for EFS and Kubernetes"
 
-  policy = file("${path.module}/policies/iam_policy_efs.json")
+  policy = file("./policies/iam_policy_efs.json")
 }
 
 resource "aws_iam_role" "role" {
   #name                = format("%s-%s", "kube-efs-role", local.timestamp_sanitized)
   name = "kube-efs-role"
-  assume_role_policy = templatefile("${path.module}/policies//trusted_policy.json", {
+  assume_role_policy = templatefile("./policies/trusted_policy.json", {
     oidc           = var.cluster_oidc_arn,
     current_region = data.aws_region.current.name,
   oidc_id = local.oidc_id })
