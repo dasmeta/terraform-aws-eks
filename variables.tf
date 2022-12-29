@@ -266,7 +266,8 @@ variable "vpc_id" {
   description = "vpc id in which to create cluster, used when using custom VPC (e.g create_vpc is false)"
   type        = string
   default     = ""
-  
+}
+
 variable "metrics_exporter" {
   type        = string
   default     = "cloudwatch"
