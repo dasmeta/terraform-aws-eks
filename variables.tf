@@ -261,6 +261,7 @@ variable "region" {
   type        = string
   default     = null
   description = "AWS Region name."
+}
 
 variable "vpc_id" {
   description = "vpc id in which to create cluster, used when using custom VPC (e.g create_vpc is false)"
@@ -288,4 +289,16 @@ variable "create_cert_manager" {
   description = "If enabled it always gets deployed to the cert-manager namespace."
   type        = bool
   default     = false
+}
+
+variable "enable_efs_driver" {
+  type        = bool
+  default     = false
+  description = "Weather install EFS driver or not in EKS"
+}
+
+variable "efs_id" {
+  description = "EFS filesystem id in AWS"
+  type        = string
+  default     = null
 }
