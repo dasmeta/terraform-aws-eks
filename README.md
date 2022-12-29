@@ -161,7 +161,7 @@ module "cluster_max" {
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 3.31 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 4.45.0 |
 
 ## Modules
 
