@@ -7,7 +7,7 @@ resource "aws_iam_policy" "policy" {
 }
 
 resource "aws_iam_role" "role" {
-  name = "kube-efs-role"
+  name = "kube-efs-role-${var.cluster_name}-${data.aws_region.current.name}"
   assume_role_policy = templatefile("${path.module}/policies/trusted_policy.json", {
     oidc           = var.cluster_oidc_arn,
     current_region = data.aws_region.current.name,
