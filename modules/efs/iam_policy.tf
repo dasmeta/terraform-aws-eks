@@ -1,5 +1,4 @@
 resource "aws_iam_policy" "policy" {
-  #name        = format("%s-%s", "AmazonEKS_EFS_CSI_Driver_Policy", local.timestamp_sanitized)
   name        = "AmazonEKS_EFS_CSI_Driver_Policy-${var.cluster_name}-${data.aws_region.current.name}"
   path        = "/"
   description = "Policy for EFS and Kubernetes"
@@ -8,7 +7,6 @@ resource "aws_iam_policy" "policy" {
 }
 
 resource "aws_iam_role" "role" {
-  #name                = format("%s-%s", "kube-efs-role", local.timestamp_sanitized)
   name = "kube-efs-role"
   assume_role_policy = templatefile("${path.module}/policies/trusted_policy.json", {
     oidc           = var.cluster_oidc_arn,
