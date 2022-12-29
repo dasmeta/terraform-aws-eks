@@ -270,6 +270,7 @@ module "efs-csi-driver" {
   source = "./modules/efs"
 
   count            = var.enable_efs_driver ? 1 : 0
+  cluster_name     = var.cluster_name
   efs_id           = var.efs_id
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
 }
