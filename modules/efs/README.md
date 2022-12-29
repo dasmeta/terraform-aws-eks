@@ -36,9 +36,7 @@ module "eks" {
 
 ## Modules
 
-| Name | Source | Version |
-|------|--------|---------|
-| <a name="module_permissions"></a> [permissions](#module\_permissions) | ./permissions | n/a |
+No modules.
 
 ## Resources
 

@@ -1,8 +1,3 @@
-module "permissions" {
-  source           = "./permissions"
-  cluster_oidc_arn = var.cluster_oidc_arn
-}
-
 resource "helm_release" "efs-driver" {
   name       = "efs-csi"
   repository = "https://kubernetes-sigs.github.io/aws-efs-csi-driver/"
