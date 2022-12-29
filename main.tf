@@ -152,7 +152,7 @@
  **/
 module "vpc" {
   source = "./modules/vpc"
-  count  = var.create ? 1 : 0
+  count  = var.vpc_id != "" ? 0 : 1
 
   vpc_name            = var.vpc_name
   availability_zones  = var.availability_zones
@@ -165,14 +165,13 @@ module "vpc" {
 
 module "eks-cluster" {
   source = "./modules/eks"
-
-  count = var.create ? 1 : 0
+  count  = var.create ? 1 : 0
 
   region = local.region
 
   cluster_name = var.cluster_name
-  vpc_id       = module.vpc[0].id
-  subnets      = module.vpc[0].private_subnets
+  vpc_id       = var.vpc_id != "" ? var.vpc_id : module.vpc[0].id
+  subnets      = var.vpc_id != "" ? var.private_subnets : module.vpc[0].private_subnets
 
   users                                = var.users
   node_groups                          = var.node_groups
@@ -189,7 +188,7 @@ module "eks-cluster" {
 module "cloudwatch-metrics" {
   source = "./modules/cloudwatch-metrics"
 
-  count = var.create ? 1 : 0
+  count = var.metrics_exporter == "cloudwatch" ? 1 : 0
 
   account_id = local.account_id
   region     = local.region
@@ -273,4 +272,34 @@ module "efs-csi-driver" {
   cluster_name     = var.cluster_name
   efs_id           = var.efs_id
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
+}
+
+module "adot" {
+  source = "./modules/adot"
+
+  count = var.metrics_exporter == "adot" ? 1 : 0
+
+  cluster_name                = var.cluster_name
+  eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
+  oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
+  adot_config                 = var.adot_config
+  region                      = local.region
+  depends_on = [
+    helm_release.cert-manager
+  ]
+}
+
+resource "helm_release" "cert-manager" {
+  count = var.create_cert_manager ? 1 : var.metrics_exporter == "adot" ? 1 : 0
+
+  namespace        = "cert-manager"
+  create_namespace = true
+  name             = "cert-manager"
+  chart            = "cert-manager"
+  repository       = "https://charts.jetstack.io"
+  atomic           = true
+  set {
+    name  = "installCRDs"
+    value = "true"
+  }
 }

@@ -11,8 +11,8 @@ variable "vpc_name" {
 }
 
 variable "cidr" {
-  type = string
-  # default = "172.16.0.0/16"
+  type        = string
+  default     = ""
   description = "CIDR ip range."
 }
 
@@ -65,10 +65,11 @@ variable "node_groups" {
   type        = any
   default = {
     default = {
-      min_size       = 2
-      max_size       = 4
-      desired_size   = 2
-      instance_types = ["t3.medium"]
+      min_size                     = 2
+      max_size                     = 4
+      desired_size                 = 2
+      instance_types               = ["t3.medium"]
+      iam_role_additional_policies = ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"]
     }
   }
 }
@@ -84,6 +85,14 @@ variable "node_security_group_additional_rules" {
       type                          = "ingress"
       source_cluster_security_group = true
     },
+    ingress_cluster_10250 = {
+      description = "Metric server to node groups"
+      protocol    = "tcp"
+      from_port   = 10250
+      to_port     = 10250
+      type        = "ingress"
+      self        = true
+    }
   }
 }
 
@@ -91,8 +100,9 @@ variable "node_groups_default" {
   description = "Map of EKS managed node group default configurations"
   type        = any
   default = {
-    disk_size      = 50
-    instance_types = ["t3.medium"]
+    disk_size                    = 50
+    instance_types               = ["t3.medium"]
+    iam_role_additional_policies = ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"]
   }
 }
 
@@ -251,6 +261,33 @@ variable "region" {
   type        = string
   default     = null
   description = "AWS Region name."
+
+variable "vpc_id" {
+  description = "vpc id in which to create cluster, used when using custom VPC (e.g create_vpc is false)"
+  type        = string
+  default     = ""
+}
+
+variable "metrics_exporter" {
+  type        = string
+  default     = "cloudwatch"
+  description = "Metrics Exporter, can use cloudwatch or adot"
+}
+
+variable "adot_config" {
+  type = any
+  default = {
+    drop_namespace_regex = "(cert-manager)"
+    additional_metrics   = {}
+  }
+}
+
+// Cert manager
+// If you want enable ADOT you should enable cert_manager
+variable "create_cert_manager" {
+  description = "If enabled it always gets deployed to the cert-manager namespace."
+  type        = bool
+  default     = false
 }
 
 variable "enable_efs_driver" {
