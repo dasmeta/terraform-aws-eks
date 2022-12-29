@@ -261,6 +261,7 @@ variable "region" {
   type        = string
   default     = null
   description = "AWS Region name."
+}
 
 variable "vpc_id" {
   description = "vpc id in which to create cluster, used when using custom VPC (e.g create_vpc is false)"
