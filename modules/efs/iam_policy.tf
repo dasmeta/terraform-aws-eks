@@ -17,8 +17,6 @@ resource "aws_iam_role" "role" {
   managed_policy_arns = [aws_iam_policy.policy.arn]
 }
 
-data "aws_region" "current" {}
-
 locals {
   oidc_id = split("/", var.cluster_oidc_arn)[3]
 }
