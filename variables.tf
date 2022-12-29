@@ -11,8 +11,8 @@ variable "vpc_name" {
 }
 
 variable "cidr" {
-  type = string
-  # default = "172.16.0.0/16"
+  type        = string
+  default     = ""
   description = "CIDR ip range."
 }
 
@@ -261,6 +261,11 @@ variable "region" {
   type        = string
   default     = null
   description = "AWS Region name."
+
+variable "vpc_id" {
+  description = "vpc id in which to create cluster, used when using custom VPC (e.g create_vpc is false)"
+  type        = string
+  default     = ""
 }
 
 variable "metrics_exporter" {

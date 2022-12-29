@@ -152,7 +152,7 @@
  **/
 module "vpc" {
   source = "./modules/vpc"
-  count  = var.create ? 1 : 0
+  count  = var.vpc_id != "" ? 0 : 1
 
   vpc_name            = var.vpc_name
   availability_zones  = var.availability_zones
@@ -165,14 +165,13 @@ module "vpc" {
 
 module "eks-cluster" {
   source = "./modules/eks"
-
-  count = var.create ? 1 : 0
+  count  = var.create ? 1 : 0
 
   region = local.region
 
   cluster_name = var.cluster_name
-  vpc_id       = module.vpc[0].id
-  subnets      = module.vpc[0].private_subnets
+  vpc_id       = var.vpc_id != "" ? var.vpc_id : module.vpc[0].id
+  subnets      = var.vpc_id != "" ? var.private_subnets : module.vpc[0].private_subnets
 
   users                                = var.users
   node_groups                          = var.node_groups
