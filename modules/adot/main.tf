@@ -21,11 +21,11 @@ resource "helm_release" "adot-collector" {
 
   values = [
     templatefile("${path.module}/templates/adot-values.yaml.tpl", {
-      region               = local.region
-      cluster_name         = var.cluster_name
-      drop_namespace_regex = var.adot_config.drop_namespace_regex
-      log_group_name       = local.adot_log_group_name
-      metrics              = local.merged_metrics
+      region                   = local.region
+      cluster_name             = var.cluster_name
+      accepted_namespace_regex = var.adot_config.accepted_namespace_regex
+      log_group_name           = local.adot_log_group_name
+      metrics                  = local.merged_metrics
     })
   ]
 

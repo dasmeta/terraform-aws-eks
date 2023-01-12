@@ -278,8 +278,8 @@ variable "metrics_exporter" {
 variable "adot_config" {
   type = any
   default = {
-    drop_namespace_regex = "(cert-manager)"
-    additional_metrics   = {}
+    accepte_namespace_regex = "(cert-manager)"
+    additional_metrics      = {}
   }
 }
 
