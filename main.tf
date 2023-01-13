@@ -305,6 +305,8 @@ resource "helm_release" "cert-manager" {
 }
 
 resource "helm_release" "kube-state-metrics" {
+  count = var.enable_kube_state_metrics ? 1 : 0
+
   name             = "kube-state-metrics"
   repository       = "https://prometheus-community.github.io/helm-charts"
   chart            = "kube-state-metrics"
@@ -312,21 +314,4 @@ resource "helm_release" "kube-state-metrics" {
   version          = "4.22.3"
   create_namespace = false
   atomic           = true
-
-  # values = [
-  #   yamlencode({
-  #     # metricAllowlist = [
-  #     #   "kube_deployment_status_replicas_available",
-  #     #   "kube_deployment_spec_replicas",
-  #     #   "kube_deployment_status_replicas_ready",
-  #     #   "kube_pod_container_status_waiting",
-  #     #   "kube_daemonset_status_number_ready"
-  #     # ]
-
-  #     # collectors = [
-  #     #   "deployments",
-  #     #   "pods"
-  #     # ]
-  #   })
-  # ]
 }

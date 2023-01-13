@@ -36,7 +36,7 @@ variable "adot_collector_policy_arns" {
 variable "adot_config" {
   type = any
   default = {
-    accepte_namespace_regex = "(cert-manager)"
+    accepte_namespace_regex = "(default|kube-system)"
     additional_metrics      = {}
   }
 }
