@@ -38,11 +38,6 @@ adotCollector:
             source_labels:
             - __meta_kubernetes_service_annotation_prometheus_io_scrape
           - action: replace
-            regex: (https?)
-            source_labels:
-            - __meta_kubernetes_service_annotation_prometheus_io_scheme
-            target_label: __scheme__
-          - action: replace
             regex: (.+)
             source_labels:
             - __meta_kubernetes_service_annotation_prometheus_io_path
@@ -73,10 +68,6 @@ adotCollector:
             - __meta_kubernetes_pod_container_name
             target_label: container_name
           metric_relabel_configs:
-          - action: drop
-            regex: ${drop_namespace_regex}
-            source_labels:
-            - namespace
           - action: replace
             source_labels:
             - namespace
@@ -85,6 +76,18 @@ adotCollector:
             source_labels:
             - deployment
             target_label: Deployment
+          - action: replace
+            source_labels:
+            - container
+            target_label: Container
+          - action: replace
+            source_labels:
+            - pod
+            target_label: Pod
+          - action: replace
+            source_labels:
+            - phase
+            target_label: Phase
           - source_labels: [__name__]
             regex: 'go_gc_duration_seconds.*'
             action: drop
@@ -99,11 +102,11 @@ adotCollector:
               action: insert
         filter/namespaces:
           metrics:
-            exclude:
+            include:
               match_type: regexp
               resource_attributes:
               - Key: Namespace
-                Value: ${drop_namespace_regex}
+                Value: ${accepte_namespace_regex}
     metricDeclarations: |
 %{ for key,value in metrics }
       - dimensions: ${key}

@@ -278,9 +278,15 @@ variable "metrics_exporter" {
 variable "adot_config" {
   type = any
   default = {
-    drop_namespace_regex = "(cert-manager)"
-    additional_metrics   = {}
+    accepte_namespace_regex = "(default|kube-system)"
+    additional_metrics      = {}
   }
+}
+
+variable "enable_kube_state_metrics" {
+  type        = bool
+  default     = false
+  description = "Enable kube-state-metrics"
 }
 
 // Cert manager
