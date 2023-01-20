@@ -152,6 +152,11 @@ variable "log_group_name" {
   default = ""
 }
 
+variable "log_retention_days" {
+  type    = number
+  default = 90
+}
+
 # METRICS-SERVER
 variable "enable_metrics_server" {
   type    = bool
