@@ -56,7 +56,7 @@ resource "helm_release" "aws-load-balancer-controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
-  version    = "2.4.6"
+  version    = "1.4.7"
   namespace  = var.namespace
 
   set {

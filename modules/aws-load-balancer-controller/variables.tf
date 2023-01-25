@@ -37,27 +37,30 @@ variable "oidc_provider_arn" {
   type = string
 }
 
-variable "create_alb_log_bucket" {
-  type        = bool
-  default     = false
-  description = "wether or no to create alb s3 logs bucket"
-}
+## the load balancer access logs sync to s3=>lambda=>cloudwatch was disabled/commented-out so this params also need/can be commented,
+## after then the fix be applied for enabling this functionality we can uncomment them
 
-variable "send_alb_logs_to_cloudwatch" {
-  type        = bool
-  default     = true
-  description = "Whether send alb logs to CloudWatch or not."
-}
+# variable "create_alb_log_bucket" {
+#   type        = bool
+#   default     = false
+#   description = "wether or no to create alb s3 logs bucket"
+# }
 
-variable "alb_log_bucket_name" {
-  type    = string
-  default = "ingress-logs-bucket"
-}
+# variable "send_alb_logs_to_cloudwatch" {
+#   type        = bool
+#   default     = true
+#   description = "Whether send alb logs to CloudWatch or not."
+# }
 
-variable "alb_log_bucket_path" {
-  type    = string
-  default = ""
-}
+# variable "alb_log_bucket_name" {
+#   type    = string
+#   default = "ingress-logs-bucket"
+# }
+
+# variable "alb_log_bucket_path" {
+#   type    = string
+#   default = ""
+# }
 
 variable "tags" {
   description = "A mapping of tags to assign to the object."
