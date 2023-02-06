@@ -1,6 +1,5 @@
-# TODO: update doc
 /**
- *
+ * # TODO: update docs for vpc params change
  * # Why
  *
  * To spin up complete eks with all necessary components.
