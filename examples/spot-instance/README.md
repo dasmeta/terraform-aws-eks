@@ -9,13 +9,13 @@ No requirements.
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | n/a |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 4.53.0 |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_cluster_min"></a> [cluster\_min](#module\_cluster\_min) | dasmeta/eks/aws | 1.4.0 |
+| <a name="module_cluster_min"></a> [cluster\_min](#module\_cluster\_min) | ../../ | n/a |
 
 ## Resources
 

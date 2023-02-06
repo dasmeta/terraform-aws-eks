@@ -1,3 +1,4 @@
+# TODO: update doc
 /**
  *
  * # Why
@@ -152,15 +153,16 @@
  **/
 module "vpc" {
   source = "./modules/vpc"
-  count  = var.vpc_id != "" ? 0 : 1
 
-  vpc_name            = var.vpc_name
-  availability_zones  = var.availability_zones
-  cidr                = var.cidr
-  private_subnets     = var.private_subnets
-  public_subnets      = var.public_subnets
-  public_subnet_tags  = var.public_subnet_tags
-  private_subnet_tags = var.private_subnet_tags
+  count = try(var.vpc.create.name) != null ? 1 : 0
+
+  vpc_name            = var.vpc.create.name
+  availability_zones  = var.vpc.create.availability_zones
+  cidr                = var.vpc.create.cidr
+  private_subnets     = var.vpc.create.private_subnets
+  public_subnets      = var.vpc.create.public_subnets
+  public_subnet_tags  = var.vpc.create.public_subnet_tags
+  private_subnet_tags = var.vpc.create.private_subnet_tags
 }
 
 module "eks-cluster" {
@@ -170,8 +172,8 @@ module "eks-cluster" {
   region = local.region
 
   cluster_name = var.cluster_name
-  vpc_id       = var.vpc_id != "" ? var.vpc_id : module.vpc[0].id
-  subnets      = var.vpc_id != "" ? var.private_subnets : module.vpc[0].private_subnets
+  vpc_id       = var.vpc.create.name != null ? module.vpc[0].id : var.vpc.link.id
+  subnets      = var.vpc.create.name != null ? module.vpc[0].private_subnets : var.vpc.link.private_subnet_ids
 
   users                                = var.users
   node_groups                          = var.node_groups
@@ -183,6 +185,10 @@ module "eks-cluster" {
   cluster_version                      = var.cluster_version
   map_roles                            = var.map_roles
   node_security_group_additional_rules = var.node_security_group_additional_rules
+
+  depends_on = [
+    module.vpc
+  ]
 }
 
 module "cloudwatch-metrics" {

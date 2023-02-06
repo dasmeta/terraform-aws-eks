@@ -61,16 +61,23 @@ locals {
 }
 
 module "cluster_min" {
-  source  = "dasmeta/eks/aws"
-  version = "1.4.0"
+  # source  = "dasmeta/eks/aws"
+  # version = "x.y.z"
+  source = "../../"
+
 
   cluster_name                = local.cluster_name
   send_alb_logs_to_cloudwatch = false
   users                       = local.users
-  vpc_name                    = local.vpc_name
-  cidr                        = local.cidr
-  availability_zones          = local.availability_zones
-  private_subnets             = local.private_subnets
-  public_subnets              = local.public_subnets
-  account_id                  = data.aws_caller_identity.current.account_id
+  # TODO: test this
+  vpc = {
+    create = {
+      name               = local.vpc_name
+      cidr               = local.cidr
+      availability_zones = local.availability_zones
+      private_subnets    = local.private_subnets
+      public_subnets     = local.public_subnets
+    }
+  }
+  account_id = data.aws_caller_identity.current.account_id
 }
