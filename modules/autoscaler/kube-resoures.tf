@@ -99,10 +99,10 @@ resource "kubernetes_cluster_role" "cluster-autoscaler" {
   }
 
   rule {
-    api_groups    = ["coordination.k8s.io"]
-    resourceNames = ["cluster-autoscaler"]
-    resources     = ["leases"]
-    verbs         = ["get", "update"]
+    api_groups     = ["coordination.k8s.io"]
+    resource_names = ["cluster-autoscaler"]
+    resources      = ["leases"]
+    verbs          = ["get", "update"]
   }
 }
 
@@ -123,10 +123,10 @@ resource "kubernetes_role" "cluster-autoscaler" {
   }
 
   rule {
-    api_groups    = [""]
-    resources     = ["configmaps"]
-    resourceNames = ["cluster-autoscaler-status", "cluster-autoscaler-priority-expander"]
-    verbs         = ["delete", "get", "update", "watch"]
+    api_groups     = [""]
+    resources      = ["configmaps"]
+    resooure_names = ["cluster-autoscaler-status", "cluster-autoscaler-priority-expander"]
+    verbs          = ["delete", "get", "update", "watch"]
   }
 }
 
