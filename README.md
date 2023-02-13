@@ -161,8 +161,8 @@ module "cluster_max" {
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 3.31 |
-| <a name="provider_helm"></a> [helm](#provider\_helm) | >= 2.4.1 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 4.45.0 |
+| <a name="provider_helm"></a> [helm](#provider\_helm) | 2.7.1 |
 
 ## Modules
 
@@ -170,6 +170,7 @@ module "cluster_max" {
 |------|--------|---------|
 | <a name="module_adot"></a> [adot](#module\_adot) | ./modules/adot | n/a |
 | <a name="module_alb-ingress-controller"></a> [alb-ingress-controller](#module\_alb-ingress-controller) | ./modules/aws-load-balancer-controller | n/a |
+| <a name="module_autoscaler"></a> [autoscaler](#module\_autoscaler) | ./modules/autoscaler | n/a |
 | <a name="module_cloudwatch-metrics"></a> [cloudwatch-metrics](#module\_cloudwatch-metrics) | ./modules/cloudwatch-metrics | n/a |
 | <a name="module_efs-csi-driver"></a> [efs-csi-driver](#module\_efs-csi-driver) | ./modules/efs | n/a |
 | <a name="module_eks-cluster"></a> [eks-cluster](#module\_eks-cluster) | ./modules/eks | n/a |
@@ -197,6 +198,7 @@ module "cluster_max" {
 | <a name="input_adot_config"></a> [adot\_config](#input\_adot\_config) | n/a | `any` | <pre>{<br>  "accepte_namespace_regex": "(default|kube-system)",<br>  "additional_metrics": {}<br>}</pre> | no |
 | <a name="input_alb_log_bucket_name"></a> [alb\_log\_bucket\_name](#input\_alb\_log\_bucket\_name) | n/a | `string` | `""` | no |
 | <a name="input_alb_log_bucket_path"></a> [alb\_log\_bucket\_path](#input\_alb\_log\_bucket\_path) | ALB-INGRESS-CONTROLLER | `string` | `""` | no |
+| <a name="input_autoscaling"></a> [autoscaling](#input\_autoscaling) | Weather enable autoscaling or not in EKS | `bool` | `false` | no |
 | <a name="input_availability_zones"></a> [availability\_zones](#input\_availability\_zones) | List of VPC availability zones, e.g. ['eu-west-1a', 'eu-west-1b', 'eu-west-1c']. | `list(string)` | n/a | yes |
 | <a name="input_bindings"></a> [bindings](#input\_bindings) | Variable which describes group and role binding | <pre>list(object({<br>    group     = string<br>    namespace = string<br>    roles     = list(string)<br><br>  }))</pre> | `[]` | no |
 | <a name="input_cidr"></a> [cidr](#input\_cidr) | CIDR ip range. | `string` | `""` | no |

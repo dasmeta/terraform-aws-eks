@@ -313,3 +313,8 @@ variable "efs_id" {
   type        = string
   default     = null
 }
+
+variable "autoscaling" {
+  description = "Weather enable autoscaling or not in EKS"
+  default     = false
+}

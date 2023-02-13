@@ -319,3 +319,11 @@ resource "helm_release" "kube-state-metrics" {
   create_namespace = false
   atomic           = true
 }
+
+module "autoscaler" {
+  source = "./modules/autoscaler"
+
+  count            = var.autoscaling ? true : false
+  cluster_name     = var.cluster_name
+  cluster_oidc_arn = module.eks-cluster.oidc_provider_arn
+}
