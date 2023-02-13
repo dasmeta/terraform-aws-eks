@@ -7,7 +7,7 @@ resource "kubernetes_service_account" "cluster-autoscaler" {
       "k8s-app"   = "cluster-autoscaler"
     }
     annotations = {
-      "eks.amazonaws.com/role-arn" = "arn:aws:iam::093655346463:role/AmazonEKSClusterAutoscalerRole"
+      "eks.amazonaws.com/role-arn" = "arn:aws:iam::093655346463:role/${aws_iam_role.role.name}"
     }
   }
 }
