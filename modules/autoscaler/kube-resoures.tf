@@ -6,6 +6,9 @@ resource "kubernetes_service_account" "cluster-autoscaler" {
       "k8s-addon" = "cluster-autoscaler.addons.k8s.io"
       "k8s-app"   = "cluster-autoscaler"
     }
+    annotations = {
+      "eks.amazonaws.com/role-arn" = "arn:aws:iam::093655346463:role/AmazonEKSClusterAutoscalerRole"
+    }
   }
 }
 
@@ -177,6 +180,10 @@ resource "kubernetes_deployment" "cluster-autoscaler" {
     namespace = "kube-system"
     labels = {
       app = "cluster-autoscaler"
+    }
+
+    annotations = {
+      "cluster-autoscaler.kubernetes.io/safe-to-evict" = "false"
     }
   }
 
