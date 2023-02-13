@@ -125,7 +125,7 @@ resource "kubernetes_role" "cluster-autoscaler" {
   rule {
     api_groups     = [""]
     resources      = ["configmaps"]
-    resooure_names = ["cluster-autoscaler-status", "cluster-autoscaler-priority-expander"]
+    resource_names = ["cluster-autoscaler-status", "cluster-autoscaler-priority-expander"]
     verbs          = ["delete", "get", "update", "watch"]
   }
 }
