@@ -3,13 +3,16 @@
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
-No requirements.
+| Name | Version |
+|------|---------|
+| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | 2.17.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | n/a |
+| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | 2.17.0 |
 
 ## Modules
 
@@ -21,6 +24,12 @@ No modules.
 |------|------|
 | [aws_iam_policy.policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
 | [aws_iam_role.role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [kubernetes_cluster_role.cluster-autoscaler](https://registry.terraform.io/providers/hashicorp/kubernetes/2.17.0/docs/resources/cluster_role) | resource |
+| [kubernetes_cluster_role_binding.cluster-autoscaler](https://registry.terraform.io/providers/hashicorp/kubernetes/2.17.0/docs/resources/cluster_role_binding) | resource |
+| [kubernetes_deployment.example](https://registry.terraform.io/providers/hashicorp/kubernetes/2.17.0/docs/resources/deployment) | resource |
+| [kubernetes_role.cluster-autoscaler](https://registry.terraform.io/providers/hashicorp/kubernetes/2.17.0/docs/resources/role) | resource |
+| [kubernetes_role_binding.cluster-autoscaler](https://registry.terraform.io/providers/hashicorp/kubernetes/2.17.0/docs/resources/role_binding) | resource |
+| [kubernetes_service_account.cluster-autoscaler](https://registry.terraform.io/providers/hashicorp/kubernetes/2.17.0/docs/resources/service_account) | resource |
 | [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
 
 ## Inputs
