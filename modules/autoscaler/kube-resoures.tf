@@ -7,7 +7,7 @@ resource "kubernetes_service_account" "cluster-autoscaler" {
       "k8s-app"   = "cluster-autoscaler"
     }
     annotations = {
-      "eks.amazonaws.com/role-arn" = "arn:aws:iam::093655346463:role/${aws_iam_role.role.name}"
+      "eks.amazonaws.com/role-arn" = "arn:aws:iam::${data.aws_caller_identity.this.account_id}:role/${aws_iam_role.role.name}"
     }
   }
 }
@@ -216,7 +216,7 @@ resource "kubernetes_deployment" "cluster-autoscaler" {
         }
         service_account_name = "cluster-autoscaler"
         container {
-          image = "k8s.gcr.io/autoscaling/cluster-autoscaler:v1.23.0"
+          image = "k8s.gcr.io/autoscaling/cluster-autoscaler:v${var.eks_version}.${var.autoscaler_image_patch}"
           name  = "cluster-autoscaler"
 
           resources {

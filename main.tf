@@ -323,7 +323,9 @@ resource "helm_release" "kube-state-metrics" {
 module "autoscaler" {
   source = "./modules/autoscaler"
 
-  count            = var.autoscaling ? 1 : 0
-  cluster_name     = var.cluster_name
-  cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
+  count                  = var.autoscaling ? 1 : 0
+  cluster_name           = var.cluster_name
+  cluster_oidc_arn       = module.eks-cluster[0].oidc_provider_arn
+  eks_version            = var.cluster_version
+  autoscaler_image_patch = var.autoscaler_image_patch
 }
