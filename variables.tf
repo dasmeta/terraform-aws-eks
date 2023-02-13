@@ -324,3 +324,9 @@ variable "autoscaler_image_patch" {
   description = "The patch number of autoscaler image"
   default     = 0
 }
+
+variable "scale_down_unneeded_time" {
+  type        = number
+  description = "Scale down unneeded in minutes"
+  default     = 2
+}
