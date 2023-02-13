@@ -238,6 +238,7 @@ resource "kubernetes_deployment" "cluster-autoscaler" {
             "--skip-nodes-with-system-pods=false",
             "--skip-nodes-with-local-storage=false",
             "--expander=least-waste",
+            "'--scale-down-unneeded-time=1m'",
             "--node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/${var.cluster_name}"
           ]
           volume_mount {

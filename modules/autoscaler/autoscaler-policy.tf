@@ -1,3 +1,5 @@
+data "aws_region" "current" {}
+
 resource "aws_iam_policy" "policy" {
   name        = "AmazonEKSClusterAutoscalerPolicy"
   path        = "/"
