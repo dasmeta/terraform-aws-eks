@@ -10,6 +10,8 @@ module "eks" {
 
       ...
       autoscaling = true
+      autoscaler_image_patch = 0 #(optional default is 0)
+      scale_down_unneeded_time = 3 #(scale down unneeded time in minutes, default is 2)
       ...
 }
 ```
