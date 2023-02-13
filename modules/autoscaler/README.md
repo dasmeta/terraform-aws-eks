@@ -1,3 +1,19 @@
+# AWS EKS AUTOSCALER
+
+### This module provides ability to enable autoscaling on EKS cluster
+
+#### To enable autoscaler on root module you just need to set
+
+```
+module "eks" {
+      source  = "dasmeta/eks/aws"
+
+      ...
+      autoscaling = true
+      ...
+}
+```
+
 # autoscaler
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
