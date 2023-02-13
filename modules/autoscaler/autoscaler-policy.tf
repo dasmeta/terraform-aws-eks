@@ -3,7 +3,9 @@ resource "aws_iam_policy" "policy" {
   path        = "/"
   description = "Amazon EKS Autoscaler Policy"
 
-  policy = file("${path.module}/policies/cluster-autoscaler-policy.json")
+  policy = templatefile("${path.module}/policies/cluster-autoscaler-policy.json", {
+    cluster_name = var.cluster_name
+  })
 }
 
 resource "aws_iam_role" "role" {
