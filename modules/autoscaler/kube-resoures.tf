@@ -216,7 +216,7 @@ resource "kubernetes_deployment" "cluster-autoscaler" {
         }
         service_account_name = "cluster-autoscaler"
         container {
-          image = "k8s.gcr.io/autoscaling/cluster-autoscaler:v1.22.2"
+          image = "k8s.gcr.io/autoscaling/cluster-autoscaler:v1.23.0"
           name  = "cluster-autoscaler"
 
           resources {
@@ -234,6 +234,8 @@ resource "kubernetes_deployment" "cluster-autoscaler" {
             "--v=4",
             "--stderrthreshold=info",
             "--cloud-provider=aws",
+            "--balance-similar-node-groups",
+            "--skip-nodes-with-system-pods=false",
             "--skip-nodes-with-local-storage=false",
             "--expander=least-waste",
             "--node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/${var.cluster_name}"
