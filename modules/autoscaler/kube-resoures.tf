@@ -171,7 +171,7 @@ resource "kubernetes_role_binding" "cluster-autoscaler" {
   }
 }
 
-resource "kubernetes_deployment" "example" {
+resource "kubernetes_deployment" "cluster-autoscaler" {
   metadata {
     name      = "cluster-autoscaler"
     namespace = "kube-system"
@@ -236,7 +236,7 @@ resource "kubernetes_deployment" "example" {
             name       = "ssl-certs"
             read_only  = "true"
           }
-          image_pull_policy = "always"
+          image_pull_policy = "Always"
         }
         volume {
           name = "ssl-certs"
