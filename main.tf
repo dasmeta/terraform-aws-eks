@@ -185,9 +185,9 @@ module "eks-cluster" {
   map_roles                            = var.map_roles
   node_security_group_additional_rules = var.node_security_group_additional_rules
 
-  depends_on = [
-    module.vpc
-  ]
+  #  depends_on = [
+  #    module.vpc
+  #  ]
 }
 
 module "cloudwatch-metrics" {
