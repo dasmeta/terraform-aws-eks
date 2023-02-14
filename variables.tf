@@ -345,3 +345,20 @@ variable "efs_id" {
   type        = string
   default     = null
 }
+
+variable "autoscaling" {
+  description = "Weather enable autoscaling or not in EKS"
+  default     = false
+}
+
+variable "autoscaler_image_patch" {
+  type        = number
+  description = "The patch number of autoscaler image"
+  default     = 0
+}
+
+variable "scale_down_unneeded_time" {
+  type        = number
+  description = "Scale down unneeded in minutes"
+  default     = 2
+}
