@@ -1,5 +1,5 @@
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
-
+# TODO: update docs for vpc params change
 # Why
 
 To spin up complete eks with all necessary components.
@@ -13,147 +13,179 @@ Those include:
 
 ## How to run
 ```hcl
-data "aws_availability_zones" "available" {}
+*data "aws_availability_zones" "available" {}
 
-locals {
-    vpc_name = "dasmeta-prod-1"
-    cidr     = "10.1.0.0/16"
-    availability_zones = data.aws_availability_zones.available.names
-    private_subnets = ["10.1.1.0/24", "10.1.2.0/24", "10.1.3.0/24"]
-    public_subnets  = ["10.1.4.0/24", "10.1.5.0/24", "10.1.6.0/24"]
-    cluster_enabled_log_types = ["audit"]
+*locals {
+   cluster_endpoint_public_access = true
+   cluster_enabled_log_types = ["audit"]
+ vpc = {
+   create = {
+     name = "dev"
+     availability_zones = data.aws_availability_zones.available.names
+     private_subnets    = ["172.16.1.0/24", "172.16.2.0/24", "172.16.3.0/24"]
+     public_subnets     = ["172.16.4.0/24", "172.16.5.0/24", "172.16.6.0/24"]
+     cidr               = "172.16.0.0/16"
+     public_subnet_tags = {
+   "kubernetes.io/cluster/dev" = "shared"
+   "kubernetes.io/role/elb"    = "1"
+ }
+ private_subnet_tags = {
+   "kubernetes.io/cluster/dev"       = "shared"
+   "kubernetes.io/role/internal-elb" = "1"
+ }
+   }
+ }
+  cluster_name = "your-cluster-name-goes-here"
+ alb_log_bucket_name = "your-log-bucket-name-goes-here"
 
-    # When you create EKS, API server endpoint access default is public. When you use private this variable value should be equal false.
-    cluster_endpoint_public_access = true
-    public_subnet_tags = {
-        "kubernetes.io/cluster/production"  = "shared"
-        "kubernetes.io/role/elb"            = "1"
-    }
-    private_subnet_tags = {
-        "kubernetes.io/cluster/production"  = "shared"
-        "kubernetes.io/role/internal-elb"   = "1"
-    }
-   cluster_name = "your-cluster-name-goes-here"
-  alb_log_bucket_name = "your-log-bucket-name-goes-here"
+ fluent_bit_name = "fluent-bit"
+ log_group_name  = "fluent-bit-cloudwatch-env"
+*}
 
-  fluent_bit_name = "fluent-bit"
-  log_group_name  = "fluent-bit-cloudwatch-env"
-}
+*#(Basic usage with example of using already created VPC)
+*data "aws_availability_zones" "available" {}
 
-# Minimum
+*locals {
+   cluster_endpoint_public_access = true
+   cluster_enabled_log_types = ["audit"]
 
-module "cluster_min" {
-  source  = "dasmeta/eks/aws"
-  version = "0.1.1"
+ vpc = {
+   link = {
+     id = "vpc-1234"
+     private_subnet_ids = ["subnet-1", "subnet-2"]
+   }
+ }
+  cluster_name = "your-cluster-name-goes-here"
+ alb_log_bucket_name = "your-log-bucket-name-goes-here"
 
-  cluster_name        = local.cluster_name
-  users               = local.users
-  vpc_name            = local.vpc_name
-  cidr                = local.cidr
-  availability_zones  = local.availability_zones
-  private_subnets     = local.private_subnets
-  public_subnets      = local.public_subnets
-  public_subnet_tags  = local.public_subnet_tags
-  private_subnet_tags = local.private_subnet_tags
-}
+ fluent_bit_name = "fluent-bit"
+ log_group_name  = "fluent-bit-cloudwatch-env"
+*}
 
-# Max @TODO: the max param passing setup needs to be checked/fixed
+*# Minimum
+
+*module "cluster_min" {
+ source  = "dasmeta/eks/aws"
+ version = "0.1.1"
+
+ cluster_name        = local.cluster_name
+ users               = local.users
+
+ vpc = {
+   link = {
+     id = "vpc-1234"
+     private_subnet_ids = ["subnet-1", "subnet-2"]
+   }
+ }
+
+*}
+
+*# Max @TODO: the max param passing setup needs to be checked/fixed
 
 module "cluster_max" {
-  source  = "dasmeta/eks/aws"
-  version = "0.1.1"
+ source  = "dasmeta/eks/aws"
+ version = "0.1.1"
 
-  ### VPC
-  vpc_name              = local.vpc_name
-  cidr                  = local.cidr
-  availability_zones    = local.availability_zones
-  private_subnets       = local.private_subnets
-  public_subnets        = local.public_subnets
-  public_subnet_tags    = local.public_subnet_tags
-  private_subnet_tags   = local.private_subnet_tags
-  cluster_enabled_log_types = local.cluster_enabled_log_types
-  cluster_endpoint_public_access = local.cluster_endpoint_public_access
+ ### VPC
+ vpc = {
+   create = {
+     name = "dev"
+    availability_zones = data.aws_availability_zones.available.names
+    private_subnets    = ["172.16.1.0/24", "172.16.2.0/24", "172.16.3.0/24"]
+    public_subnets     = ["172.16.4.0/24", "172.16.5.0/24", "172.16.6.0/24"]
+    cidr               = "172.16.0.0/16"
+    public_subnet_tags = {
+  "kubernetes.io/cluster/dev" = "shared"
+  "kubernetes.io/role/elb"    = "1"
+ }
+ private_subnet_tags = {
+   "kubernetes.io/cluster/dev"       = "shared"
+   "kubernetes.io/role/internal-elb" = "1"
+ }
+   }
+ }
 
-  ### EKS
-  cluster_name          = local.cluster_name
-  manage_aws_auth       = true
+ cluster_enabled_log_types = local.cluster_enabled_log_types
+ cluster_endpoint_public_access = local.cluster_endpoint_public_access
 
-  # IAM users username and group. By default value is ["system:masters"]
-  user = [
-          {
-            username = "devops1"
-            group    = ["system:masters"]
-          },
-          {
-            username = "devops2"
-            group    = ["system:kube-scheduler"]
-          },
-          {
-            username = "devops3"
-          }
-  ]
+ ### EKS
+ cluster_name          = local.cluster_name
+ manage_aws_auth       = true
 
-  # You can create node use node_group when you create node in specific subnet zone.(Note. This Case Ec2 Instance havn't specific name).
-  # Other case you can use worker_group variable.
+ # IAM users username and group. By default value is ["system:masters"]
+ user = [
+         {
+           username = "devops1"
+           group    = ["system:masters"]
+         },
+         {
+           username = "devops2"
+           group    = ["system:kube-scheduler"]
+         },
+         {
+           username = "devops3"
+         }
+ ]
 
-  node_groups = {
-    example =  {
-      name  = "nodegroup"
-      name-prefix     = "nodegroup"
-      additional_tags = {
-          "Name"      = "node"
-          "ExtraTag"  = "ExtraTag"
-      }
+ # You can create node use node_group when you create node in specific subnet zone.(Note. This Case Ec2 Instance havn't specific name).
+ # Other case you can use worker_group variable.
 
-      instance_type   = "t3.xlarge"
-      max_capacity    = 1
-      disk_size       = 50
-      create_launch_template = false
-      subnet = ["subnet_id"]
-    }
-  }
+ node_groups = {
+   example =  {
+     name  = "nodegroup"
+     name-prefix     = "nodegroup"
+     additional_tags = {
+         "Name"      = "node"
+         "ExtraTag"  = "ExtraTag"
+     }
 
-  node_groups_default = {
-      disk_size      = 50
-      instance_types = ["t3.medium"]
-    }
-
-  worker_groups = {
-    default = {
-      name              = "nodes"
-      instance_type     = "t3.xlarge"
-      asg_max_size      = 3
-      root_volume_size  = 50
-    }
-  }
-
-  workers_group_defaults = {
-    launch_template_use_name_prefix = true
-    launch_template_name            = "default"
-    root_volume_type                = "gp2"
-    root_volume_size                = 50
-  }
-
-  ### ALB-INGRESS-CONTROLLER
-  alb_log_bucket_name = local.alb_log_bucket_name
-
-  ### FLUENT-BIT
-  fluent_bit_name = local.fluent_bit_name
-  log_group_name  = local.log_group_name
-
-  # Should be refactored to install from cluster: for prod it has done from metrics-server.tf
-  ### METRICS-SERVER
-  # enable_metrics_server = false
-  metrics_server_name     = "metrics-server"
+     instance_type   = "t3.xlarge"
+     max_capacity    = 1
+     disk_size       = 50
+     create_launch_template = false
+     subnet = ["subnet_id"]
+   }
 }
+
+node_groups_default = {
+    disk_size      = 50
+    instance_types = ["t3.medium"]
+  }
+
+worker_groups = {
+  default = {
+    name              = "nodes"
+    instance_type     = "t3.xlarge"
+    asg_max_size      = 3
+    root_volume_size  = 50
+  }
+}
+
+ workers_group_defaults = {
+   launch_template_use_name_prefix = true
+   launch_template_name            = "default"
+   root_volume_type                = "gp2"
+   root_volume_size                = 50
+ }
+
+ ### ALB-INGRESS-CONTROLLER
+ alb_log_bucket_name = local.alb_log_bucket_name
+
+ ### FLUENT-BIT
+ fluent_bit_name = local.fluent_bit_name
+ log_group_name  = local.log_group_name
+
+ # Should be refactored to install from cluster: for prod it has done from metrics-server.tf
+ ### METRICS-SERVER
+ # enable_metrics_server = false
+ metrics_server_name     = "metrics-server"
 ```
-**/
 
 ## Requirements
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 0.14.11 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.3 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 3.31 |
 | <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.4.1 |
 
@@ -202,7 +234,6 @@ module "cluster_max" {
 | <a name="input_autoscaling"></a> [autoscaling](#input\_autoscaling) | Weather enable autoscaling or not in EKS | `bool` | `false` | no |
 | <a name="input_availability_zones"></a> [availability\_zones](#input\_availability\_zones) | List of VPC availability zones, e.g. ['eu-west-1a', 'eu-west-1b', 'eu-west-1c']. | `list(string)` | n/a | yes |
 | <a name="input_bindings"></a> [bindings](#input\_bindings) | Variable which describes group and role binding | <pre>list(object({<br>    group     = string<br>    namespace = string<br>    roles     = list(string)<br><br>  }))</pre> | `[]` | no |
-| <a name="input_cidr"></a> [cidr](#input\_cidr) | CIDR ip range. | `string` | `""` | no |
 | <a name="input_cluster_enabled_log_types"></a> [cluster\_enabled\_log\_types](#input\_cluster\_enabled\_log\_types) | A list of the desired control plane logs to enable. For more information, see Amazon EKS Control Plane Logging documentation (https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html) | `list(string)` | <pre>[<br>  "audit"<br>]</pre> | no |
 | <a name="input_cluster_endpoint_public_access"></a> [cluster\_endpoint\_public\_access](#input\_cluster\_endpoint\_public\_access) | n/a | `bool` | `true` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | Creating eks cluster name. | `string` | n/a | yes |
@@ -225,17 +256,12 @@ module "cluster_max" {
 | <a name="input_node_groups"></a> [node\_groups](#input\_node\_groups) | Map of EKS managed node group definitions to create | `any` | <pre>{<br>  "default": {<br>    "desired_size": 2,<br>    "iam_role_additional_policies": [<br>      "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"<br>    ],<br>    "instance_types": [<br>      "t3.medium"<br>    ],<br>    "max_size": 4,<br>    "min_size": 2<br>  }<br>}</pre> | no |
 | <a name="input_node_groups_default"></a> [node\_groups\_default](#input\_node\_groups\_default) | Map of EKS managed node group default configurations | `any` | <pre>{<br>  "disk_size": 50,<br>  "iam_role_additional_policies": [<br>    "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"<br>  ],<br>  "instance_types": [<br>    "t3.medium"<br>  ]<br>}</pre> | no |
 | <a name="input_node_security_group_additional_rules"></a> [node\_security\_group\_additional\_rules](#input\_node\_security\_group\_additional\_rules) | n/a | `any` | <pre>{<br>  "ingress_cluster_10250": {<br>    "description": "Metric server to node groups",<br>    "from_port": 10250,<br>    "protocol": "tcp",<br>    "self": true,<br>    "to_port": 10250,<br>    "type": "ingress"<br>  },<br>  "ingress_cluster_8443": {<br>    "description": "Metric server to node groups",<br>    "from_port": 8443,<br>    "protocol": "tcp",<br>    "source_cluster_security_group": true,<br>    "to_port": 8443,<br>    "type": "ingress"<br>  }<br>}</pre> | no |
-| <a name="input_private_subnet_tags"></a> [private\_subnet\_tags](#input\_private\_subnet\_tags) | n/a | `map(any)` | `{}` | no |
-| <a name="input_private_subnets"></a> [private\_subnets](#input\_private\_subnets) | Private subnets of VPC. | `list(string)` | n/a | yes |
-| <a name="input_public_subnet_tags"></a> [public\_subnet\_tags](#input\_public\_subnet\_tags) | n/a | `map(any)` | `{}` | no |
-| <a name="input_public_subnets"></a> [public\_subnets](#input\_public\_subnets) | Public subnets of VPC. | `list(string)` | n/a | yes |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region name. | `string` | `null` | no |
 | <a name="input_roles"></a> [roles](#input\_roles) | Variable describes which role will user have K8s | <pre>list(object({<br>    actions   = list(string)<br>    resources = list(string)<br>  }))</pre> | `[]` | no |
 | <a name="input_scale_down_unneeded_time"></a> [scale\_down\_unneeded\_time](#input\_scale\_down\_unneeded\_time) | Scale down unneeded in minutes | `number` | `2` | no |
 | <a name="input_send_alb_logs_to_cloudwatch"></a> [send\_alb\_logs\_to\_cloudwatch](#input\_send\_alb\_logs\_to\_cloudwatch) | Whether send alb logs to CloudWatch or not. | `bool` | `true` | no |
 | <a name="input_users"></a> [users](#input\_users) | List of users to open eks cluster api access | `list(any)` | `[]` | no |
-| <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | vpc id in which to create cluster, used when using custom VPC (e.g create\_vpc is false) | `string` | `""` | no |
-| <a name="input_vpc_name"></a> [vpc\_name](#input\_vpc\_name) | Creating VPC name. | `string` | n/a | yes |
+| <a name="input_vpc"></a> [vpc](#input\_vpc) | VPC configuration for eks, we support both cases create new vpc(create field) and using already created one(link) | <pre>object({<br>    # for linking using existing vpc<br>    link = optional(object({<br>      id                 = string<br>      private_subnet_ids = list(string)<br>    }), { id = null, private_subnet_ids = null })<br>    # for creating new vpc<br>    create = optional(object({<br>      name                = string<br>      availability_zones  = list(string)<br>      cidr                = string<br>      private_subnets     = list(string)<br>      public_subnets      = list(string)<br>      public_subnet_tags  = optional(map(any), {})<br>      private_subnet_tags = optional(map(any), {})<br>    }), { name = null, availability_zones = null, cidr = null, private_subnets = null, public_subnets = null })<br>  })</pre> | n/a | yes |
 | <a name="input_weave_scope_config"></a> [weave\_scope\_config](#input\_weave\_scope\_config) | Weave scope namespace configuration variables | <pre>object({<br>    create_namespace        = bool<br>    namespace               = string<br>    annotations             = map(string)<br>    ingress_host            = string<br>    ingress_class           = string<br>    ingress_name            = string<br>    service_type            = string<br>    weave_helm_release_name = string<br>  })</pre> | <pre>{<br>  "annotations": {},<br>  "create_namespace": true,<br>  "ingress_class": "",<br>  "ingress_host": "",<br>  "ingress_name": "weave-ingress",<br>  "namespace": "meta-system",<br>  "service_type": "NodePort",<br>  "weave_helm_release_name": "weave"<br>}</pre> | no |
 | <a name="input_weave_scope_enabled"></a> [weave\_scope\_enabled](#input\_weave\_scope\_enabled) | Weather enable Weave Scope or not | `bool` | `false` | no |
 | <a name="input_worker_groups"></a> [worker\_groups](#input\_worker\_groups) | Worker groups. | `any` | `{}` | no |

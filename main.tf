@@ -1,5 +1,5 @@
 /**
- *
+ * # TODO: update docs for vpc params change
  * # Why
  *
  * To spin up complete eks with all necessary components.
@@ -13,154 +13,188 @@
  *
  * ## How to run
  * ```hcl
- * data "aws_availability_zones" "available" {}
- *
- * locals {
- *     vpc_name = "dasmeta-prod-1"
- *     cidr     = "10.1.0.0/16"
- *     availability_zones = data.aws_availability_zones.available.names
- *     private_subnets = ["10.1.1.0/24", "10.1.2.0/24", "10.1.3.0/24"]
- *     public_subnets  = ["10.1.4.0/24", "10.1.5.0/24", "10.1.6.0/24"]
- *     cluster_enabled_log_types = ["audit"]
- *
- *     # When you create EKS, API server endpoint access default is public. When you use private this variable value should be equal false.
- *     cluster_endpoint_public_access = true
- *     public_subnet_tags = {
- *         "kubernetes.io/cluster/production"  = "shared"
- *         "kubernetes.io/role/elb"            = "1"
- *     }
- *     private_subnet_tags = {
- *         "kubernetes.io/cluster/production"  = "shared"
- *         "kubernetes.io/role/internal-elb"   = "1"
- *     }
- *    cluster_name = "your-cluster-name-goes-here"
- *   alb_log_bucket_name = "your-log-bucket-name-goes-here"
- *
- *   fluent_bit_name = "fluent-bit"
- *   log_group_name  = "fluent-bit-cloudwatch-env"
- * }
- *
- *
- * # Minimum
- *
- * module "cluster_min" {
- *   source  = "dasmeta/eks/aws"
- *   version = "0.1.1"
- *
- *   cluster_name        = local.cluster_name
- *   users               = local.users
- *   vpc_name            = local.vpc_name
- *   cidr                = local.cidr
- *   availability_zones  = local.availability_zones
- *   private_subnets     = local.private_subnets
- *   public_subnets      = local.public_subnets
- *   public_subnet_tags  = local.public_subnet_tags
- *   private_subnet_tags = local.private_subnet_tags
- * }
- *
- *
- * # Max @TODO: the max param passing setup needs to be checked/fixed
- *
- * module "cluster_max" {
- *   source  = "dasmeta/eks/aws"
- *   version = "0.1.1"
- *
- *   ### VPC
- *   vpc_name              = local.vpc_name
- *   cidr                  = local.cidr
- *   availability_zones    = local.availability_zones
- *   private_subnets       = local.private_subnets
- *   public_subnets        = local.public_subnets
- *   public_subnet_tags    = local.public_subnet_tags
- *   private_subnet_tags   = local.private_subnet_tags
- *   cluster_enabled_log_types = local.cluster_enabled_log_types
- *   cluster_endpoint_public_access = local.cluster_endpoint_public_access
- *
- *   ### EKS
- *   cluster_name          = local.cluster_name
- *   manage_aws_auth       = true
- *
- *   # IAM users username and group. By default value is ["system:masters"]
- *   user = [
- *           {
- *             username = "devops1"
- *             group    = ["system:masters"]
- *           },
- *           {
- *             username = "devops2"
- *             group    = ["system:kube-scheduler"]
- *           },
- *           {
- *             username = "devops3"
- *           }
- *   ]
- *
- *   # You can create node use node_group when you create node in specific subnet zone.(Note. This Case Ec2 Instance havn't specific name).
- *   # Other case you can use worker_group variable.
- *
- *   node_groups = {
- *     example =  {
- *       name  = "nodegroup"
- *       name-prefix     = "nodegroup"
- *       additional_tags = {
- *           "Name"      = "node"
- *           "ExtraTag"  = "ExtraTag"
- *       }
- *
- *       instance_type   = "t3.xlarge"
- *       max_capacity    = 1
- *       disk_size       = 50
- *       create_launch_template = false
- *       subnet = ["subnet_id"]
- *     }
- *   }
- *
- *   node_groups_default = {
- *       disk_size      = 50
- *       instance_types = ["t3.medium"]
- *     }
- *
- *   worker_groups = {
- *     default = {
- *       name              = "nodes"
- *       instance_type     = "t3.xlarge"
- *       asg_max_size      = 3
- *       root_volume_size  = 50
- *     }
- *   }
- *
- *   workers_group_defaults = {
- *     launch_template_use_name_prefix = true
- *     launch_template_name            = "default"
- *     root_volume_type                = "gp2"
- *     root_volume_size                = 50
- *   }
- *
- *   ### ALB-INGRESS-CONTROLLER
- *   alb_log_bucket_name = local.alb_log_bucket_name
- *
- *   ### FLUENT-BIT
- *   fluent_bit_name = local.fluent_bit_name
- *   log_group_name  = local.log_group_name
- *
- *   # Should be refactored to install from cluster: for prod it has done from metrics-server.tf
- *   ### METRICS-SERVER
- *   # enable_metrics_server = false
- *   metrics_server_name     = "metrics-server"
- * }
+*data "aws_availability_zones" "available" {}
+*
+*locals {
+*    cluster_endpoint_public_access = true
+*    cluster_enabled_log_types = ["audit"]
+*  vpc = {
+*    create = {
+*      name = "dev"
+*      availability_zones = data.aws_availability_zones.available.names
+*      private_subnets    = ["172.16.1.0/24", "172.16.2.0/24", "172.16.3.0/24"]
+*      public_subnets     = ["172.16.4.0/24", "172.16.5.0/24", "172.16.6.0/24"]
+*      cidr               = "172.16.0.0/16"
+*      public_subnet_tags = {
+*    "kubernetes.io/cluster/dev" = "shared"
+*    "kubernetes.io/role/elb"    = "1"
+*  }
+*  private_subnet_tags = {
+*    "kubernetes.io/cluster/dev"       = "shared"
+*    "kubernetes.io/role/internal-elb" = "1"
+*  }
+*    }
+*  }
+*   cluster_name = "your-cluster-name-goes-here"
+*  alb_log_bucket_name = "your-log-bucket-name-goes-here"
+*
+*  fluent_bit_name = "fluent-bit"
+*  log_group_name  = "fluent-bit-cloudwatch-env"
+*}
+*
+*
+*#(Basic usage with example of using already created VPC)
+*data "aws_availability_zones" "available" {}
+*
+*locals {
+*    cluster_endpoint_public_access = true
+*    cluster_enabled_log_types = ["audit"]
+*
+*  vpc = {
+*    link = {
+*      id = "vpc-1234"
+*      private_subnet_ids = ["subnet-1", "subnet-2"]
+*    }
+*  }
+*   cluster_name = "your-cluster-name-goes-here"
+*  alb_log_bucket_name = "your-log-bucket-name-goes-here"
+*
+*  fluent_bit_name = "fluent-bit"
+*  log_group_name  = "fluent-bit-cloudwatch-env"
+*}
+*
+*# Minimum
+*
+*module "cluster_min" {
+*  source  = "dasmeta/eks/aws"
+*  version = "0.1.1"
+*
+*  cluster_name        = local.cluster_name
+*  users               = local.users
+*
+*  vpc = {
+*    link = {
+*      id = "vpc-1234"
+*      private_subnet_ids = ["subnet-1", "subnet-2"]
+*    }
+*  }
+*
+*}
+*
+*# Max @TODO: the max param passing setup needs to be checked/fixed
+*
+* module "cluster_max" {
+*  source  = "dasmeta/eks/aws"
+*  version = "0.1.1"
+*
+*  ### VPC
+*  vpc = {
+*    create = {
+*      name = "dev"
+*     availability_zones = data.aws_availability_zones.available.names
+*     private_subnets    = ["172.16.1.0/24", "172.16.2.0/24", "172.16.3.0/24"]
+*     public_subnets     = ["172.16.4.0/24", "172.16.5.0/24", "172.16.6.0/24"]
+*     cidr               = "172.16.0.0/16"
+*     public_subnet_tags = {
+*   "kubernetes.io/cluster/dev" = "shared"
+*   "kubernetes.io/role/elb"    = "1"
+*  }
+*  private_subnet_tags = {
+*    "kubernetes.io/cluster/dev"       = "shared"
+*    "kubernetes.io/role/internal-elb" = "1"
+*  }
+*    }
+*  }
+*
+*  cluster_enabled_log_types = local.cluster_enabled_log_types
+*  cluster_endpoint_public_access = local.cluster_endpoint_public_access
+*
+*  ### EKS
+*  cluster_name          = local.cluster_name
+*  manage_aws_auth       = true
+*
+*  # IAM users username and group. By default value is ["system:masters"]
+*  user = [
+*          {
+*            username = "devops1"
+*            group    = ["system:masters"]
+*          },
+*          {
+*            username = "devops2"
+*            group    = ["system:kube-scheduler"]
+*          },
+*          {
+*            username = "devops3"
+*          }
+*  ]
+*
+*  # You can create node use node_group when you create node in specific subnet zone.(Note. This Case Ec2 Instance havn't specific name).
+*  # Other case you can use worker_group variable.
+*
+*  node_groups = {
+*    example =  {
+*      name  = "nodegroup"
+*      name-prefix     = "nodegroup"
+*      additional_tags = {
+*          "Name"      = "node"
+*          "ExtraTag"  = "ExtraTag"
+*      }
+*
+*      instance_type   = "t3.xlarge"
+*      max_capacity    = 1
+*      disk_size       = 50
+*      create_launch_template = false
+*      subnet = ["subnet_id"]
+*    }
+* }
+*
+* node_groups_default = {
+*     disk_size      = 50
+*     instance_types = ["t3.medium"]
+*   }
+*
+* worker_groups = {
+*   default = {
+*     name              = "nodes"
+*     instance_type     = "t3.xlarge"
+*     asg_max_size      = 3
+*     root_volume_size  = 50
+*   }
+* }
+*
+*  workers_group_defaults = {
+*    launch_template_use_name_prefix = true
+*    launch_template_name            = "default"
+*    root_volume_type                = "gp2"
+*    root_volume_size                = 50
+*  }
+*
+*  ### ALB-INGRESS-CONTROLLER
+*  alb_log_bucket_name = local.alb_log_bucket_name
+*
+*  ### FLUENT-BIT
+*  fluent_bit_name = local.fluent_bit_name
+*  log_group_name  = local.log_group_name
+*
+*  # Should be refactored to install from cluster: for prod it has done from metrics-server.tf
+*  ### METRICS-SERVER
+*  # enable_metrics_server = false
+*  metrics_server_name     = "metrics-server"
+}
  * ```
  **/
 module "vpc" {
   source = "./modules/vpc"
-  count  = var.vpc_id != "" ? 0 : 1
 
-  vpc_name            = var.vpc_name
-  availability_zones  = var.availability_zones
-  cidr                = var.cidr
-  private_subnets     = var.private_subnets
-  public_subnets      = var.public_subnets
-  public_subnet_tags  = var.public_subnet_tags
-  private_subnet_tags = var.private_subnet_tags
+  count = try(var.vpc.create.name) != null ? 1 : 0
+
+  vpc_name            = var.vpc.create.name
+  availability_zones  = var.vpc.create.availability_zones
+  cidr                = var.vpc.create.cidr
+  private_subnets     = var.vpc.create.private_subnets
+  public_subnets      = var.vpc.create.public_subnets
+  public_subnet_tags  = var.vpc.create.public_subnet_tags
+  private_subnet_tags = var.vpc.create.private_subnet_tags
 }
 
 module "eks-cluster" {
@@ -170,8 +204,8 @@ module "eks-cluster" {
   region = local.region
 
   cluster_name = var.cluster_name
-  vpc_id       = var.vpc_id != "" ? var.vpc_id : module.vpc[0].id
-  subnets      = var.vpc_id != "" ? var.private_subnets : module.vpc[0].private_subnets
+  vpc_id       = var.vpc.create.name != null ? module.vpc[0].id : var.vpc.link.id
+  subnets      = var.vpc.create.name != null ? module.vpc[0].private_subnets : var.vpc.link.private_subnet_ids
 
   users                                = var.users
   node_groups                          = var.node_groups

@@ -15,7 +15,7 @@ No requirements.
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_cluster_min"></a> [cluster\_min](#module\_cluster\_min) | dasmeta/eks/aws | 1.4.0 |
+| <a name="module_cluster_min"></a> [cluster\_min](#module\_cluster\_min) | ../../ | n/a |
 
 ## Resources
 
