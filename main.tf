@@ -304,7 +304,7 @@ module "sso-rbac" {
 }
 
 module "efs-csi-driver" {
-  source = "./modules/efs"
+  source = "./modules/efs-csi"
 
   count            = var.enable_efs_driver ? 1 : 0
   cluster_name     = var.cluster_name
@@ -363,4 +363,11 @@ module "autoscaler" {
   eks_version              = var.cluster_version
   autoscaler_image_patch   = var.autoscaler_image_patch
   scale_down_unneeded_time = var.scale_down_unneeded_time
+}
+
+module "ebs-csi" {
+  source = "./modules/ebs-csi"
+
+  cluster_name     = var.cluster_name
+  cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
 }
