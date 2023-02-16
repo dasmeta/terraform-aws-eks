@@ -323,6 +323,6 @@ variable "enable_ebs_driver" {
 
 variable "ebs_csi_version" {
   description = "EBS CSI driver addon version"
-  type        = bool
+  type        = string
   default     = "v1.15.0-eksbuild.1"
 }
