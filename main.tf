@@ -371,4 +371,5 @@ module "ebs-csi" {
   count            = var.enable_ebs_driver ? 1 : 0
   cluster_name     = var.cluster_name
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
+  addon_version    = var.ebs_csi_version
 }

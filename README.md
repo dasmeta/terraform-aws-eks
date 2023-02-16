@@ -240,6 +240,7 @@ worker_groups = {
 | <a name="input_cluster_version"></a> [cluster\_version](#input\_cluster\_version) | Allows to set/change kubernetes cluster version, kubernetes version needs to be updated at leas once a year. Please check here for available versions https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html | `string` | `"1.22"` | no |
 | <a name="input_create"></a> [create](#input\_create) | Whether to create cluster and other resources or not | `bool` | `true` | no |
 | <a name="input_create_cert_manager"></a> [create\_cert\_manager](#input\_create\_cert\_manager) | If enabled it always gets deployed to the cert-manager namespace. | `bool` | `false` | no |
+| <a name="input_ebs_csi_version"></a> [ebs\_csi\_version](#input\_ebs\_csi\_version) | EBS CSI driver addon version | `bool` | `"v1.15.0-eksbuild.1"` | no |
 | <a name="input_efs_id"></a> [efs\_id](#input\_efs\_id) | EFS filesystem id in AWS | `string` | `null` | no |
 | <a name="input_enable_ebs_driver"></a> [enable\_ebs\_driver](#input\_enable\_ebs\_driver) | Weather enable EBS-CSI driver or not | `bool` | `true` | no |
 | <a name="input_enable_efs_driver"></a> [enable\_efs\_driver](#input\_enable\_efs\_driver) | Weather install EFS driver or not in EKS | `bool` | `false` | no |
