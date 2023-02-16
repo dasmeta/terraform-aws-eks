@@ -1,4 +1,19 @@
-# ebs-csi
+# AWS EKS EBS-CSI driver
+
+### This module provides ability to enable EBS-CSI driver
+
+In version of 1.23 EKS doesn't come with EBS-CSI driver, so it's very important to consider this
+when upgrading
+#### To enable EBS-CSI driver on root module you just need to set
+
+```
+module "eks" {
+      source  = "dasmeta/eks/aws"
+      ...
+      enable_ebs_driver = true
+      ...
+}
+```
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
