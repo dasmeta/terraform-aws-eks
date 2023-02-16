@@ -368,6 +368,13 @@ module "autoscaler" {
 module "ebs-csi" {
   source = "./modules/ebs-csi"
 
+  count            = var.enable_ebs_driver ? 1 : 0
   cluster_name     = var.cluster_name
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
 }
+
+#kubectl annotate serviceaccount ebs-csi-controller-sa \                                                                 11s ⎈ test1 10:59:37
+#    -n kube-system \
+#    eks.amazonaws.com/role-arn=arn:aws:iam::565580475168:role/AmazonEKS_EBS_CSI_DriverRole
+
+# kubectl rollout restart deployment ebs-csi-controller -n kube-system

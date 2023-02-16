@@ -299,6 +299,7 @@ variable "efs_id" {
 
 variable "autoscaling" {
   description = "Weather enable autoscaling or not in EKS"
+  type        = bool
   default     = false
 }
 
@@ -312,4 +313,10 @@ variable "scale_down_unneeded_time" {
   type        = number
   description = "Scale down unneeded in minutes"
   default     = 2
+}
+
+variable "enable_ebs_driver" {
+  description = "Weather enable EBS-CSI driver or not"
+  type        = bool
+  default     = true
 }
