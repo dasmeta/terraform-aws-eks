@@ -148,7 +148,7 @@ variable "cluster_enabled_log_types" {
 variable "cluster_version" {
   description = "Allows to set/change kubernetes cluster version, kubernetes version needs to be updated at leas once a year. Please check here for available versions https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html"
   type        = string
-  default     = "1.22"
+  default     = "1.23"
 }
 
 variable "map_roles" {
@@ -299,6 +299,7 @@ variable "efs_id" {
 
 variable "autoscaling" {
   description = "Weather enable autoscaling or not in EKS"
+  type        = bool
   default     = false
 }
 
@@ -312,4 +313,16 @@ variable "scale_down_unneeded_time" {
   type        = number
   description = "Scale down unneeded in minutes"
   default     = 2
+}
+
+variable "enable_ebs_driver" {
+  description = "Weather enable EBS-CSI driver or not"
+  type        = bool
+  default     = true
+}
+
+variable "ebs_csi_version" {
+  description = "EBS CSI driver addon version"
+  type        = string
+  default     = "v1.15.0-eksbuild.1"
 }
