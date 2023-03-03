@@ -4,7 +4,6 @@
 *.tfstate
 *.tfstate.*
 *.lock.hcl
-file1
 
 **/.idea/*
 
