@@ -1,14 +1,16 @@
 variable "cluster_name" {
-  type = string
+  description = "K8s cluster name."
+  type        = string
 }
 
-
 variable "eks_oidc_root_ca_thumbprint" {
-  type = string
+  description = "EKS oidc root ca thumbprint."
+  type        = string
 }
 
 variable "oidc_provider_arn" {
-  type = string
+  description = "EKC oidc provider arn."
+  type        = string
 }
 
 variable "adot_version" {
@@ -34,14 +36,15 @@ variable "adot_collector_policy_arns" {
 }
 
 variable "adot_config" {
-  type = any
+  description = "accept_namespace_regex defines the list of namespaces from which metrics will be exported, and additional_metrics defines additional metrics to export."
+  type        = any
   default = {
-    accepte_namespace_regex = "(default|kube-system)"
-    additional_metrics      = {}
+    accept_namespace_regex = "(default|kube-system)"
+    additional_metrics     = []
   }
 }
 
 variable "region" {
-  type        = string
   description = "AWS Region"
+  type        = string
 }

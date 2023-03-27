@@ -5,28 +5,17 @@
 module "adot" {
   source = "./modules/adot"
 
-  count = var.enable_adot ? 1 : 0
-
   cluster_name                = "cluster_name"
   eks_oidc_root_ca_thumbprint = "eks_oidc_root_ca_thumbprint"
   oidc_provider_arn           = "oidc_provider_arn"
   adot_config = {
-    accepte_namespace_regex = "(cert-manager|kube-public)"
-     additional_metrics = {
-       "[[PodName, Namespace, ClusterName]]" = [
-         "pod_number_of_container_restarts"
-       ]
-
-       "[[ClusterName]]" = [
-         "cluster_failed_node_count"
-       ]
-       "[[InstanceId, ClusterName]]" = [
-         "node_number_of_running_pods"
-       ]
-       "[[Deployment, Namespace, ClusterName]]" = [
-         "kube_deployment_spec_replicas"
-       ]
-     }
+    accept_namespace_regex = "(cert-manager|kube-public)"
+      additional_metrics = [
+        "pod_number_of_container_restarts"
+        "cluster_failed_node_count"
+        "node_number_of_running_pods"
+        "kube_deployment_spec_replicas"
+      ]
   }
 
   depends_on = [
@@ -80,12 +69,12 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_adot_collector_policy_arns"></a> [adot\_collector\_policy\_arns](#input\_adot\_collector\_policy\_arns) | List of IAM policy ARNs to attach to the ADOT collector service account. | `list(string)` | <pre>[<br>  "arn:aws:iam::aws:policy/AmazonPrometheusRemoteWriteAccess",<br>  "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",<br>  "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"<br>]</pre> | no |
-| <a name="input_adot_config"></a> [adot\_config](#input\_adot\_config) | n/a | `any` | <pre>{<br>  "accepte_namespace_regex": "(default|kube-system)",<br>  "additional_metrics": {}<br>}</pre> | no |
+| <a name="input_adot_config"></a> [adot\_config](#input\_adot\_config) | accept\_namespace\_regex defines the list of namespaces from which metrics will be exported, and additional\_metrics defines additional metrics to export. | `any` | <pre>{<br>  "accept_namespace_regex": "(default|kube-system)",<br>  "additional_metrics": []<br>}</pre> | no |
 | <a name="input_adot_version"></a> [adot\_version](#input\_adot\_version) | The version of the AWS Distro for OpenTelemetry addon to use. | `string` | `"v0.66.0-eksbuild.1"` | no |
-| <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | n/a | `string` | n/a | yes |
-| <a name="input_eks_oidc_root_ca_thumbprint"></a> [eks\_oidc\_root\_ca\_thumbprint](#input\_eks\_oidc\_root\_ca\_thumbprint) | n/a | `string` | n/a | yes |
+| <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | K8s cluster name. | `string` | n/a | yes |
+| <a name="input_eks_oidc_root_ca_thumbprint"></a> [eks\_oidc\_root\_ca\_thumbprint](#input\_eks\_oidc\_root\_ca\_thumbprint) | EKS oidc root ca thumbprint. | `string` | n/a | yes |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | The namespace to install the AWS Distro for OpenTelemetry addon. | `string` | `"adot"` | no |
-| <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | n/a | `string` | n/a | yes |
+| <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | EKC oidc provider arn. | `string` | n/a | yes |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region | `string` | n/a | yes |
 
 ## Outputs
