@@ -10,10 +10,10 @@ data "aws_region" "current" {
 
 resource "helm_release" "adot-collector" {
   name             = "adot-collector"
-  repository       = "https://makandra.github.io/aws-otel-helm-charts/" //This will be changed after new helm chart is deployed.
+  repository       = "https://dasmeta.github.io/aws-otel-helm-charts"
   chart            = "adot-exporter-for-eks-on-ec2"
   namespace        = "adot"
-  version          = "0.11.0" //This will be changed after new helm chart is deployed.
+  version          = "0.14.0"
   create_namespace = false
   atomic           = true
   wait             = false
