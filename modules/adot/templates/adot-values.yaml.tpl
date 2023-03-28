@@ -19,7 +19,7 @@ adotCollector:
     namespace: adot
     adotConfig:
       extensions:
-        health_check:
+        health_check: {}
       receivers:
         awscontainerinsightreceiver:
           collection_interval: 61s
@@ -206,4 +206,4 @@ adotCollector:
             receivers: ["awscontainerinsightreceiver", "prometheus"]
             processors: ["filter/metrics_include", "resource/set_attributes", "batch/metrics"]
             exporters: ["awsemf"]
-        extensions: [health_check]
+        extensions: ["health_check"]

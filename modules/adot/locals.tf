@@ -17,8 +17,8 @@ locals {
     "pod_cpu_reserved_capacity",
     "pod_memory_reserved_capacity",
     //TODO: these 2 metrics are not exported, check why and fix
-    "kube_deployment_spec_replicas",
-    "kube_deployment_status_replicas_available"
+    # "kube_deployment_spec_replicas",
+    # "kube_deployment_status_replicas_available"
   ]
 
   merged_metrics = concat(local.default_metrics, lookup(var.adot_config, "additional_metrics", []))
