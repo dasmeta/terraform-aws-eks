@@ -1,22 +1,24 @@
 awsRegion: ${region}
 clusterName: ${cluster_name}
 
-serviceAccount:
-  create: false
-  annotations: {}
-  name: "adot-collector"
 fluentbit:
   enabled: false
 adotCollector:
   image:
     name: "adot"
-    repository: "dasmeta/adot"
-    tag: "latest"
+    repository: "amazon/aws-otel-collector"
+    tag: "v0.27.0"
     daemonSetPullPolicy: "Always"
     sidecarPullPolicy: "Always"
   daemonSet:
     createNamespace: false
     namespace: adot
+    serviceAccount:
+      create: false
+      annotations: {}
+      name: "adot-collector"
+    service:
+      create: true
     adotConfig:
       extensions:
         health_check: {}
@@ -24,6 +26,12 @@ adotCollector:
         awscontainerinsightreceiver:
           collection_interval: 61s
           container_orchestrator: eks
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+            http:
+              endpoint: 0.0.0.0:4318
         prometheus:
           config:
             global:
@@ -101,8 +109,8 @@ adotCollector:
             include:
               match_type: regexp
               resource_attributes:
-              - Key: Namespace
-                Value: ${accept_namespace_regex}
+              - key: Namespace
+                value: ${accept_namespace_regex}
         filter/metrics_include:
           metrics:
             include:
@@ -116,6 +124,17 @@ adotCollector:
             - key: ClusterName
               value: "${cluster_name}"
               action: insert
+        resource/tracing_attributes:
+          attributes:
+            - key: appdynamics.controller.host
+              value: "${cluster_name}"
+              action: upsert
+        batch/tracing:
+          timeout: 30s
+          send_batch_size: 8192
+        memory_limiter:
+          limit_mib: 100
+          check_interval: 5s
       exporters:
         awsemf:
           namespace: "ContainerInsights"
@@ -196,6 +215,10 @@ adotCollector:
           - dimensions: [[Namespace, ClusterName], [ClusterName]]
             metric_name_selectors:
               - namespace_number_of_running_pods
+        logging:
+          loglevel: debug
+        awsxray:
+          region: "${region}"
       service:
         pipelines:
           metrics/awsemf_namespace_specific:
@@ -206,4 +229,12 @@ adotCollector:
             receivers: ["awscontainerinsightreceiver", "prometheus"]
             processors: ["filter/metrics_include", "resource/set_attributes", "batch/metrics"]
             exporters: ["awsemf"]
+          traces/logging:
+            receivers: ["otlp"]
+            processors: ["memory_limiter"]
+            exporters: ["logging"]
+          traces/to-aws-xray:
+            receivers: [otlp]
+            processors: ["memory_limiter", "batch/tracing", "resource/tracing_attributes"]
+            exporters: ["awsxray"]
         extensions: ["health_check"]

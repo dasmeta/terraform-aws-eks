@@ -20,8 +20,8 @@ resource "aws_iam_role" "adot_collector" {
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
         "StringEquals": {
-          "https://${var.oidc_provider_arn}:aud": "sts.amazonaws.com",
-          "https://${var.oidc_provider_arn}:sub": "system:serviceaccount:${var.namespace}:${local.service_account_name}"
+          "${local.oidc_provider}:aud": "sts.amazonaws.com",
+          "${local.oidc_provider}:sub": "system:serviceaccount:${var.namespace}:${local.service_account_name}"
         }
       }
     }

@@ -1,6 +1,7 @@
 locals {
   adot_log_group_name  = "adot-log-group-dasmeta"
   service_account_name = "adot-collector"
+  oidc_provider        = regex("^arn:aws:iam::[0-9]+:oidc-provider/(.*)$", var.oidc_provider_arn)[0]
   region               = coalesce(var.region, try(data.aws_region.current[0].name, null))
 }
 
@@ -13,7 +14,7 @@ resource "helm_release" "adot-collector" {
   repository       = "https://dasmeta.github.io/aws-otel-helm-charts"
   chart            = "adot-exporter-for-eks-on-ec2"
   namespace        = "adot"
-  version          = "0.14.1"
+  version          = "0.14.2"
   create_namespace = false
   atomic           = true
   wait             = false
