@@ -14,7 +14,7 @@ resource "helm_release" "adot-collector" {
   repository       = "https://dasmeta.github.io/aws-otel-helm-charts"
   chart            = "adot-exporter-for-eks-on-ec2"
   namespace        = "adot"
-  version          = "0.15.1"
+  version          = "0.15.2"
   create_namespace = false
   atomic           = true
   wait             = false
