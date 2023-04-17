@@ -17,7 +17,7 @@ module "adot" {
         "kube_deployment_spec_replicas"
       ]
   }
-  prometheus_metrics =   prometheus_metrics = {
+  prometheus_metrics = {
     "[[Prometheus]]" = [
       "go_gc_duration_seconds_sum"
     ]

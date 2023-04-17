@@ -116,8 +116,8 @@ adotCollector:
       exporters:
         awsemf/prometheus:
           dimension_rollup_option: NoDimensionRollup
-          log_group_name: adot-log-group-dasmeta
-          log_stream_name: adot-metrics-prometheus
+          log_group_name: "${log_group_name}"
+          log_stream_name: "adot-metrics-prometheus"
           metric_declarations:
           - dimensions:
             - - Namespace
@@ -134,7 +134,7 @@ adotCollector:
           parse_json_encoded_attr_values:
           - Sources
           - kubernetes
-          region: eu-central-1
+          region: "${region}"
           resource_to_telemetry_conversion:
             enabled: true
         awsemf:
