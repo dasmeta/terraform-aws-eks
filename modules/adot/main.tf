@@ -14,7 +14,7 @@ resource "helm_release" "adot-collector" {
   repository       = "https://dasmeta.github.io/aws-otel-helm-charts"
   chart            = "adot-exporter-for-eks-on-ec2"
   namespace        = "adot"
-  version          = "0.15.2"
+  version          = "0.15.5"
   create_namespace = false
   atomic           = true
   wait             = false
@@ -26,6 +26,7 @@ resource "helm_release" "adot-collector" {
       accept_namespace_regex = var.adot_config.accept_namespace_regex
       log_group_name         = local.adot_log_group_name
       metrics                = local.merged_metrics
+      prometheus_metrics     = var.prometheus_metrics
     })
   ]
 

@@ -48,36 +48,29 @@ adotCollector:
                   source_labels:
                   - __meta_kubernetes_service_annotation_prometheus_io_scrape
                 - action: replace
+                  regex: (https?)
+                  source_labels:
+                  - __meta_kubernetes_service_annotation_prometheus_io_scheme
+                  target_label: __scheme__
+                - action: replace
                   regex: (.+)
                   source_labels:
                   - __meta_kubernetes_service_annotation_prometheus_io_path
                   target_label: __metrics_path__
                 - action: replace
                   regex: ([^:]+)(?::\d+)?;(\d+)
-                  replacement: $1:$2
+                  replacement: $$1:$$2
                   source_labels:
                   - __address__
                   - __meta_kubernetes_service_annotation_prometheus_io_port
                   target_label: __address__
                 - action: labelmap
-                  regex: __meta_kubernetes_service_label_(.+)
-                - action: replace
-                  source_labels:
-                  - __meta_kubernetes_service_name
-                  target_label: Service
-                - action: replace
-                  source_labels:
-                  - __meta_kubernetes_pod_node_name
-                  target_label: kubernetes_node
-                - action: replace
-                  source_labels:
-                  - __meta_kubernetes_pod_name
-                  target_label: pod_name
-                - action: replace
-                  source_labels:
-                  - __meta_kubernetes_pod_container_name
-                  target_label: container_name
+                  regex: __meta_service_pod_label_(.+)
                 metric_relabel_configs:
+                - action: keep
+                  source_labels:
+                  - namespace
+                  regex: ${accept_namespace_regex}
                 - action: replace
                   source_labels:
                   - namespace
@@ -86,21 +79,6 @@ adotCollector:
                   source_labels:
                   - deployment
                   target_label: Deployment
-                - action: replace
-                  source_labels:
-                  - container
-                  target_label: Container
-                - action: replace
-                  source_labels:
-                  - pod
-                  target_label: Pod
-                - action: replace
-                  source_labels:
-                  - phase
-                  target_label: Phase
-                - source_labels: [__name__]
-                  regex: 'go_gc_duration_seconds.*'
-                  action: drop
       processors:
         batch/metrics:
           timeout: 60s
@@ -136,6 +114,29 @@ adotCollector:
           limit_mib: 100
           check_interval: 5s
       exporters:
+        awsemf/prometheus:
+          dimension_rollup_option: NoDimensionRollup
+          log_group_name: "${log_group_name}"
+          log_stream_name: "adot-metrics-prometheus"
+          metric_declarations:
+          - dimensions:
+            - - Namespace
+              - Deployment
+            metric_name_selectors:
+            - kube_deployment_status_replicas_available
+            - kube_deployment_spec_replicas
+            - kube_deployment_status_replicas_ready
+%{ for key,value in prometheus_metrics }
+          - dimensions: ${key}
+            metric_name_selectors: ${jsonencode(value)}
+%{ endfor ~}
+          namespace: ContainerInsights
+          parse_json_encoded_attr_values:
+          - Sources
+          - kubernetes
+          region: "${region}"
+          resource_to_telemetry_conversion:
+            enabled: true
         awsemf:
           namespace: "ContainerInsights"
           log_group_name: "${log_group_name}"
@@ -221,6 +222,10 @@ adotCollector:
           region: "${region}"
       service:
         pipelines:
+          metrics/awsemf_prometheus:
+            exporters: ["awsemf/prometheus"]
+            processors: ["resource/set_attributes"]
+            receivers: ["prometheus"]
           metrics/awsemf_namespace_specific:
             receivers: ["awscontainerinsightreceiver"]
             processors: ["filter/metrics_include", "filter/namespaces", "resource/set_attributes", "batch/metrics"]
