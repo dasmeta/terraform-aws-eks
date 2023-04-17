@@ -1,5 +1,4 @@
 locals {
-  adot_log_group_name  = "adot-log-group-dasmeta"
   service_account_name = "adot-collector"
   oidc_provider        = regex("^arn:aws:iam::[0-9]+:oidc-provider/(.*)$", var.oidc_provider_arn)[0]
   region               = coalesce(var.region, try(data.aws_region.current[0].name, null))
@@ -24,7 +23,7 @@ resource "helm_release" "adot-collector" {
       region                 = local.region
       cluster_name           = var.cluster_name
       accept_namespace_regex = var.adot_config.accept_namespace_regex
-      log_group_name         = local.adot_log_group_name
+      log_group_name         = var.adot_log_group_name
       metrics                = local.merged_metrics
       prometheus_metrics     = var.prometheus_metrics
     })
