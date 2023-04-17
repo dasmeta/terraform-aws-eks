@@ -20,7 +20,6 @@
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_adot"></a> [adot](#module\_adot) | ../../ | n/a |
-| <a name="module_this"></a> [this](#module\_this) | ../../ | n/a |
 
 ## Resources
 
