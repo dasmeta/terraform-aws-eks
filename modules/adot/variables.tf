@@ -48,3 +48,8 @@ variable "region" {
   description = "AWS Region"
   type        = string
 }
+
+variable "prometheus_metrics" {
+  description = "Prometheus Metrics"
+  type        = any
+}

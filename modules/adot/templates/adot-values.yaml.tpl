@@ -51,6 +51,7 @@ adotCollector:
                   regex: (https?)
                   source_labels:
                   - __meta_kubernetes_service_annotation_prometheus_io_scheme
+                  target_label: __scheme__
                 - action: replace
                   regex: (.+)
                   source_labels:
@@ -125,6 +126,10 @@ adotCollector:
             - kube_deployment_status_replicas_available
             - kube_deployment_spec_replicas
             - kube_deployment_status_replicas_ready
+%{ for key,value in prometheus_metrics }
+          - dimensions: ${key}
+            metric_name_selectors: ${jsonencode(value)}
+%{ endfor ~}
           namespace: ContainerInsights
           parse_json_encoded_attr_values:
           - Sources
