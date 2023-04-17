@@ -54,3 +54,9 @@ variable "prometheus_metrics" {
   type        = any
   default     = {}
 }
+
+variable "adot_log_group_name" {
+  description = "ADOT log group name"
+  type        = string
+  default     = "adot_log_group_name"
+}
