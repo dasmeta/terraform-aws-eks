@@ -121,6 +121,7 @@ adotCollector:
           metric_declarations:
           - dimensions:
             - - Namespace
+              - ClusterName
               - Deployment
             metric_name_selectors:
             - kube_deployment_status_replicas_available
