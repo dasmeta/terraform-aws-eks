@@ -1,5 +1,4 @@
 locals {
-  adot_log_group_name  = var.adot_log_group_name
   service_account_name = "adot-collector"
   oidc_provider        = regex("^arn:aws:iam::[0-9]+:oidc-provider/(.*)$", var.oidc_provider_arn)[0]
   region               = coalesce(var.region, try(data.aws_region.current[0].name, null))
