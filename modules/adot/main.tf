@@ -27,8 +27,7 @@ resource "helm_release" "adot-collector" {
       log_group_name         = var.adot_log_group_name
       metrics                = local.merged_metrics
       prometheus_metrics     = var.prometheus_metrics
-    }) :
-    var.adot_config.template
+    }) : var.adot_config.template
   ]
 
   depends_on = [
