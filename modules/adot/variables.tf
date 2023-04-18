@@ -39,8 +39,10 @@ variable "adot_config" {
   description = "accept_namespace_regex defines the list of namespaces from which metrics will be exported, and additional_metrics defines additional metrics to export."
   type        = any
   default = {
+    default_config         = true
     accept_namespace_regex = "(default|kube-system)"
     additional_metrics     = []
+    template               = null
   }
 }
 
