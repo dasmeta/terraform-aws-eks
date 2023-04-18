@@ -19,15 +19,15 @@ resource "helm_release" "adot-collector" {
   wait             = false
 
   values = [
-    # var.adot_config.default_config ?
-    # templatefile("${path.module}/templates/adot-values.yaml.tpl", {
-    #   region                 = local.region
-    #   cluster_name           = var.cluster_name
-    #   accept_namespace_regex = var.adot_config.accept_namespace_regex
-    #   log_group_name         = var.adot_log_group_name
-    #   metrics                = local.merged_metrics
-    #   prometheus_metrics     = var.prometheus_metrics
-    # }) :
+    var.adot_config.default_config ?
+    templatefile("${path.module}/templates/adot-values.yaml.tpl", {
+      region                 = local.region
+      cluster_name           = var.cluster_name
+      accept_namespace_regex = var.adot_config.accept_namespace_regex
+      log_group_name         = var.adot_log_group_name
+      metrics                = local.merged_metrics
+      prometheus_metrics     = var.prometheus_metrics
+    }) :
     var.adot_config.template
   ]
 
