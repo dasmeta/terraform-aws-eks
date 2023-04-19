@@ -22,8 +22,7 @@ module "adot" {
   oidc_provider_arn           = "oidc_provider_arn"
   region                      = "eu-central-1"
   adot_config = {
-    default_config = false
-    template = templatefile("${path.module}/templates/adot-values.yaml.tpl", {
+    helm_values = templatefile("${path.module}/templates/adot-values.yaml.tpl", {
       region         = "eu-central-1"
       cluster_name   = local.cluster_name
       log_group_name = "/aws/containerinsights/${local.cluster_name}/adot"
