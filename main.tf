@@ -1,10 +1,9 @@
 /**
- * # TODO: update docs for vpc params change
  * # Why
  *
  * To spin up complete eks with all necessary components.
  * Those include:
- * - vpc
+ * - vpc (NOTE: the vpc submodule moved into separate repo https://github.com/dasmeta/terraform-aws-vpc)
  * - eks cluster
  * - alb ingress controller
  * - fluentbit
@@ -184,11 +183,12 @@
  * ```
  **/
 module "vpc" {
-  source = "./modules/vpc"
+  source  = "dasmeta/vpc/aws"
+  version = "1.0.0"
 
   count = try(var.vpc.create.name) != null ? 1 : 0
 
-  vpc_name            = var.vpc.create.name
+  name                = var.vpc.create.name
   availability_zones  = var.vpc.create.availability_zones
   cidr                = var.vpc.create.cidr
   private_subnets     = var.vpc.create.private_subnets
