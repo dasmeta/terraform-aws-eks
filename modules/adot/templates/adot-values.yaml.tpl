@@ -228,12 +228,8 @@ adotCollector:
             processors: ["resource/set_attributes"]
             receivers: ["prometheus"]
           metrics/awsemf_namespace_specific:
-            receivers: ["awscontainerinsightreceiver"]
-            processors: ["filter/metrics_include", "filter/namespaces", "resource/set_attributes", "batch/metrics"]
-            exporters: ["awsemf"]
-          metrics/awsemf:
             receivers: ["awscontainerinsightreceiver", "prometheus"]
-            processors: ["filter/metrics_include", "resource/set_attributes", "batch/metrics"]
+            processors: ["filter/metrics_include", "filter/namespaces", "resource/set_attributes", "batch/metrics"]
             exporters: ["awsemf"]
           traces/logging:
             receivers: ["otlp"]
