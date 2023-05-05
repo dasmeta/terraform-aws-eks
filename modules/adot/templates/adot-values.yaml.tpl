@@ -97,6 +97,14 @@ adotCollector:
 %{ for value in metrics }
               - ^${value}$
 %{ endfor ~}
+        filter/metrics_namespace_specific:
+          metrics:
+            include:
+              match_type: regexp
+              metric_names:
+%{ for value in metrics_namespace_specific }
+              - ^${value}$
+%{ endfor ~}
         resource/set_attributes:
           attributes:
             - key: ClusterName
@@ -124,9 +132,7 @@ adotCollector:
               - ClusterName
               - Deployment
             metric_name_selectors:
-            - kube_deployment_status_replicas_available
             - kube_deployment_spec_replicas
-            - kube_deployment_status_replicas_ready
 %{ for key,value in prometheus_metrics }
           - dimensions: ${key}
             metric_name_selectors: ${jsonencode(value)}
@@ -228,11 +234,11 @@ adotCollector:
             processors: ["resource/set_attributes"]
             receivers: ["prometheus"]
           metrics/awsemf_namespace_specific:
-            receivers: ["awscontainerinsightreceiver"]
-            processors: ["filter/metrics_include", "filter/namespaces", "resource/set_attributes", "batch/metrics"]
+            receivers: ["awscontainerinsightreceiver", "prometheus"]
+            processors: ["filter/metrics_namespace_specific", "filter/namespaces", "resource/set_attributes", "batch/metrics"]
             exporters: ["awsemf"]
           metrics/awsemf:
-            receivers: ["awscontainerinsightreceiver", "prometheus"]
+            receivers: ["awscontainerinsightreceiver"]
             processors: ["filter/metrics_include", "resource/set_attributes", "batch/metrics"]
             exporters: ["awsemf"]
           traces/logging:
