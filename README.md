@@ -210,7 +210,7 @@ worker_groups = {
 | <a name="module_fluent-bit"></a> [fluent-bit](#module\_fluent-bit) | ./modules/fluent-bit | n/a |
 | <a name="module_metrics-server"></a> [metrics-server](#module\_metrics-server) | ./modules/metrics-server | n/a |
 | <a name="module_sso-rbac"></a> [sso-rbac](#module\_sso-rbac) | ./modules/sso-rbac | n/a |
-| <a name="module_vpc"></a> [vpc](#module\_vpc) | dasmeta/modules/aws//modules/vpc | 2.1.3 |
+| <a name="module_vpc"></a> [vpc](#module\_vpc) | dasmeta/vpc/aws | 1.0.1 |
 | <a name="module_weave-scope"></a> [weave-scope](#module\_weave-scope) | ./modules/weave-scope | n/a |
 
 ## Resources

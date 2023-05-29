@@ -183,8 +183,8 @@
  * ```
  **/
 module "vpc" {
-  source  = "dasmeta/modules/aws//modules/vpc"
-  version = "2.1.3"
+  source  = "dasmeta/vpc/aws"
+  version = "1.0.1"
 
   count = try(var.vpc.create.name) != null ? 1 : 0
 
