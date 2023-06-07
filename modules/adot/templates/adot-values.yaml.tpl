@@ -202,6 +202,8 @@ adotCollector:
               - container_memory_request
               - container_memory_utilization
               - container_memory_working_set
+              - pod_cpu_limit
+              - pod_memory_limit
 
           # cluster metrics
           - dimensions: [[ClusterName]]

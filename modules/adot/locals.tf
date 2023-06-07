@@ -21,6 +21,8 @@ locals {
     "service_number_of_running_pods",
     "pod_cpu_reserved_capacity",
     "pod_memory_reserved_capacity",
+    "pod_cpu_limit",
+    "pod_memory_limit"
   ]
 
   merged_metrics            = concat(local.default_metrics, lookup(var.adot_config, "additional_metrics", []))
