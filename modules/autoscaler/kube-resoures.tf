@@ -220,15 +220,11 @@ resource "kubernetes_deployment" "cluster-autoscaler" {
           name  = "cluster-autoscaler"
 
           resources {
-            limits = {
-              cpu    = "100m"
-              memory = "600Mi"
-            }
-            requests = {
-              cpu    = "100m"
-              memory = "600Mi"
-            }
+            limits   = var.limits
+            requests = var.requests
           }
+
+
           command = [
             "./cluster-autoscaler",
             "--v=4",

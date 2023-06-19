@@ -363,6 +363,8 @@ module "autoscaler" {
   eks_version              = var.cluster_version
   autoscaler_image_patch   = var.autoscaler_image_patch
   scale_down_unneeded_time = var.scale_down_unneeded_time
+  requests                 = var.autoscaler_requests
+  limits                   = var.autoscaler_limits
 }
 
 module "ebs-csi" {

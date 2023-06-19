@@ -8,6 +8,28 @@ variable "cluster_name" {
   description = "Cluster name to pass to role"
 }
 
+variable "limits" {
+  type = object({
+    cpu    = string
+    memory = string
+  })
+  default = {
+    cpu    = "100m"
+    memory = "600Mi"
+  }
+}
+
+variable "requests" {
+  type = object({
+    cpu    = string
+    memory = string
+  })
+  default = {
+    cpu    = "100m"
+    memory = "600Mi"
+  }
+}
+
 variable "eks_version" {
   type        = string
   description = "The version of eks cluster"

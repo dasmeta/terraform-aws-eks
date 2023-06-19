@@ -326,3 +326,25 @@ variable "ebs_csi_version" {
   type        = string
   default     = "v1.15.0-eksbuild.1"
 }
+
+variable "autoscaler_limits" {
+  type = object({
+    cpu    = string
+    memory = string
+  })
+  default = {
+    cpu    = "100m"
+    memory = "600Mi"
+  }
+}
+
+variable "autoscaler_requests" {
+  type = object({
+    cpu    = string
+    memory = string
+  })
+  default = {
+    cpu    = "100m"
+    memory = "600Mi"
+  }
+}
