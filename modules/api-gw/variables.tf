@@ -13,3 +13,8 @@ variable "chart_version" {
   type        = string
   default     = "0.0.17"
 }
+
+variable "deploy_region" {
+  description = "Region in which API gatewat will be configured"
+  type        = string
+}

@@ -354,3 +354,9 @@ variable "enable_api_gw_controller" {
   type        = bool
   default     = false
 }
+
+variable "api_gw_deploy_region" {
+  description = "Region in which API gatewat will be configured"
+  type        = string
+  default     = ""
+}
