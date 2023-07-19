@@ -1,4 +1,20 @@
-# api-gw
+# API Gateway controller
+
+To enable API-Gateway controller in EKS cluster you need to set
+```terraform
+module "eks" {
+
+...
+enable_api_gw_controller = true
+...
+
+}
+```
+
+## How to deploy API from EKS using controller
+API, and its dependent parts (integrations, routes, ...) are deployed with CRDs
+which you can find [here](https://aws-controllers-k8s.github.io/community/docs/tutorials/apigatewayv2-reference-example/)
+
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements

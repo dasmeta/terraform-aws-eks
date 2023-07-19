@@ -11,5 +11,4 @@ resource "helm_release" "api-gw-release" {
     name  = "serviceAccount.create"
     value = "false"
   }
-
 }
