@@ -348,3 +348,15 @@ variable "autoscaler_requests" {
     memory = "600Mi"
   }
 }
+
+variable "enable_api_gw_controller" {
+  description = "Weather enable API-GW controller or not"
+  type        = bool
+  default     = false
+}
+
+variable "api_gw_deploy_region" {
+  description = "Region in which API gatewat will be configured"
+  type        = string
+  default     = ""
+}

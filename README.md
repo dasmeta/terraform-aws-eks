@@ -201,6 +201,7 @@ worker_groups = {
 |------|--------|---------|
 | <a name="module_adot"></a> [adot](#module\_adot) | ./modules/adot | n/a |
 | <a name="module_alb-ingress-controller"></a> [alb-ingress-controller](#module\_alb-ingress-controller) | ./modules/aws-load-balancer-controller | n/a |
+| <a name="module_api-gw-controller"></a> [api-gw-controller](#module\_api-gw-controller) | ./modules/api-gw | n/a |
 | <a name="module_autoscaler"></a> [autoscaler](#module\_autoscaler) | ./modules/autoscaler | n/a |
 | <a name="module_cloudwatch-metrics"></a> [cloudwatch-metrics](#module\_cloudwatch-metrics) | ./modules/cloudwatch-metrics | n/a |
 | <a name="module_ebs-csi"></a> [ebs-csi](#module\_ebs-csi) | ./modules/ebs-csi | n/a |
@@ -230,6 +231,7 @@ worker_groups = {
 | <a name="input_adot_config"></a> [adot\_config](#input\_adot\_config) | n/a | `any` | <pre>{<br>  "accepte_namespace_regex": "(default|kube-system)",<br>  "additional_metrics": {}<br>}</pre> | no |
 | <a name="input_alb_log_bucket_name"></a> [alb\_log\_bucket\_name](#input\_alb\_log\_bucket\_name) | n/a | `string` | `""` | no |
 | <a name="input_alb_log_bucket_path"></a> [alb\_log\_bucket\_path](#input\_alb\_log\_bucket\_path) | ALB-INGRESS-CONTROLLER | `string` | `""` | no |
+| <a name="input_api_gw_deploy_region"></a> [api\_gw\_deploy\_region](#input\_api\_gw\_deploy\_region) | Region in which API gatewat will be configured | `string` | `""` | no |
 | <a name="input_autoscaler_image_patch"></a> [autoscaler\_image\_patch](#input\_autoscaler\_image\_patch) | The patch number of autoscaler image | `number` | `0` | no |
 | <a name="input_autoscaler_limits"></a> [autoscaler\_limits](#input\_autoscaler\_limits) | n/a | <pre>object({<br>    cpu    = string<br>    memory = string<br>  })</pre> | <pre>{<br>  "cpu": "100m",<br>  "memory": "600Mi"<br>}</pre> | no |
 | <a name="input_autoscaler_requests"></a> [autoscaler\_requests](#input\_autoscaler\_requests) | n/a | <pre>object({<br>    cpu    = string<br>    memory = string<br>  })</pre> | <pre>{<br>  "cpu": "100m",<br>  "memory": "600Mi"<br>}</pre> | no |
@@ -243,6 +245,7 @@ worker_groups = {
 | <a name="input_create_cert_manager"></a> [create\_cert\_manager](#input\_create\_cert\_manager) | If enabled it always gets deployed to the cert-manager namespace. | `bool` | `false` | no |
 | <a name="input_ebs_csi_version"></a> [ebs\_csi\_version](#input\_ebs\_csi\_version) | EBS CSI driver addon version | `string` | `"v1.15.0-eksbuild.1"` | no |
 | <a name="input_efs_id"></a> [efs\_id](#input\_efs\_id) | EFS filesystem id in AWS | `string` | `null` | no |
+| <a name="input_enable_api_gw_controller"></a> [enable\_api\_gw\_controller](#input\_enable\_api\_gw\_controller) | Weather enable API-GW controller or not | `bool` | `false` | no |
 | <a name="input_enable_ebs_driver"></a> [enable\_ebs\_driver](#input\_enable\_ebs\_driver) | Weather enable EBS-CSI driver or not | `bool` | `true` | no |
 | <a name="input_enable_efs_driver"></a> [enable\_efs\_driver](#input\_enable\_efs\_driver) | Weather install EFS driver or not in EKS | `bool` | `false` | no |
 | <a name="input_enable_kube_state_metrics"></a> [enable\_kube\_state\_metrics](#input\_enable\_kube\_state\_metrics) | Enable kube-state-metrics | `bool` | `false` | no |
