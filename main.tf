@@ -375,3 +375,12 @@ module "ebs-csi" {
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
   addon_version    = var.ebs_csi_version
 }
+
+module "api-gw-controller" {
+  source = "./modules/api-gw"
+
+  count = var.enable_api_gw_controller ? 1 : 0
+
+  cluster_name     = var.cluster_name
+  cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
+}

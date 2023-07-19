@@ -348,3 +348,9 @@ variable "autoscaler_requests" {
     memory = "600Mi"
   }
 }
+
+variable "enable_api_gw_controller" {
+  description = "Weather enable API-GW controller or not"
+  type        = bool
+  default     = false
+}
