@@ -360,3 +360,33 @@ variable "api_gw_deploy_region" {
   type        = string
   default     = ""
 }
+
+variable "api_gw_configs" {
+  type = object({
+    APIs         = string
+    integrations = string
+    stages       = []
+    vpclink      = string
+
+  })
+}
+
+variable "APIs" {
+  default = []
+  type    = list(string)
+}
+
+variable "api_integrations" {
+  default = []
+  type    = list(string)
+}
+
+variable "api_stages" {
+  default = []
+  type    = list(string)
+}
+
+variable "api_vpc_links" {
+  default = []
+  type    = list(string)
+}

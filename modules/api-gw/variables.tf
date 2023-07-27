@@ -18,3 +18,40 @@ variable "deploy_region" {
   description = "Region in which API gatewat will be configured"
   type        = string
 }
+
+variable "APIs" {
+  type = list(object({
+    name                       = string
+    protocol_type              = string
+    route_selection_expression = string
+  }))
+  default = ([
+    {
+      name                       = "api"
+      protocol_type              = "WEBSOCKET"
+      route_selection_expression = "$request.body.action"
+    },
+    {
+      name                       = "api1"
+      protocol_type              = "WEBSOCKET1"
+      route_selection_expression = "$request.body.action1"
+    }
+
+
+  ])
+}
+
+variable "api_integrations" {
+  default = []
+  type    = list(string)
+}
+
+variable "api_stages" {
+  default = []
+  type    = list(string)
+}
+
+variable "api_vpc_links" {
+  default = []
+  type    = list(string)
+}

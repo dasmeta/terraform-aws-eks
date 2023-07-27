@@ -41,6 +41,7 @@ No modules.
 
 | Name | Type |
 |------|------|
+| [aws_apigatewayv2_api.api](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/apigatewayv2_api) | resource |
 | [aws_iam_policy.policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
 | [aws_iam_role.role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [helm_release.api-gw-release](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
@@ -52,6 +53,10 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_APIs"></a> [APIs](#input\_APIs) | n/a | <pre>list(object({<br>    name                       = string<br>    protocol_type              = string<br>    route_selection_expression = string<br>  }))</pre> | <pre>[<br>  {<br>    "name": "api",<br>    "protocol_type": "WEBSOCKET",<br>    "route_selection_expression": "$request.body.action"<br>  },<br>  {<br>    "name": "api1",<br>    "protocol_type": "WEBSOCKET1",<br>    "route_selection_expression": "$request.body.action1"<br>  }<br>]</pre> | no |
+| <a name="input_api_integrations"></a> [api\_integrations](#input\_api\_integrations) | n/a | `list(string)` | `[]` | no |
+| <a name="input_api_stages"></a> [api\_stages](#input\_api\_stages) | n/a | `list(string)` | `[]` | no |
+| <a name="input_api_vpc_links"></a> [api\_vpc\_links](#input\_api\_vpc\_links) | n/a | `list(string)` | `[]` | no |
 | <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | Chart version of api-gw | `string` | `"0.0.17"` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | Cluster name to pass to role | `string` | n/a | yes |
 | <a name="input_cluster_oidc_arn"></a> [cluster\_oidc\_arn](#input\_cluster\_oidc\_arn) | Cluster OIDC arn to pass to policy | `string` | n/a | yes |
