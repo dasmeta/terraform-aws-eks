@@ -232,7 +232,6 @@ worker_groups = {
 | <a name="input_adot_config"></a> [adot\_config](#input\_adot\_config) | n/a | `any` | <pre>{<br>  "accepte_namespace_regex": "(default|kube-system)",<br>  "additional_metrics": {}<br>}</pre> | no |
 | <a name="input_alb_log_bucket_name"></a> [alb\_log\_bucket\_name](#input\_alb\_log\_bucket\_name) | n/a | `string` | `""` | no |
 | <a name="input_alb_log_bucket_path"></a> [alb\_log\_bucket\_path](#input\_alb\_log\_bucket\_path) | ALB-INGRESS-CONTROLLER | `string` | `""` | no |
-| <a name="input_api_gw_configs"></a> [api\_gw\_configs](#input\_api\_gw\_configs) | n/a | <pre>object({<br>    APIs         = string<br>    integrations = string<br>    stages       = []<br>    vpclink      = string<br><br>  })</pre> | n/a | yes |
 | <a name="input_api_gw_deploy_region"></a> [api\_gw\_deploy\_region](#input\_api\_gw\_deploy\_region) | Region in which API gatewat will be configured | `string` | `""` | no |
 | <a name="input_api_integrations"></a> [api\_integrations](#input\_api\_integrations) | n/a | `list(string)` | `[]` | no |
 | <a name="input_api_stages"></a> [api\_stages](#input\_api\_stages) | n/a | `list(string)` | `[]` | no |
