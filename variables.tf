@@ -362,21 +362,42 @@ variable "api_gw_deploy_region" {
 }
 
 variable "APIs" {
-  default = []
-  type    = list(string)
-}
+  type = list(object({
+    name                         = string
+    protocol_type                = string
+    route_selection_expression   = optional(string)
+    api_key_selection_expression = optional(string)
+    credentials_arn              = optional(string)
+    description                  = optional(string)
+    disable_execute_api_endpoint = optional(bool)
+    disable_schema_validation    = optional(bool)
+    version                      = optional(string)
+    tags                         = optional(map(string))
 
-variable "api_integrations" {
-  default = []
-  type    = list(string)
-}
 
-variable "api_stages" {
-  default = []
-  type    = list(string)
-}
+    integrations = list(object({
+      integration_type              = string
+      connection_type               = optional(string)
+      integration_uri               = string
+      payload_format_version        = optional(string)
+      template_selection_expression = optional(string)
+      connection_type               = optional(string)
+      connection_id                 = optional(string)
+      description                   = optional(string)
+      request_parameters            = optional(map(string))
+      timeout_milliseconds          = optional(number)
+      content_handling_strategy     = optional(string)
+      credentials_arn               = optional(string)
+      integration_method            = optional(string)
+    }))
 
-variable "api_vpc_links" {
-  default = []
-  type    = list(string)
+
+    stages = list(object({
+      name                  = string
+      description           = optional(string)
+      client_certificate_id = optional(string)
+      stage_variables       = optional(map(string))
+      tags                  = optional(map(string))
+    }))
+  }))
 }
