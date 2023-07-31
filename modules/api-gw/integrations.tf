@@ -1,0 +1,44 @@
+resource "aws_apigatewayv2_integration" "example" {
+
+  for_each = { for integration in local.integrations : integration.api_name => integration }
+
+
+  api_id                        = aws_apigatewayv2_api.api[each.key].id
+  integration_type              = each.value.integration_type
+  connection_type               = each.value.connection_type
+  integration_uri               = each.value.integration_uri
+  payload_format_version        = each.value.payload_format_version
+  template_selection_expression = each.value.template_selection_expression
+  connection_id                 = each.value.connection_id != null ? each.value.connection_id : aws_apigatewayv2_vpc_link.example.id
+  description                   = each.value.description
+  request_parameters            = each.value.request_parameters
+  timeout_milliseconds          = each.value.timeout_milliseconds
+  content_handling_strategy     = each.value.content_handling_strategy
+  credentials_arn               = each.value.credentials_arn
+  integration_method            = each.value.integration_method
+}
+
+locals {
+  integrations = flatten([
+    for api in var.APIs : [
+
+      for integration in api.integrations : {
+
+        api_name                      = api.name
+        integration_type              = integration.integration_type
+        connection_type               = integration.connection_type
+        integration_uri               = integration.integration_uri
+        payload_format_version        = integration.payload_format_version
+        template_selection_expression = integration.template_selection_expression
+        connection_type               = integration.connection_type
+        connection_id                 = integration.connection_id
+        description                   = integration.description
+        request_parameters            = integration.request_parameters
+        timeout_milliseconds          = integration.timeout_milliseconds
+        content_handling_strategy     = integration.content_handling_strategy
+        credentials_arn               = integration.credentials_arn
+        integration_method            = integration.integration_method
+      }
+    ]
+  ])
+}

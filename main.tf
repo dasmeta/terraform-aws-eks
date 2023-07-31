@@ -381,7 +381,10 @@ module "api-gw-controller" {
 
   count = var.enable_api_gw_controller ? 1 : 0
 
+  vpc_id           = module.vpc[0].id
   cluster_name     = var.cluster_name
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
   deploy_region    = var.api_gw_deploy_region
+  subnet_ids       = var.vpc.create.private_subnets != {} ? module.vpc[0].private_subnets : var.vpc.link.private_subnet_ids
+  APIs             = var.APIs
 }
