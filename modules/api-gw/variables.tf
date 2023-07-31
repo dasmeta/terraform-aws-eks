@@ -49,6 +49,7 @@ variable "APIs" {
       content_handling_strategy     = optional(string)
       credentials_arn               = optional(string)
       integration_method            = optional(string)
+      server_name_to_verify         = optional(string)
     }))
 
     routes = list(object({

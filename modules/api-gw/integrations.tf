@@ -15,6 +15,9 @@ resource "aws_apigatewayv2_integration" "example" {
   content_handling_strategy     = each.value.content_handling_strategy
   credentials_arn               = each.value.credentials_arn
   integration_method            = each.value.integration_method
+  tls_config {
+    server_name_to_verify = each.value.server_name_to_verify
+  }
 }
 
 locals {
@@ -39,6 +42,7 @@ locals {
         content_handling_strategy     = integration.content_handling_strategy
         credentials_arn               = integration.credentials_arn
         integration_method            = integration.integration_method
+        server_name_to_verify         = integration.server_name_to_verify
       }
     ]
   ])
