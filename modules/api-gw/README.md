@@ -44,6 +44,9 @@ No modules.
 | [aws_iam_policy.policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
 | [aws_iam_role.role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [helm_release.api-gw-release](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
+| [kubernetes_manifest.api](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest) | resource |
+| [kubernetes_manifest.stage](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest) | resource |
+| [kubernetes_manifest.vpc_link](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest) | resource |
 | [kubernetes_service_account.servciceaccount](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/service_account) | resource |
 | [aws_caller_identity.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
@@ -52,6 +55,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_api_gateway_resources"></a> [api\_gateway\_resources](#input\_api\_gateway\_resources) | Nested map containing API, Stage, and VPC Link resources | <pre>list(object({<br>    api = object({<br>      name         = string<br>      protocolType = string<br>    })<br>    stages = list(object({<br>      name        = string<br>      apiRef_name = string<br>      stageName   = string<br>      autoDeploy  = bool<br>      description = string<br>    }))<br>    vpc_links = list(object({<br>      name             = string<br>      securityGroupIDs = list(string)<br>      subnetIDs        = list(string)<br>    }))<br>  }))</pre> | n/a | yes |
 | <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | Chart version of api-gw | `string` | `"0.0.17"` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | Cluster name to pass to role | `string` | n/a | yes |
 | <a name="input_cluster_oidc_arn"></a> [cluster\_oidc\_arn](#input\_cluster\_oidc\_arn) | Cluster OIDC arn to pass to policy | `string` | n/a | yes |

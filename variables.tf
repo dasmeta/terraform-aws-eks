@@ -360,3 +360,25 @@ variable "api_gw_deploy_region" {
   type        = string
   default     = ""
 }
+
+variable "api_gateway_resources" {
+  description = "Nested map containing API, Stage, and VPC Link resources"
+  type = list(object({
+    api = object({
+      name         = string
+      protocolType = string
+    })
+    stages = list(object({
+      name        = string
+      apiRef_name = string
+      stageName   = string
+      autoDeploy  = bool
+      description = string
+    }))
+    vpc_links = list(object({
+      name             = string
+      securityGroupIDs = list(string)
+      subnetIDs        = list(string)
+    }))
+  }))
+}
