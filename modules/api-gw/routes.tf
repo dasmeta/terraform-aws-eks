@@ -4,7 +4,7 @@ resource "aws_apigatewayv2_route" "example" {
 
   api_id                              = aws_apigatewayv2_api.api[each.key].id
   route_key                           = each.value.route_key
-  target                              = aws_apigatewayv2_integration.example[each.key].id
+  target                              = aws_apigatewayv2_integration.example[each.value.integration_name].id
   api_key_required                    = each.value.api_key_required
   authorization_scope                 = each.value.authorization_scope
   authorization_type                  = each.value.authorization_type
@@ -21,6 +21,7 @@ locals {
       for route in api.routes : {
 
         api_name                            = api.name
+        integration                         = route.integration_name
         route_key                           = route.route_key
         api_key_required                    = route.api_key_required
         authorization_scope                 = route.authorization_scope

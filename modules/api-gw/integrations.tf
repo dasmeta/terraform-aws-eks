@@ -1,6 +1,6 @@
 resource "aws_apigatewayv2_integration" "example" {
 
-  for_each = { for integration in local.integrations : integration.api_name => integration }
+  for_each = { for integration in local.integrations : integration.integration_name => integration }
 
   api_id                        = aws_apigatewayv2_api.api[each.value.api_name].id
   integration_type              = each.value.integration_type
@@ -23,6 +23,7 @@ locals {
 
       for integration in api.integrations : {
 
+        integration_name              = integration.integration_name
         api_name                      = api.name
         unique_id                     = ""
         integration_type              = integration.integration_type
