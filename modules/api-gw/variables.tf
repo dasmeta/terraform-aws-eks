@@ -55,7 +55,6 @@ variable "APIs" {
       integration_name                    = string
       route_key                           = string
       api_key_required                    = optional(bool)
-      authorization_scope                 = optional(string)
       authorization_type                  = optional(string)
       authorizer_id                       = optional(string)
       model_selection_expression          = optional(string)
