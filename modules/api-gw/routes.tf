@@ -1,8 +1,8 @@
 resource "aws_apigatewayv2_route" "example" {
 
-  for_each = { for route in local.routes : route.api_name => route }
+  for_each = { for route in local.routes : "${route.api_name}-${route.integration_name}" => route }
 
-  api_id                              = aws_apigatewayv2_api.api[each.key].id
+  api_id                              = aws_apigatewayv2_api.api[each.value.api_name].id
   route_key                           = each.value.route_key
   target                              = "integrations/${aws_apigatewayv2_integration.example[each.value.integration_name].id}"
   api_key_required                    = each.value.api_key_required
