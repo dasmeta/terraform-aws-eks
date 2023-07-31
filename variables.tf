@@ -356,12 +356,13 @@ variable "enable_api_gw_controller" {
 }
 
 variable "api_gw_deploy_region" {
-  description = "Region in which API gatewat will be configured"
+  description = "Region in which API gateway will be configured"
   type        = string
   default     = ""
 }
 
 variable "APIs" {
+  description = "API Gateway's API and its dependent parts configurations"
   type = list(object({
     name                         = string
     protocol_type                = string

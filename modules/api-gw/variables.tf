@@ -20,6 +20,7 @@ variable "deploy_region" {
 }
 
 variable "APIs" {
+  description = "API Gateway's API and its dependent parts configurations"
   type = list(object({
     name                         = string
     protocol_type                = string
@@ -58,38 +59,20 @@ variable "APIs" {
       tags                  = optional(map(string))
     }))
   }))
-  #  default = ([
-  #    {
-  #      name                       = "api"
-  #      protocol_type              = "HTTP"
-  #      #route_selection_expression = "$request.body.action"
-  #
-  #
-  #      integrations = [{
-  #        integration_type = "HTTP_PROXY"
-  #        connection_type  = "VPC_LINK"
-  #
-  #        #integration_uri = "https://api.dev.ben-energy.com/api/users"
-  #        integration_uri = "arn:aws:elasticloadbalancing:eu-central-1:093655346463:listener/app/dev-api-alb/bc5f120e99351ead/eaa8af133345fc8f"
-  #      }]
-  #
-  #
-  #      stages = [{
-  #        name = "stage1"
-  #      }]
-  #    }
-  #  ])
 }
 
 variable "subnet_ids" {
-  type = list(string)
+  description = "EKS private Subnet IDs to pass inside module"
+  type        = list(string)
 }
 
-variable "name" {
-  default = "vpc-link"
-  type    = string
+variable "vpc_link_name" {
+  description = "VPC link name"
+  type        = string
+  default     = ""
 }
 
 variable "vpc_id" {
-  type = string
+  description = "VPC id, needed for vpc link"
+  type        = string
 }

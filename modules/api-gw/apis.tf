@@ -9,7 +9,4 @@ resource "aws_apigatewayv2_api" "api" {
   disable_execute_api_endpoint = each.value.disable_execute_api_endpoint
   version                      = each.value.version
   tags                         = each.value.tags
-
-
-  #route_selection_expression = each.value.route_selection_expression
 }
