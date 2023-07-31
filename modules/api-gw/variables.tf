@@ -34,7 +34,7 @@ variable "APIs" {
     tags                         = optional(map(string))
 
 
-    integrations = object({
+    integrations = list(object({
       integration_name              = string
       integration_type              = string
       connection_type               = optional(string)
@@ -49,7 +49,7 @@ variable "APIs" {
       content_handling_strategy     = optional(string)
       credentials_arn               = optional(string)
       integration_method            = optional(string)
-    })
+    }))
 
     routes = list(object({
       integration_name                    = string

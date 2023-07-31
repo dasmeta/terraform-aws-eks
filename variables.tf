@@ -376,7 +376,8 @@ variable "APIs" {
     tags                         = optional(map(string))
 
 
-    integrations = object({
+    integrations = list(object({
+      integration_name              = string
       integration_type              = string
       connection_type               = optional(string)
       integration_uri               = string
@@ -390,23 +391,10 @@ variable "APIs" {
       content_handling_strategy     = optional(string)
       credentials_arn               = optional(string)
       integration_method            = optional(string)
-    })
-
-    routes = list(object({
-      route_key                           = string
-      target                              = string
-      api_key_required                    = optional(bool)
-      authorization_scope                 = optional(string)
-      authorization_type                  = optional(string)
-      authorizer_id                       = optional(string)
-      model_selection_expression          = optional(string)
-      operation_name                      = optional(string)
-      request_models                      = optional(map(string))
-      request_parameters                  = optional(map(string))
-      route_response_selection_expression = optional(string)
     }))
 
     routes = list(object({
+      integration_name                    = string
       route_key                           = string
       api_key_required                    = optional(bool)
       authorization_scope                 = optional(string)
