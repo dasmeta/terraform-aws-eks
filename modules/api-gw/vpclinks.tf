@@ -6,7 +6,7 @@ data "aws_subnet" "selected" {
 }
 
 resource "aws_apigatewayv2_vpc_link" "example" {
-  name               = var.vpc_link_name != null ? var.vpc_link_name : "vpc-link-${var.cluster_name}-vl"
+  name               = var.vpc_link_name != "" ? var.vpc_link_name : "vpc-link-${var.cluster_name}-${data.aws_region.this.name}"
   security_group_ids = [aws_security_group.api-gw-sg.id]
   subnet_ids         = var.subnet_ids
 }
