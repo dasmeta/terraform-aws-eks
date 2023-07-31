@@ -64,6 +64,20 @@ variable "APIs" {
       route_response_selection_expression = optional(string)
     }))
 
+    routes = list(object({
+      route_key                           = string
+      target                              = string
+      api_key_required                    = optional(bool)
+      authorization_scope                 = optional(string)
+      authorization_type                  = optional(string)
+      authorizer_id                       = optional(string)
+      model_selection_expression          = optional(string)
+      operation_name                      = optional(string)
+      request_models                      = optional(map(string))
+      request_parameters                  = optional(map(string))
+      route_response_selection_expression = optional(string)
+    }))
+
 
     stages = list(object({
       name                  = string
