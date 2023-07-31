@@ -66,7 +66,6 @@ variable "APIs" {
 
     routes = list(object({
       route_key                           = string
-      target                              = string
       api_key_required                    = optional(bool)
       authorization_scope                 = optional(string)
       authorization_type                  = optional(string)
