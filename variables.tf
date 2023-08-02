@@ -364,6 +364,7 @@ variable "api_gw_deploy_region" {
 variable "api_gateway_resources" {
   description = "Nested map containing API, Stage, and VPC Link resources"
   type = list(object({
+    namespace = string
     api = object({
       name         = string
       protocolType = string
@@ -376,9 +377,7 @@ variable "api_gateway_resources" {
       description = string
     }))
     vpc_links = list(object({
-      name             = string
-      securityGroupIDs = list(string)
-      subnetIDs        = list(string)
+      name = string
     }))
   }))
 }
