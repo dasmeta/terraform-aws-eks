@@ -386,5 +386,6 @@ module "api-gw-controller" {
   deploy_region    = var.api_gw_deploy_region
 
   api_gateway_resources = var.api_gateway_resources
-
+  vpc_id                = module.vpc[0].id
+  subnet_ids            = var.vpc.create.private_subnets != {} ? module.vpc[0].private_subnets : var.vpc.link.private_subnet_ids
 }
