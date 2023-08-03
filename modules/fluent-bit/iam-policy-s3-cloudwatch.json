@@ -11,7 +11,10 @@
               "logs:DescribeLogStreams",
               "logs:DescribeLogGroups",
               "logs:CreateLogStream",
-              "logs:CreateLogGroup"
+              "logs:CreateLogGroup",
+              "s3:PutObject",
+              "s3:PutObjectAcl",
+              "s3:ListBucket"
           ],
           "Resource": "*"
       },
