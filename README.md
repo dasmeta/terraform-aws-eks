@@ -192,8 +192,8 @@ worker_groups = {
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 4.54.0 |
-| <a name="provider_helm"></a> [helm](#provider\_helm) | 2.8.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 3.31 |
+| <a name="provider_helm"></a> [helm](#provider\_helm) | >= 2.4.1 |
 
 ## Modules
 
