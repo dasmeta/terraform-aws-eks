@@ -1,4 +1,4 @@
 variable "cluster_name" {
-    type = string
-    description = "Cluster Name"
+  type        = string
+  description = "Cluster Name"
 }

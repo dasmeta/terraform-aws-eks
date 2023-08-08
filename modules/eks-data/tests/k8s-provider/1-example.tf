@@ -1,4 +1,4 @@
 module "eks_data" {
-  source = "../../"
+  source       = "../../"
   cluster_name = "eks-stage"
 }
