@@ -1,0 +1,3 @@
+module "basic" {
+  source = "../.."
+}
