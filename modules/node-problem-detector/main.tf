@@ -7,7 +7,7 @@ module "jenkins" {
 
   app = {
     name          = "node-problem-detector"
-    version       = "1.5.0"
+    version       = "2.3.5"
     chart         = "node-problem-detector"
     force_update  = true
     wait          = true
