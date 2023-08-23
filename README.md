@@ -213,7 +213,7 @@ worker_groups = {
 | <a name="module_node-problem-detector"></a> [node-problem-detector](#module\_node-problem-detector) | ./modules/node-problem-detector | n/a |
 | <a name="module_olm"></a> [olm](#module\_olm) | ./modules/olm | n/a |
 | <a name="module_sso-rbac"></a> [sso-rbac](#module\_sso-rbac) | ./modules/sso-rbac | n/a |
-| <a name="module_vpc"></a> [vpc](#module\_vpc) | dasmeta/vpc/aws | 1.0.0 |
+| <a name="module_vpc"></a> [vpc](#module\_vpc) | dasmeta/vpc/aws | 1.0.1 |
 | <a name="module_weave-scope"></a> [weave-scope](#module\_weave-scope) | ./modules/weave-scope | n/a |
 
 ## Resources
