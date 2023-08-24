@@ -6,14 +6,13 @@
 
 data "aws_availability_zones" "available" {}
 data "aws_vpcs" "ids" {
-  # tags = {
-  #   service = "production"
-  # }
+  tags = {
+    Name = "default"
+  }
 }
 
 module "basic" {
-  source  = "dasmeta/eks/aws"
-  version = "2.7.2"
+  source = "../.."
 
   vpc = {
     link = {
