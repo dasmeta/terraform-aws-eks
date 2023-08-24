@@ -1,6 +1,6 @@
 module "yaml" {
-  source = "../../../terraform-null-helpers/modules/yaml"
-  # source =
+  source  = "dasmeta/helpers/null//modules/yaml"
+  version = "0.0.1"
 
   files = [
     "https://raw.githubusercontent.com/operator-framework/operator-lifecycle-manager/v0.25.0/deploy/upstream/quickstart/crds.yaml",

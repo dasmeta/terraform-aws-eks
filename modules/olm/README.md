@@ -17,7 +17,7 @@
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_yaml"></a> [yaml](#module\_yaml) | ../../../terraform-null-helpers/modules/yaml | n/a |
+| <a name="module_yaml"></a> [yaml](#module\_yaml) | dasmeta/helpers/null//modules/yaml | 0.0.1 |
 
 ## Resources
 
