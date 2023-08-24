@@ -369,5 +369,5 @@ variable "enable_node_problem_detector" {
 variable "enable_olm" {
   type        = bool
   default     = false
-  description = "To install OLM controller."
+  description = "To install OLM controller (experimental)."
 }
