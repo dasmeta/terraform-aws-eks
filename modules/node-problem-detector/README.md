@@ -10,7 +10,6 @@ https://artifacthub.io/packages/helm/deliveryhero/node-problem-detector
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.0.0 |
-| <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.0 |
 
 ## Providers
 
@@ -20,7 +19,7 @@ No providers.
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_jenkins"></a> [jenkins](#module\_jenkins) | terraform-module/release/helm | 2.6.0 |
+| <a name="module_node-problem-detector"></a> [node-problem-detector](#module\_node-problem-detector) | terraform-module/release/helm | 2.6.0 |
 
 ## Resources
 
