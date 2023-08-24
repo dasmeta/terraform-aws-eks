@@ -1,4 +1,4 @@
-module "jenkins" {
+module "node-problem-detector" {
   source  = "terraform-module/release/helm"
   version = "2.6.0"
 
@@ -14,26 +14,9 @@ module "jenkins" {
     recreate_pods = false
     deploy        = 1
   }
-  values = [templatefile("${path.module}/values.yaml", {
-    # region                = var.region
-    # storage               = "4Gi"
-  })]
+  values = [templatefile("${path.module}/values.yaml", {})]
 
-  set = [
-    # {
-    #   name  = "labels.kubernetes\\.io/name"
-    #   value = "jenkins"
-    # },
-    # {
-    #   name  = "service.labels.kubernetes\\.io/name"
-    #   value = "jenkins"
-    # },
-  ]
+  set = []
 
-  set_sensitive = [
-    # {
-    #   path  = "master.adminUser"
-    #   value = "jenkins"
-    # },
-  ]
+  set_sensitive = []
 }
