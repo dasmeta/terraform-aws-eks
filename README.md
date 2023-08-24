@@ -185,14 +185,14 @@ worker_groups = {
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.3 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 3.31 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 3.31, < 5.0.0 |
 | <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.4.1 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 3.31 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 3.31, < 5.0.0 |
 | <a name="provider_helm"></a> [helm](#provider\_helm) | >= 2.4.1 |
 
 ## Modules
@@ -253,6 +253,7 @@ worker_groups = {
 | <a name="input_enable_kube_state_metrics"></a> [enable\_kube\_state\_metrics](#input\_enable\_kube\_state\_metrics) | Enable kube-state-metrics | `bool` | `false` | no |
 | <a name="input_enable_metrics_server"></a> [enable\_metrics\_server](#input\_enable\_metrics\_server) | METRICS-SERVER | `bool` | `false` | no |
 | <a name="input_enable_node_problem_detector"></a> [enable\_node\_problem\_detector](#input\_enable\_node\_problem\_detector) | n/a | `bool` | `true` | no |
+| <a name="input_enable_olm"></a> [enable\_olm](#input\_enable\_olm) | To install OLM controller. | `bool` | `false` | no |
 | <a name="input_enable_sso_rbac"></a> [enable\_sso\_rbac](#input\_enable\_sso\_rbac) | Enable SSO RBAC integration or not | `bool` | `false` | no |
 | <a name="input_external_secrets_namespace"></a> [external\_secrets\_namespace](#input\_external\_secrets\_namespace) | The namespace of external-secret operator | `string` | `"kube-system"` | no |
 | <a name="input_fluent_bit_name"></a> [fluent\_bit\_name](#input\_fluent\_bit\_name) | FLUENT-BIT | `string` | `""` | no |

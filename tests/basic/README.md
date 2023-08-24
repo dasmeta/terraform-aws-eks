@@ -9,13 +9,13 @@ No requirements.
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.13.1 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 4.67.0 |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_basic"></a> [basic](#module\_basic) | dasmeta/eks/aws | 2.7.2 |
+| <a name="module_basic"></a> [basic](#module\_basic) | ../.. | n/a |
 
 ## Resources
 
