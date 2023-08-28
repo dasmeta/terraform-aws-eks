@@ -369,15 +369,15 @@ variable "api_gateway_resources" {
       name         = string
       protocolType = string
     })
-    stages = list(object({
+    stages = optional(list(object({
       name        = string
       apiRef_name = string
       stageName   = string
       autoDeploy  = bool
       description = string
-    }))
-    vpc_links = list(object({
+    })))
+    vpc_links = optional(list(object({
       name = string
-    }))
+    })))
   }))
 }
