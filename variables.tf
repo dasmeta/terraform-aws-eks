@@ -371,13 +371,15 @@ variable "api_gateway_resources" {
     })
     stages = optional(list(object({
       name        = string
+      namespace   = string
       apiRef_name = string
       stageName   = string
       autoDeploy  = bool
       description = string
     })))
     vpc_links = optional(list(object({
-      name = string
+      name      = string
+      namespace = string
     })))
   }))
 }

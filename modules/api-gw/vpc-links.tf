@@ -7,13 +7,13 @@ data "aws_subnet" "selected" {
 
 resource "kubernetes_manifest" "vpc_link" {
   #for_each = { for link in flatten([for api in var.api_gateway_resources : api.vpc_links]) : link.name => link }
-  for_each = { for api in flatten([for api in var.api_gateway_resources : api.vpc_links != null ? api.vpc_links : []]) : api.name => api }
+  for_each = { for link in flatten([for api in var.api_gateway_resources : api.vpc_links != null ? api.vpc_links : []]) : link.name => link }
   manifest = {
     apiVersion = "apigatewayv2.services.k8s.aws/v1alpha1"
     kind       = "VPCLink"
     metadata = {
       name      = each.value.name
-      namespace = lookup(each.value, "namespace", "default")
+      namespace = each.value.namespace != null ? each.value.namespace : "default"
     }
     spec = {
       name             = each.value.name

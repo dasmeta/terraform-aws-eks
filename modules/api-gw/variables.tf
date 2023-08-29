@@ -35,6 +35,7 @@ variable "api_gateway_resources" {
       protocolType = string
     })
     stages = optional(list(object({
+      namespace   = string
       name        = string
       apiRef_name = string
       stageName   = string
@@ -42,7 +43,8 @@ variable "api_gateway_resources" {
       description = string
     })))
     vpc_links = optional(list(object({
-      name = string
+      namespace = string
+      name      = string
     })))
   }))
 }
