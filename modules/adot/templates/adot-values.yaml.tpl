@@ -24,7 +24,7 @@ adotCollector:
         health_check: {}
       receivers:
         awscontainerinsightreceiver:
-          collection_interval: 61s
+          collection_interval: 10s
           container_orchestrator: eks
         otlp:
           protocols:
@@ -155,13 +155,6 @@ adotCollector:
           parse_json_encoded_attr_values: [Sources, kubernetes]
           metric_declarations:
           # node metrics
-          - dimensions: [[PodName, Namespace, ClusterName]]
-            metric_name_selectors:
-              - pod_number_of_container_restarts
-              - pod_cpu_utilization
-              - pod_memory_utilization
-              - pod_network_tx_bytes
-              - pod_network_rx_bytes
           - dimensions: [[ClusterName]]
             metric_name_selectors:
               - node_cpu_utilization
@@ -195,6 +188,14 @@ adotCollector:
           - dimensions: [[PodName, Namespace, ClusterName]]
             metric_name_selectors:
               - pod_number_of_container_restarts
+              - pod_cpu_utilization
+              - pod_memory_utilization
+              - pod_network_tx_bytes
+              - pod_network_rx_bytes
+              - pod_cpu_usage_total
+          - dimensions: [[PodName, Namespace, ClusterName]]
+            metric_name_selectors:
+              - pod_number_of_container_restarts
               - container_cpu_limit
               - container_cpu_request
               - container_cpu_utilization
@@ -204,6 +205,8 @@ adotCollector:
               - container_memory_working_set
               - pod_cpu_limit
               - pod_memory_limit
+              - pod_cpu_usage_total
+              - pod_memory_working_set
 
           # cluster metrics
           - dimensions: [[ClusterName]]
