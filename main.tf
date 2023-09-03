@@ -184,7 +184,7 @@
  **/
 module "vpc" {
   source  = "dasmeta/vpc/aws"
-  version = "1.0.0"
+  version = "1.0.1"
 
   count = try(var.vpc.create.name) != null ? 1 : 0
 

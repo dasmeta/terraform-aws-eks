@@ -360,3 +360,14 @@ variable "api_gw_deploy_region" {
   type        = string
   default     = ""
 }
+
+variable "enable_node_problem_detector" {
+  type    = bool
+  default = true
+}
+
+variable "enable_olm" {
+  type        = bool
+  default     = false
+  description = "To install OLM controller (experimental)."
+}
