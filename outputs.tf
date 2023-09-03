@@ -87,7 +87,8 @@ output "role_arns_without_path" {
 }
 
 output "eks_auth_configmap" {
-  value = try(module.sso-rbac[0].config_yaml, "")
+  value     = try(module.sso-rbac[0].config_yaml, "")
+  sensitive = true
 }
 
 output "eks_module" {
