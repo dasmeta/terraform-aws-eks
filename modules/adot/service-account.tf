@@ -17,7 +17,8 @@ resource "kubernetes_namespace" "this" {
 
 resource "kubernetes_secret" "example" {
   metadata {
-    name = "adot"
+    name      = "adot-collector"
+    namespace = "adot"
   }
 }
 
