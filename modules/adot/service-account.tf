@@ -15,6 +15,12 @@ resource "kubernetes_namespace" "this" {
   }
 }
 
+resource "kubernetes_secret" "example" {
+  metadata {
+    name = "adot"
+  }
+}
+
 resource "kubernetes_service_account" "adot-collector" {
   metadata {
     name      = local.service_account_name
@@ -23,4 +29,9 @@ resource "kubernetes_service_account" "adot-collector" {
       "eks.amazonaws.com/role-arn" = aws_iam_role.adot_collector.arn
     }
   }
+
+  secret {
+    name = kubernetes_secret.example.metadata.0.name
+  }
+
 }
