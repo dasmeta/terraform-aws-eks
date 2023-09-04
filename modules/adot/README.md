@@ -38,7 +38,7 @@ module "adot" {
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 4.7.0 |
 | <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.0 |
 | <a name="requirement_kubectl"></a> [kubectl](#requirement\_kubectl) | ~>1.14 |
-| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | ~>2.12 |
+| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | ~>2.18 |
 
 ## Providers
 
@@ -47,7 +47,7 @@ module "adot" {
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 4.7.0 |
 | <a name="provider_helm"></a> [helm](#provider\_helm) | >= 2.0 |
 | <a name="provider_kubectl"></a> [kubectl](#provider\_kubectl) | ~>1.14 |
-| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | ~>2.12 |
+| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | ~>2.18 |
 
 ## Modules
 
