@@ -16,7 +16,7 @@ variable "oidc_provider_arn" {
 variable "adot_version" {
   description = "The version of the AWS Distro for OpenTelemetry addon to use."
   type        = string
-  default     = "v0.66.0-eksbuild.1"
+  default     = "v0.78.0-eksbuild.1"
 }
 
 variable "namespace" {

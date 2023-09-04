@@ -7,7 +7,7 @@
 |------|---------|
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 4.37 |
 | <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.0 |
-| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | 2.12.1 |
+| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | ~>2.23 |
 
 ## Providers
 

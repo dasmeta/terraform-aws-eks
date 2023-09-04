@@ -34,7 +34,7 @@ module "cluster_min" {
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | >= 1.13.4 |
+| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | ~> 2.23 |
 
 ## Providers
 

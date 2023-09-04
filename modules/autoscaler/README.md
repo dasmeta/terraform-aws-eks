@@ -47,14 +47,14 @@ module "eks" {
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | ~> 2.12 |
+| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | ~>2.23 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | n/a |
-| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | ~> 2.12 |
+| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | ~>2.23 |
 
 ## Modules
 
