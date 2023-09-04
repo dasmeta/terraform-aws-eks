@@ -323,6 +323,7 @@ module "adot" {
   adot_config                 = var.adot_config
   region                      = local.region
   depends_on = [
+    module.eks-cluster,
     helm_release.cert-manager
   ]
 }
@@ -340,6 +341,10 @@ resource "helm_release" "cert-manager" {
     name  = "installCRDs"
     value = "true"
   }
+
+  depends_on = [
+    module.eks-cluster
+  ]
 }
 
 resource "helm_release" "kube-state-metrics" {
