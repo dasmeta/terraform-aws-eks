@@ -321,6 +321,7 @@ module "adot" {
   eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
   oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
   adot_config                 = var.adot_config
+  adot_version                = var.adot_version
   region                      = local.region
   depends_on = [
     module.eks-cluster,

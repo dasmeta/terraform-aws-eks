@@ -271,6 +271,12 @@ variable "adot_config" {
   }
 }
 
+variable "adot_version" {
+  description = "The version of the AWS Distro for OpenTelemetry addon to use."
+  type        = string
+  default     = "v0.66.0-eksbuild.1"
+}
+
 variable "enable_kube_state_metrics" {
   type        = bool
   default     = false
