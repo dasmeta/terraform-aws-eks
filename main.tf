@@ -326,6 +326,7 @@ module "adot" {
     module.eks-cluster,
     helm_release.cert-manager
   ]
+  providers = { "aws" : "aws", "kubernetes" : "kubernetes", "kubectl" = "kubectl" }
 }
 
 resource "helm_release" "cert-manager" {
