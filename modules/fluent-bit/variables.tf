@@ -66,3 +66,9 @@ variable "values_yaml" {
   default     = null
   type        = string
 }
+
+variable "s3_permission" {
+  description = "If you want send logs to s3 you should enable s3 permission"
+  default     = false
+  type        = bool
+}

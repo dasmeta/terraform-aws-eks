@@ -184,7 +184,7 @@
  **/
 module "vpc" {
   source  = "dasmeta/vpc/aws"
-  version = "1.0.0"
+  version = "1.0.1"
 
   count = try(var.vpc.create.name) != null ? 1 : 0
 
@@ -321,8 +321,10 @@ module "adot" {
   eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
   oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
   adot_config                 = var.adot_config
+  adot_version                = var.adot_version
   region                      = local.region
   depends_on = [
+    module.eks-cluster,
     helm_release.cert-manager
   ]
 }
@@ -340,6 +342,10 @@ resource "helm_release" "cert-manager" {
     name  = "installCRDs"
     value = "true"
   }
+
+  depends_on = [
+    module.eks-cluster
+  ]
 }
 
 resource "helm_release" "kube-state-metrics" {

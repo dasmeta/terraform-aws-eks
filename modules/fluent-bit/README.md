@@ -18,7 +18,7 @@ module "fluent-bit" {
 |------|---------|
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 4.0 |
 | <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.0 |
-| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | 2.12.1 |
+| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | ~>2.23 |
 
 ## Providers
 
@@ -26,7 +26,7 @@ module "fluent-bit" {
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 4.0 |
 | <a name="provider_helm"></a> [helm](#provider\_helm) | >= 2.0 |
-| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | 2.12.1 |
+| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | ~>2.23 |
 
 ## Modules
 
@@ -40,7 +40,7 @@ No modules.
 | [aws_iam_role.fluent-bit](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role_policy_attachment.CloudWatchAgentServerPolicy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [helm_release.fluent-bit](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
-| [kubernetes_namespace.namespace](https://registry.terraform.io/providers/hashicorp/kubernetes/2.12.1/docs/resources/namespace) | resource |
+| [kubernetes_namespace.namespace](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/namespace) | resource |
 
 ## Inputs
 
@@ -57,6 +57,7 @@ No modules.
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | k8s namespace fluent-bit should be deployed into. | `string` | `"kube-system"` | no |
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | n/a | `string` | n/a | yes |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region name. | `string` | n/a | yes |
+| <a name="input_s3_permission"></a> [s3\_permission](#input\_s3\_permission) | If you want send logs to s3 you should enable s3 permission | `bool` | `false` | no |
 | <a name="input_values_yaml"></a> [values\_yaml](#input\_values\_yaml) | Content of the values.yaml given to the helm chart. This disables the rendered values.yaml file from this module. | `string` | `null` | no |
 
 ## Outputs

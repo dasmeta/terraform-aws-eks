@@ -1,0 +1,29 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+      {
+          "Effect": "Allow",
+          "Action": [
+              "cloudwatch:PutMetricData",
+              "ec2:DescribeVolumes",
+              "ec2:DescribeTags",
+              "logs:PutLogEvents",
+              "logs:DescribeLogStreams",
+              "logs:DescribeLogGroups",
+              "logs:CreateLogStream",
+              "logs:CreateLogGroup",
+              "s3:PutObject",
+              "s3:PutObjectAcl",
+              "s3:ListBucket"
+          ],
+          "Resource": "*"
+      },
+      {
+          "Effect": "Allow",
+          "Action": [
+              "ssm:GetParameter"
+          ],
+          "Resource": "arn:aws:ssm:*:*:parameter/AmazonCloudWatch-*"
+      }
+  ]
+}

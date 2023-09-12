@@ -148,7 +148,7 @@ variable "cluster_enabled_log_types" {
 variable "cluster_version" {
   description = "Allows to set/change kubernetes cluster version, kubernetes version needs to be updated at leas once a year. Please check here for available versions https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html"
   type        = string
-  default     = "1.23"
+  default     = "1.27"
 }
 
 variable "map_roles" {
@@ -271,6 +271,12 @@ variable "adot_config" {
   }
 }
 
+variable "adot_version" {
+  description = "The version of the AWS Distro for OpenTelemetry addon to use."
+  type        = string
+  default     = "v0.78.0-eksbuild.1"
+}
+
 variable "enable_kube_state_metrics" {
   type        = bool
   default     = false
@@ -382,4 +388,14 @@ variable "api_gateway_resources" {
       namespace = string
     })))
   }))
+}
+variable "enable_node_problem_detector" {
+  type    = bool
+  default = true
+}
+
+variable "enable_olm" {
+  type        = bool
+  default     = false
+  description = "To install OLM controller (experimental)."
 }
