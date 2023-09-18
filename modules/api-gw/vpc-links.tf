@@ -1,7 +1,7 @@
 data "aws_region" "this" {}
 
 data "aws_subnet" "selected" {
-  count = length(local.subnet_ids)
+  count = var.api_gateway_resources[0].vpc_links != null ? length(local.subnet_ids) : 0
   id    = local.subnet_ids[count.index]
 }
 
@@ -17,13 +17,14 @@ resource "kubernetes_manifest" "vpc_link" {
     }
     spec = {
       name             = each.value.name
-      securityGroupIDs = [aws_security_group.api-gw-sg.id]
+      securityGroupIDs = [aws_security_group.api-gw-sg[0].id]
       subnetIDs        = var.subnet_ids
     }
   }
 }
 
 resource "aws_security_group" "api-gw-sg" {
+  count       = var.api_gateway_resources[0].vpc_links != null ? 1 : 0
   vpc_id      = var.vpc_id
   name        = "aws-api-gw-${var.cluster_name}-${data.aws_region.this.name}-sg"
   description = "Allow traffic from EKS to API gateway"
