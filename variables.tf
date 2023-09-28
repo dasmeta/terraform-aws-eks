@@ -268,6 +268,7 @@ variable "adot_config" {
   default = {
     accepte_namespace_regex = "(default|kube-system)"
     additional_metrics      = {}
+    log_group_name          = "adot_log_group"
   }
 }
 

@@ -324,7 +324,6 @@ module "adot" {
   adot_version                = var.adot_version
   prometheus_metrics          = var.prometheus_metrics
   region                      = local.region
-  adot_log_group_name         = var.log_group_name
   depends_on = [
     module.eks-cluster,
     helm_release.cert-manager
