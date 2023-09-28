@@ -323,6 +323,7 @@ module "adot" {
   adot_config                 = var.adot_config
   adot_version                = var.adot_version
   region                      = local.region
+  adot_log_group_name         = var.log_group_name
   depends_on = [
     module.eks-cluster,
     helm_release.cert-manager

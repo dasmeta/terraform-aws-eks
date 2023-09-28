@@ -268,6 +268,7 @@ variable "adot_config" {
   default = {
     accepte_namespace_regex = "(default|kube-system)"
     additional_metrics      = {}
+    prometheus_metrics      = "{kube_deployment_spec_replicas, kube_deployment_status_replicas_available}"
   }
 }
 
@@ -376,10 +377,4 @@ variable "enable_olm" {
   type        = bool
   default     = false
   description = "To install OLM controller (experimental)."
-}
-
-variable "prometheus_metrics" {
-  description = "Prometheus Metrics"
-  type        = any
-  default     = {}
 }
