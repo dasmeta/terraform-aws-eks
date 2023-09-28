@@ -322,6 +322,7 @@ module "adot" {
   oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
   adot_config                 = var.adot_config
   adot_version                = var.adot_version
+  prometheus_metrics          = var.prometheus_metrics
   region                      = local.region
   adot_log_group_name         = var.log_group_name
   depends_on = [
