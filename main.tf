@@ -362,7 +362,7 @@ resource "helm_release" "kube-state-metrics" {
   atomic           = true
   set {
     name  = "metricAllowlist"
-    value = join(",", var.prometheus_metrics)
+    value = "{${join(",", var.prometheus_metrics)}}"
   }
 }
 
