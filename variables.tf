@@ -377,3 +377,9 @@ variable "enable_olm" {
   default     = false
   description = "To install OLM controller (experimental)."
 }
+
+variable "prometheus_metrics" {
+  description = "Prometheus Metrics"
+  type        = any
+  default     = {}
+}

@@ -358,6 +358,10 @@ resource "helm_release" "kube-state-metrics" {
   version          = "4.22.3"
   create_namespace = false
   atomic           = true
+  set {
+    name  = "metricAllowlist"
+    value = var.prometheus_metrics
+  }
 }
 
 module "autoscaler" {
