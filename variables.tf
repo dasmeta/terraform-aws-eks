@@ -381,5 +381,5 @@ variable "enable_olm" {
 variable "prometheus_metrics" {
   description = "Prometheus Metrics"
   type        = any
-  default     = "{kube_deployment_spec_replicas, kube_deployment_status_replicas_available}"
+  default     = []
 }
