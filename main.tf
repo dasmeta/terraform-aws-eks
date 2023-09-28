@@ -360,9 +360,9 @@ resource "helm_release" "kube-state-metrics" {
   version          = "4.22.3"
   create_namespace = false
   atomic           = true
-  set {
+  set_list {
     name  = "metricAllowlist"
-    value = "{${join(",", var.prometheus_metrics)}}"
+    value = var.prometheus_metrics
   }
 }
 
