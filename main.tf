@@ -322,6 +322,7 @@ module "adot" {
   oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
   adot_config                 = var.adot_config
   adot_version                = var.adot_version
+  prometheus_metrics          = var.prometheus_metrics
   region                      = local.region
   depends_on = [
     module.eks-cluster,
@@ -358,6 +359,10 @@ resource "helm_release" "kube-state-metrics" {
   version          = "4.22.3"
   create_namespace = false
   atomic           = true
+  set_list {
+    name  = "metricAllowlist"
+    value = var.prometheus_metrics
+  }
 }
 
 module "autoscaler" {

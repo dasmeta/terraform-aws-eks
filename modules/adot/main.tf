@@ -24,7 +24,7 @@ resource "helm_release" "adot-collector" {
       region                     = local.region
       cluster_name               = var.cluster_name
       accept_namespace_regex     = var.adot_config.accept_namespace_regex
-      log_group_name             = var.adot_log_group_name
+      log_group_name             = var.adot_config.log_group_name
       metrics                    = local.merged_metrics
       metrics_namespace_specific = local.merged_namespace_specific
       prometheus_metrics         = var.prometheus_metrics

@@ -133,9 +133,9 @@ adotCollector:
               - Deployment
             metric_name_selectors:
             - kube_deployment_spec_replicas
-%{ for key,value in prometheus_metrics }
-          - dimensions: ${key}
-            metric_name_selectors: ${jsonencode(value)}
+            - kube_deployment_status_replicas_available
+%{ for value in prometheus_metrics }
+            - ${value}
 %{ endfor ~}
           namespace: ContainerInsights
           parse_json_encoded_attr_values:

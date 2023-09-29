@@ -266,8 +266,9 @@ variable "metrics_exporter" {
 variable "adot_config" {
   type = any
   default = {
-    accepte_namespace_regex = "(default|kube-system)"
-    additional_metrics      = {}
+    accept_namespace_regex = "(default|kube-system)"
+    additional_metrics     = {}
+    log_group_name         = "adot_log_group"
   }
 }
 
@@ -376,4 +377,10 @@ variable "enable_olm" {
   type        = bool
   default     = false
   description = "To install OLM controller (experimental)."
+}
+
+variable "prometheus_metrics" {
+  description = "Prometheus Metrics"
+  type        = any
+  default     = []
 }
