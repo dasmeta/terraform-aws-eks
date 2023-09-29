@@ -266,9 +266,9 @@ variable "metrics_exporter" {
 variable "adot_config" {
   type = any
   default = {
-    accepte_namespace_regex = "(default|kube-system)"
-    additional_metrics      = {}
-    log_group_name          = "adot_log_group"
+    accept_namespace_regex = "(default|kube-system)"
+    additional_metrics     = {}
+    log_group_name         = "adot_log_group"
   }
 }
 

@@ -231,7 +231,7 @@ worker_groups = {
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | AWS Account Id to apply changes into | `string` | `null` | no |
-| <a name="input_adot_config"></a> [adot\_config](#input\_adot\_config) | n/a | `any` | <pre>{<br>  "accepte_namespace_regex": "(default|kube-system)",<br>  "additional_metrics": {},<br>  "log_group_name": "adot_log_group"<br>}</pre> | no |
+| <a name="input_adot_config"></a> [adot\_config](#input\_adot\_config) | n/a | `any` | <pre>{<br>  "accept_namespace_regex": "(default|kube-system)",<br>  "additional_metrics": {},<br>  "log_group_name": "adot_log_group"<br>}</pre> | no |
 | <a name="input_adot_version"></a> [adot\_version](#input\_adot\_version) | The version of the AWS Distro for OpenTelemetry addon to use. | `string` | `"v0.78.0-eksbuild.1"` | no |
 | <a name="input_alb_log_bucket_name"></a> [alb\_log\_bucket\_name](#input\_alb\_log\_bucket\_name) | n/a | `string` | `""` | no |
 | <a name="input_alb_log_bucket_path"></a> [alb\_log\_bucket\_path](#input\_alb\_log\_bucket\_path) | ALB-INGRESS-CONTROLLER | `string` | `""` | no |
