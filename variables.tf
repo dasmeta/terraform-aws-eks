@@ -382,5 +382,6 @@ variable "enable_olm" {
 variable "prometheus_metrics" {
   description = "Prometheus Metrics"
   type        = any
-  default     = []
+  # default     =
+  default = {}
 }

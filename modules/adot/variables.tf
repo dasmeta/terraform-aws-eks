@@ -55,7 +55,8 @@ variable "region" {
 variable "prometheus_metrics" {
   description = "Prometheus Metrics"
   type        = any
-  default     = []
+  # default     = []
+  default = {}
 }
 
 variable "adot_log_group_name" {
