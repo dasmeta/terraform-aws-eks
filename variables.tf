@@ -370,6 +370,7 @@ variable "api_gw_deploy_region" {
 
 variable "api_gateway_resources" {
   description = "Nested map containing API, Stage, and VPC Link resources"
+  default     = []
   type = list(object({
     namespace = string
     api = object({
