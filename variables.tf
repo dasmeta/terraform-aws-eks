@@ -266,8 +266,9 @@ variable "metrics_exporter" {
 variable "adot_config" {
   type = any
   default = {
-    accepte_namespace_regex = "(default|kube-system)"
-    additional_metrics      = {}
+    accept_namespace_regex = "(default|kube-system)"
+    additional_metrics     = {}
+    log_group_name         = "adot_log_group"
   }
 }
 
@@ -367,6 +368,28 @@ variable "api_gw_deploy_region" {
   default     = ""
 }
 
+variable "api_gateway_resources" {
+  description = "Nested map containing API, Stage, and VPC Link resources"
+  type = list(object({
+    namespace = string
+    api = object({
+      name         = string
+      protocolType = string
+    })
+    stages = optional(list(object({
+      name        = string
+      namespace   = string
+      apiRef_name = string
+      stageName   = string
+      autoDeploy  = bool
+      description = string
+    })))
+    vpc_links = optional(list(object({
+      name      = string
+      namespace = string
+    })))
+  }))
+}
 variable "enable_node_problem_detector" {
   type    = bool
   default = true
@@ -376,4 +399,10 @@ variable "enable_olm" {
   type        = bool
   default     = false
   description = "To install OLM controller (experimental)."
+}
+
+variable "prometheus_metrics" {
+  description = "Prometheus Metrics"
+  type        = any
+  default     = []
 }

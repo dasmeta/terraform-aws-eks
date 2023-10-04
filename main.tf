@@ -322,6 +322,7 @@ module "adot" {
   oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
   adot_config                 = var.adot_config
   adot_version                = var.adot_version
+  prometheus_metrics          = var.prometheus_metrics
   region                      = local.region
   depends_on = [
     module.eks-cluster,
@@ -358,6 +359,10 @@ resource "helm_release" "kube-state-metrics" {
   version          = "4.22.3"
   create_namespace = false
   atomic           = true
+  set_list {
+    name  = "metricAllowlist"
+    value = var.prometheus_metrics
+  }
 }
 
 module "autoscaler" {
@@ -390,4 +395,8 @@ module "api-gw-controller" {
   cluster_name     = var.cluster_name
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
   deploy_region    = var.api_gw_deploy_region
+
+  api_gateway_resources = var.api_gateway_resources
+  vpc_id                = var.api_gateway_resources[0].vpc_links != null ? module.vpc[0].id : null
+  subnet_ids            = var.api_gateway_resources[0].vpc_links != null ? (var.vpc.create.private_subnets != {} ? module.vpc[0].private_subnets : var.vpc.link.private_subnet_ids) : null
 }
