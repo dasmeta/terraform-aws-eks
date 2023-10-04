@@ -25,7 +25,7 @@ config:
     [FILTER]
         Name          grep
         Match         kube.*
-        Exclude       kubernetes.namespace_name ${drop_namespaces}
+        Exclude       $kubernetes['namespace_name'] ${drop_namespaces}
 
     [FILTER]
         Name kubernetes
