@@ -18,6 +18,14 @@ config:
   ## https://docs.fluentbit.io/manual/pipeline/filters
   filters: |
     [FILTER]
+      Name kubernetes
+      Match kube.*
+      Merge_Log On
+      Keep_Log Off
+      K8S-Logging.Parser On
+      K8S-Logging.Exclude On
+
+    [FILTER]
         Name          grep
         Match         *
         Exclude       $log (ELB-HealthChecker|Amazon-Route53-Health-Check-Service|Health)
@@ -26,14 +34,6 @@ config:
         Name          grep
         Match         kube.*
         Exclude       $kubernetes['namespace_name'] ${drop_namespaces}
-
-    [FILTER]
-        Name kubernetes
-        Match kube.*
-        Merge_Log On
-        Keep_Log Off
-        K8S-Logging.Parser On
-        K8S-Logging.Exclude On
 
   outputs: |
     [OUTPUT]
