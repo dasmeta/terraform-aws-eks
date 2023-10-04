@@ -15,6 +15,18 @@ config:
         Systemd_Filter _SYSTEMD_UNIT=kubelet.service
         Read_From_Tail On
 
+  ## https://docs.fluentbit.io/manual/pipeline/filters
+  filters: |
+    [FILTER]
+        Name          grep
+        Match         *
+        Exclude       $log (ELB-HealthChecker|Amazon-Route53-Health-Check-Service|Health)
+
+    [FILTER]
+        Name          grep
+        Match         kube.*
+        Exclude       kubernetes.namespace_name ${drop_namespaces}
+
   outputs: |
     [OUTPUT]
         Name cloudwatch_logs

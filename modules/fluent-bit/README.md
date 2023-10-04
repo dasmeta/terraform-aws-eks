@@ -50,6 +50,7 @@ No modules.
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | AWS EKS Cluster name. | `string` | n/a | yes |
 | <a name="input_create_log_group"></a> [create\_log\_group](#input\_create\_log\_group) | Wether or no to create log group. | `bool` | `true` | no |
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | Wether or no to create namespace. | `bool` | `false` | no |
+| <a name="input_drop_namespaces"></a> [drop\_namespaces](#input\_drop\_namespaces) | Flunt bit doesn't send logs for this namespace | `string` | `"(kube-system|opentelemetry-operator-system|adot|cert-manager)"` | no |
 | <a name="input_eks_oidc_root_ca_thumbprint"></a> [eks\_oidc\_root\_ca\_thumbprint](#input\_eks\_oidc\_root\_ca\_thumbprint) | n/a | `string` | n/a | yes |
 | <a name="input_fluent_bit_name"></a> [fluent\_bit\_name](#input\_fluent\_bit\_name) | Container resource name. | `string` | `"fluent-bit"` | no |
 | <a name="input_log_group_name"></a> [log\_group\_name](#input\_log\_group\_name) | Log group name fluent-bit will be streaming logs into. | `string` | `"fluentbit-default-log-group"` | no |

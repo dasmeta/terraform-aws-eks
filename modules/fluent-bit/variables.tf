@@ -72,3 +72,9 @@ variable "s3_permission" {
   default     = false
   type        = bool
 }
+
+variable "drop_namespaces" {
+  type        = string
+  default     = "(kube-system|opentelemetry-operator-system|adot|cert-manager)"
+  description = "Flunt bit doesn't send logs for this namespace"
+}
