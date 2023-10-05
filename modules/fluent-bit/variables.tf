@@ -73,6 +73,16 @@ variable "values_yaml" {
   type        = string
 }
 
+variable "fluent_bit_config" {
+  description = "Content of the values.yaml given to the helm chart. This disables the rendered values.yaml file from this module."
+  default = {
+    inputs  = ""
+    outputs = ""
+    filters = ""
+  }
+  type = any
+}
+
 variable "s3_permission" {
   description = "If you want send logs to s3 you should enable s3 permission"
   default     = false

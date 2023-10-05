@@ -17,6 +17,8 @@ config:
         Systemd_Filter _SYSTEMD_UNIT=kubelet.service
         Read_From_Tail On
 
+    ${indent(4, inputs)}
+
   ## https://docs.fluentbit.io/manual/pipeline/filters
   filters: |
     [FILTER]
@@ -42,6 +44,7 @@ config:
         Match         kube.*
         Exclude       $kubernetes['namespace_name'] ${drop_namespaces}
 
+    ${indent(4, filters)}
   outputs: |
     [OUTPUT]
         Name cloudwatch_logs
@@ -60,3 +63,5 @@ config:
         log_stream_prefix from-fluent-bit-
         auto_create_group ${auto_create_group}
         log_retention_days ${log_retention_days}
+
+    ${indent(4, outputs)}

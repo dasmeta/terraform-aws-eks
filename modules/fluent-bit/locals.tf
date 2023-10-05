@@ -11,7 +11,10 @@ locals {
     drop_namespaces        = "(${join("|", var.drop_namespaces)})"
     log_filters            = "(${join("|", var.log_filters)})"
     additional_log_filters = "(${join("|", var.additional_log_filters)})"
+    inputs                 = try(var.fluent_bit_config.inputs, "")
+    outputs                = try(var.fluent_bit_config.outputs, "")
+    filters                = try(var.fluent_bit_config.filters, "")
   }
-  values        = templatefile("${path.module}/values.yaml", local.config_settings)
-  merged_values = "${local.values}${var.values_yaml}"
+
+  values = templatefile("${path.module}/values.yaml.tpl", local.config_settings)
 }
