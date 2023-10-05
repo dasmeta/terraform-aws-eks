@@ -2,12 +2,14 @@ config:
   ## https://docs.fluentbit.io/manual/pipeline/inputs
   inputs: |
     [INPUT]
-        Name tail
-        Path /var/log/containers/*.log
-        multiline.parser docker, cri
-        Tag kube.*
-        Mem_Buf_Limit 5MB
-        Skip_Long_Lines On
+        Name               tail
+        Tag                kube.*
+        Path               /var/log/containers/*.log
+        Read_from_head     true
+        multiline.parser   docker, cri
+        Docker_Mode        On
+        Parser             docker
+        Mem_Buf_Limit      50MB
 
     [INPUT]
         Name systemd
