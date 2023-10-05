@@ -113,9 +113,52 @@ variable "log_group_name" {
   default = ""
 }
 
+variable "system_log_group_name" {
+  type        = string
+  default     = ""
+  description = "Log group name fluent-bit will be streaming kube-system logs."
+}
+
 variable "log_retention_days" {
   type    = number
   default = 90
+}
+
+variable "values_yaml" {
+  description = "Content of the values.yaml given to the helm chart. This disables the rendered values.yaml file from this module."
+  default     = null
+  type        = string
+}
+
+variable "drop_namespaces" {
+  type = list(string)
+  default = [
+    "kube-system",
+    "opentelemetry-operator-system",
+    "adot",
+    "cert-manager"
+  ]
+  description = "Flunt bit doesn't send logs for this namespaces"
+}
+
+variable "log_filters" {
+  type = list(string)
+  default = [
+    "kube-probe",
+    "health",
+    "prometheus",
+    "liveness"
+  ]
+  description = "Fluent bit doesn't send logs if message consists of this values"
+}
+
+variable "additional_log_filters" {
+  type = list(string)
+  default = [
+    "ELB-HealthChecker",
+    "Amazon-Route53-Health-Check-Service",
+  ]
+  description = "Fluent bit doesn't send logs if message consists of this values"
 }
 
 # METRICS-SERVER
