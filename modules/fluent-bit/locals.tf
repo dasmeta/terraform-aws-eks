@@ -12,5 +12,6 @@ locals {
     log_filters            = "(${join("|", var.log_filters)})"
     additional_log_filters = "(${join("|", var.additional_log_filters)})"
   }
-  values = templatefile("${path.module}/values.yaml", local.config_settings)
+  values        = templatefile("${path.module}/values.yaml", local.config_settings)
+  merged_values = "${local.values}${var.values_yaml}"
 }

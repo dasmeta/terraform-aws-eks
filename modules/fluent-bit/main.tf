@@ -20,7 +20,7 @@ resource "helm_release" "fluent-bit" {
   version    = "0.30.3"
   namespace  = var.namespace
 
-  values = var.values_yaml == null ? [local.values] : [local.values, var.values_yaml]
+  values = var.values_yaml == null ? [local.values] : [local.merged_values]
 
   set {
     name  = "clusterName"
