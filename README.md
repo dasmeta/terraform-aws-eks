@@ -261,6 +261,7 @@ worker_groups = {
 | <a name="input_enable_olm"></a> [enable\_olm](#input\_enable\_olm) | To install OLM controller (experimental). | `bool` | `false` | no |
 | <a name="input_enable_sso_rbac"></a> [enable\_sso\_rbac](#input\_enable\_sso\_rbac) | Enable SSO RBAC integration or not | `bool` | `false` | no |
 | <a name="input_external_secrets_namespace"></a> [external\_secrets\_namespace](#input\_external\_secrets\_namespace) | The namespace of external-secret operator | `string` | `"kube-system"` | no |
+| <a name="input_fluent_bit_config"></a> [fluent\_bit\_config](#input\_fluent\_bit\_config) | Content of the values.yaml given to the helm chart. This disables the rendered values.yaml file from this module. | `any` | <pre>{<br>  "filters": "",<br>  "inputs": "",<br>  "outputs": ""<br>}</pre> | no |
 | <a name="input_fluent_bit_name"></a> [fluent\_bit\_name](#input\_fluent\_bit\_name) | FLUENT-BIT | `string` | `""` | no |
 | <a name="input_log_filters"></a> [log\_filters](#input\_log\_filters) | Fluent bit doesn't send logs if message consists of this values | `list(string)` | <pre>[<br>  "kube-probe",<br>  "health",<br>  "prometheus",<br>  "liveness"<br>]</pre> | no |
 | <a name="input_log_group_name"></a> [log\_group\_name](#input\_log\_group\_name) | n/a | `string` | `""` | no |
