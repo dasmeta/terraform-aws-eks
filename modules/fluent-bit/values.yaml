@@ -29,8 +29,13 @@ config:
 
     [FILTER]
         Name          grep
-        Match         *
-        Exclude       $log (ELB-HealthChecker|Amazon-Route53-Health-Check-Service|Health)
+        Match         app.*
+        Exclude       $message ${log_filters}
+
+    [FILTER]
+        Name          grep
+        Match         app.*
+        Exclude       $message ${additional_log_filters}
 
     [FILTER]
         Name          grep
@@ -43,6 +48,15 @@ config:
         Match   *
         region ${region}
         log_group_name ${log_group_name}
+        log_stream_prefix from-fluent-bit-
+        auto_create_group ${auto_create_group}
+        log_retention_days ${log_retention_days}
+
+    [OUTPUT]
+        Name cloudwatch_logs
+        Match  kube.*
+        region ${region}
+        log_group_name ${system_log_group_name}
         log_stream_prefix from-fluent-bit-
         auto_create_group ${auto_create_group}
         log_retention_days ${log_retention_days}

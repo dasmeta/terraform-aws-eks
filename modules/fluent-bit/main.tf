@@ -21,7 +21,8 @@ resource "helm_release" "fluent-bit" {
   namespace  = var.namespace
 
   values = [
-    local.values
+    local.values,
+    var.values_yaml
   ]
 
   set {

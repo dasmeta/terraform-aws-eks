@@ -45,6 +45,12 @@ variable "log_group_name" {
   description = "Log group name fluent-bit will be streaming logs into."
 }
 
+variable "system_log_group_name" {
+  type        = string
+  default     = ""
+  description = "Log group name fluent-bit will be streaming kube-system logs."
+}
+
 variable "create_log_group" {
   type        = bool
   default     = true
@@ -74,7 +80,32 @@ variable "s3_permission" {
 }
 
 variable "drop_namespaces" {
-  type        = string
-  default     = "(kube-system|opentelemetry-operator-system|adot|cert-manager)"
-  description = "Flunt bit doesn't send logs for this namespace"
+  type = list(string)
+  default = [
+    "kube-system",
+    "opentelemetry-operator-system",
+    "adot",
+    "cert-manager"
+  ]
+  description = "Flunt bit doesn't send logs for this namespaces"
+}
+
+variable "log_filters" {
+  type = list(string)
+  default = [
+    "kube-probe",
+    "health",
+    "prometheus",
+    "liveness"
+  ]
+  description = "Fluent bit doesn't send logs if message consists of this values"
+}
+
+variable "additional_log_filters" {
+  type = list(string)
+  default = [
+    "ELB-HealthChecker",
+    "Amazon-Route53-Health-Check-Service",
+  ]
+  description = "Fluent bit doesn't send logs if message consists of this values"
 }

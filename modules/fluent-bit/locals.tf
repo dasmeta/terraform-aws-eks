@@ -3,11 +3,14 @@ locals {
   log_group_name = var.log_group_name != "" ? var.log_group_name : "fluent-bit-cloudwatch"
   region         = var.region
   config_settings = {
-    log_group_name     = local.log_group_name,
-    region             = local.region,
-    log_retention_days = var.log_retention_days
-    auto_create_group  = var.create_log_group ? "On" : "Off"
-    drop_namespaces    = var.drop_namespaces
+    log_group_name         = local.log_group_name
+    system_log_group_name  = var.system_log_group_name == "" ? "${local.log_group_name}-kube" : "${var.system_log_group_name}"
+    region                 = local.region
+    log_retention_days     = var.log_retention_days
+    auto_create_group      = var.create_log_group ? "On" : "Off"
+    drop_namespaces        = "(${join("|", var.drop_namespaces)})"
+    log_filters            = "(${join("|", var.log_filters)})"
+    additional_log_filters = "(${join("|", var.additional_log_filters)})"
   }
-  values = var.values_yaml == null ? templatefile("${path.module}/values.yaml", local.config_settings) : var.values_yaml
+  values = templatefile("${path.module}/values.yaml", local.config_settings)
 }
