@@ -19,4 +19,5 @@ module "fluent-bit" {
   drop_namespaces        = var.drop_namespaces
   log_filters            = var.log_filters
   additional_log_filters = var.additional_log_filters
+  fluent_bit_config      = var.fluent_bit_config
 }
