@@ -18,11 +18,6 @@ module "fluent-bit" {
   create_log_group      = true
   log_retention_days    = 7
 
-  # values_yaml = templatefile("${path.module}/templates/values.yaml.tpl", {
-  #   s3_bucket_name    = "testtesttest"
-  #   region            = "eu-central-1"
-  # })
-
   drop_namespaces = [
     "kube-system",
     "opentelemetry-operator-system",
@@ -44,11 +39,11 @@ module "fluent-bit" {
     "liveness"
   ]
 
-  # fluent_bit_config = {
-  #   inputs  = templatefile("${path.module}/templates/inputs.yaml.tpl", {})
-  #   outputs = templatefile("${path.module}/templates/outputs.yaml.tpl", {})
-  #   filters = templatefile("${path.module}/templates/filters.yaml.tpl", {})
-  # }
+  fluent_bit_config = {
+    inputs  = templatefile("${path.module}/templates/inputs.yaml.tpl", {})
+    outputs = templatefile("${path.module}/templates/outputs.yaml.tpl", {})
+    filters = templatefile("${path.module}/templates/filters.yaml.tpl", {})
+  }
 
 }
 
