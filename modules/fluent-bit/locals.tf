@@ -16,5 +16,5 @@ locals {
     filters                = try(var.fluent_bit_config.filters, "")
   }
 
-  values = templatefile("${path.module}/values.yaml.tpl", local.config_settings)
+  values = var.values_yaml == "" ? templatefile("${path.module}/values.yaml.tpl", local.config_settings) : var.values_yaml
 }

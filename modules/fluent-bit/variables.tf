@@ -68,13 +68,13 @@ variable "log_retention_days" {
 }
 
 variable "values_yaml" {
-  description = "Content of the values.yaml given to the helm chart. This disables the rendered values.yaml file from this module."
-  default     = null
+  description = "Content of the values.yaml if you want override all default configs."
+  default     = ""
   type        = string
 }
 
 variable "fluent_bit_config" {
-  description = "Content of the values.yaml given to the helm chart. This disables the rendered values.yaml file from this module."
+  description = "You can add other inputs,outputs and filters which module doesn't have by default"
   default = {
     inputs  = ""
     outputs = ""

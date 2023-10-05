@@ -126,7 +126,7 @@ variable "log_retention_days" {
 
 variable "values_yaml" {
   description = "Content of the values.yaml given to the helm chart. This disables the rendered values.yaml file from this module."
-  default     = null
+  default     = ""
   type        = string
 }
 
