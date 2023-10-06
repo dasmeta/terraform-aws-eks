@@ -103,19 +103,52 @@ variable "alb_log_bucket_name" {
 }
 
 # FLUENT-BIT
-variable "fluent_bit_name" {
-  type    = string
-  default = ""
-}
 
-variable "log_group_name" {
-  type    = string
-  default = ""
-}
-
-variable "log_retention_days" {
-  type    = number
-  default = 90
+variable "fluent_bit_configs" {
+  type = object({
+    fluent_bit_name       = optional(string, "")
+    log_group_name        = optional(string, "")
+    system_log_group_name = optional(string, "")
+    log_retention_days    = optional(number, 90)
+    values_yaml           = optional(string, "")
+    configs = optional(object({
+      inputs  = optional(string, "")
+      filters = optional(string, "")
+      outputs = optional(string, "")
+    }), {})
+    drop_namespaces        = optional(list(string), [])
+    log_filters            = optional(list(string), [])
+    additional_log_filters = optional(list(string), [])
+  })
+  default = {
+    fluent_bit_name       = ""
+    log_group_name        = ""
+    system_log_group_name = ""
+    log_retention_days    = 90
+    values_yaml           = ""
+    configs = {
+      inputs  = ""
+      outputs = ""
+      filters = ""
+    }
+    drop_namespaces = [
+      "kube-system",
+      "opentelemetry-operator-system",
+      "adot",
+      "cert-manager"
+    ]
+    log_filters = [
+      "kube-probe",
+      "health",
+      "prometheus",
+      "liveness"
+    ]
+    additional_log_filters = [
+      "ELB-HealthChecker",
+      "Amazon-Route53-Health-Check-Service",
+    ]
+  }
+  description = "Fluent Bit configs"
 }
 
 # METRICS-SERVER
@@ -142,7 +175,7 @@ variable "external_secrets_namespace" {
 variable "cluster_enabled_log_types" {
   description = "A list of the desired control plane logs to enable. For more information, see Amazon EKS Control Plane Logging documentation (https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html)"
   type        = list(string)
-  default     = ["audit"]
+  default     = []
 }
 
 variable "cluster_version" {
@@ -370,6 +403,7 @@ variable "api_gw_deploy_region" {
 
 variable "api_gateway_resources" {
   description = "Nested map containing API, Stage, and VPC Link resources"
+  default     = []
   type = list(object({
     namespace = string
     api = object({
