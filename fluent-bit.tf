@@ -10,14 +10,34 @@ module "fluent-bit" {
   eks_oidc_root_ca_thumbprint = module.eks-cluster[0].eks_oidc_root_ca_thumbprint
   oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
 
-  fluent_bit_name       = var.fluent_bit_name != "" ? var.fluent_bit_name : "${module.eks-cluster[0].cluster_id}-fluent-bit"
-  log_group_name        = var.log_group_name != "" ? var.log_group_name : "fluent-bit-cloudwatch-${module.eks-cluster[0].cluster_id}"
-  system_log_group_name = var.system_log_group_name
-  log_retention_days    = var.log_retention_days
+  fluent_bit_name       = try(var.fluent_bit_configs.fluent_bit_name, "") != "" ? var.fluent_bit_configs.fluent_bit_name : "${module.eks-cluster[0].cluster_id}-fluent-bit"
+  log_group_name        = try(var.fluent_bit_configs.log_group_name, "") != "" ? var.fluent_bit_configs.log_group_name : "fluent-bit-cloudwatch-${module.eks-cluster[0].cluster_id}"
+  system_log_group_name = try(var.fluent_bit_configs.system_log_group_name, "")
+  log_retention_days    = try(var.fluent_bit_configs.log_retention_days, 90)
 
-  values_yaml            = var.values_yaml
-  drop_namespaces        = var.drop_namespaces
-  log_filters            = var.log_filters
-  additional_log_filters = var.additional_log_filters
-  fluent_bit_config      = var.fluent_bit_config
+  values_yaml = try(var.fluent_bit_configs.values_yaml, "")
+
+  drop_namespaces = try(var.fluent_bit_configs.drop_namespaces, [
+    "kube-system",
+    "opentelemetry-operator-system",
+    "adot",
+    "cert-manager"
+  ])
+  log_filters = try(var.fluent_bit_configs.log_filters, [
+    "kube-probe",
+    "health",
+    "prometheus",
+    "liveness"
+  ])
+
+  additional_log_filters = try(var.fluent_bit_configs.additional_log_filters, [
+    "ELB-HealthChecker",
+    "Amazon-Route53-Health-Check-Service",
+  ])
+
+  fluent_bit_config = try(var.fluent_bit_configs.configs, {
+    inputs  = ""
+    outputs = ""
+    filters = ""
+  })
 }

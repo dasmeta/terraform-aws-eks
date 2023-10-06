@@ -103,73 +103,121 @@ variable "alb_log_bucket_name" {
 }
 
 # FLUENT-BIT
-variable "fluent_bit_name" {
-  type    = string
-  default = ""
-}
 
-variable "log_group_name" {
-  type    = string
-  default = ""
-}
-
-variable "system_log_group_name" {
-  type        = string
-  default     = ""
-  description = "Log group name fluent-bit will be streaming kube-system logs."
-}
-
-variable "log_retention_days" {
-  type    = number
-  default = 90
-}
-
-variable "values_yaml" {
-  description = "Content of the values.yaml given to the helm chart. This disables the rendered values.yaml file from this module."
-  default     = ""
-  type        = string
-}
-
-variable "fluent_bit_config" {
-  description = "Content of the values.yaml given to the helm chart. This disables the rendered values.yaml file from this module."
+variable "fluent_bit_configs" {
+  type = object({
+    fluent_bit_name       = optional(string, "")
+    log_group_name        = optional(string, "")
+    system_log_group_name = optional(string, "")
+    log_retention_days    = optional(number, 90)
+    values_yaml           = optional(string, "")
+    configs = optional(object({
+      inputs  = optional(string, "")
+      filters = optional(string, "")
+      outputs = optional(string, "")
+    }), {})
+    drop_namespaces        = optional(list(string), [])
+    log_filters            = optional(list(string), [])
+    additional_log_filters = optional(list(string), [])
+  })
   default = {
-    inputs  = ""
-    outputs = ""
-    filters = ""
+    fluent_bit_name       = ""
+    log_group_name        = ""
+    system_log_group_name = ""
+    log_retention_days    = 90
+    values_yaml           = ""
+    configs = {
+      inputs  = ""
+      outputs = ""
+      filters = ""
+    }
+    drop_namespaces = [
+      "kube-system",
+      "opentelemetry-operator-system",
+      "adot",
+      "cert-manager"
+    ]
+    log_filters = [
+      "kube-probe",
+      "health",
+      "prometheus",
+      "liveness"
+    ]
+    additional_log_filters = [
+      "ELB-HealthChecker",
+      "Amazon-Route53-Health-Check-Service",
+    ]
   }
-  type = any
+  description = "Fluent Bit configs"
 }
 
-variable "drop_namespaces" {
-  type = list(string)
-  default = [
-    "kube-system",
-    "opentelemetry-operator-system",
-    "adot",
-    "cert-manager"
-  ]
-  description = "Flunt bit doesn't send logs for this namespaces"
-}
+# variable "fluent_bit_name" {
+#   type    = string
+#   default = ""
+# }
 
-variable "log_filters" {
-  type = list(string)
-  default = [
-    "kube-probe",
-    "health",
-    "prometheus",
-    "liveness"
-  ]
-  description = "Fluent bit doesn't send logs if message consists of this values"
-}
+# variable "log_group_name" {
+#   type    = string
+#   default = ""
+# }
 
-variable "additional_log_filters" {
-  type = list(string)
-  default = [
-    "ELB-HealthChecker",
-    "Amazon-Route53-Health-Check-Service",
-  ]
-  description = "Fluent bit doesn't send logs if message consists of this values"
-}
+# variable "system_log_group_name" {
+#   type        = string
+#   default     = ""
+#   description = "Log group name fluent-bit will be streaming kube-system logs."
+# }
+
+# variable "log_retention_days" {
+#   type    = number
+#   default = 90
+# }
+
+# variable "values_yaml" {
+#   description = "Content of the values.yaml given to the helm chart. This disables the rendered values.yaml file from this module."
+#   default     = ""
+#   type        = string
+# }
+
+# variable "fluent_bit_config" {
+#   description = "Content of the values.yaml given to the helm chart. This disables the rendered values.yaml file from this module."
+#   default = {
+#     inputs  = ""
+#     outputs = ""
+#     filters = ""
+#   }
+#   type = any
+# }
+
+# variable "drop_namespaces" {
+#   type = list(string)
+#   default = [
+#     "kube-system",
+#     "opentelemetry-operator-system",
+#     "adot",
+#     "cert-manager"
+#   ]
+#   description = "Flunt bit doesn't send logs for this namespaces"
+# }
+
+# variable "log_filters" {
+#   type = list(string)
+#   default = [
+#     "kube-probe",
+#     "health",
+#     "prometheus",
+#     "liveness"
+#   ]
+#   description = "Fluent bit doesn't send logs if message consists of this values"
+# }
+
+# variable "additional_log_filters" {
+#   type = list(string)
+#   default = [
+#     "ELB-HealthChecker",
+#     "Amazon-Route53-Health-Check-Service",
+#   ]
+#   description = "Fluent bit doesn't send logs if message consists of this values"
+# }
 
 # METRICS-SERVER
 variable "enable_metrics_server" {
