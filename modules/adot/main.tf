@@ -19,7 +19,8 @@ resource "helm_release" "adot-collector" {
   wait             = false
 
   values = [
-    !contains(keys(var.adot_config), "helm_values") ?
+    contains(keys(var.adot_config), "helm_values") && var.adot_config.helm_values != null ?
+    var.adot_config.helm_values :
     templatefile("${path.module}/templates/adot-values.yaml.tpl", {
       region                     = local.region
       cluster_name               = var.cluster_name
@@ -28,7 +29,7 @@ resource "helm_release" "adot-collector" {
       metrics                    = local.merged_metrics
       metrics_namespace_specific = local.merged_namespace_specific
       prometheus_metrics         = var.prometheus_metrics
-    }) : var.adot_config.helm_values
+    })
   ]
 
   depends_on = [
