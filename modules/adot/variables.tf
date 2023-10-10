@@ -25,6 +25,12 @@ variable "namespace" {
   default     = "meta-system"
 }
 
+variable "create_namespace" {
+  type        = bool
+  default     = false
+  description = "Create namespace if requested"
+}
+
 variable "adot_collector_policy_arns" {
   description = "List of IAM policy ARNs to attach to the ADOT collector service account."
   type        = list(string)
