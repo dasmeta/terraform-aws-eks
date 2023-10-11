@@ -14,6 +14,7 @@ locals {
     inputs                 = try(var.fluent_bit_config.inputs, "")
     outputs                = try(var.fluent_bit_config.outputs, "")
     filters                = try(var.fluent_bit_config.filters, "")
+    kube_namespaces        = "^(${join("|", var.kube_namespaces)})"
   }
 
   values = var.values_yaml == "" ? templatefile("${path.module}/values.yaml.tpl", local.config_settings) : var.values_yaml

@@ -100,6 +100,23 @@ variable "drop_namespaces" {
   description = "Flunt bit doesn't send logs for this namespaces"
 }
 
+variable "kube_namespaces" {
+  type = list(string)
+  default = [
+    "kube.*",
+    "meta.*",
+    "adot.*",
+    "example.*",
+    "devops.*",
+    "cert-manager.*",
+    "git.*",
+    "opentelemetry.*",
+    "stakater.*",
+    "renovate.*"
+  ]
+  description = "Kubernates namespaces"
+}
+
 variable "log_filters" {
   type = list(string)
   default = [

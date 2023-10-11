@@ -3,7 +3,7 @@ config:
   inputs: |
     [INPUT]
         Name               tail
-        Tag                kube.*
+        Tag                *
         Path               /var/log/containers/*.log
         Read_from_head     true
         multiline.parser   docker, cri
@@ -23,7 +23,7 @@ config:
   filters: |
     [FILTER]
         Name kubernetes
-        Match kube.*
+        Match *
         Merge_Log On
         Keep_Log Off
         K8S-Logging.Parser On
@@ -31,18 +31,23 @@ config:
 
     [FILTER]
         Name          grep
-        Match         app.*
+        Match         *
         Exclude       $message ${log_filters}
 
     [FILTER]
         Name          grep
-        Match         app.*
+        Match         *
         Exclude       $message ${additional_log_filters}
 
     [FILTER]
         Name          grep
-        Match         kube.*
+        Match         *
         Exclude       $kubernetes['namespace_name'] ${drop_namespaces}
+
+    [FILTER]
+        Name          rewrite_tag
+        Match         kube.*
+        Rule          $kubernetes['namespace_name'] ${kube_namespaces} kube.$TAG false
 
     ${indent(4, filters)}
   outputs: |
@@ -53,6 +58,15 @@ config:
         log_group_name ${log_group_name}
         log_stream_prefix from-fluent-bit-
         auto_create_group ${auto_create_group}
+        log_retention_days ${log_retention_days}
+
+    [OUTPUT]
+        Name cloudwatch_logs
+        Match host.*
+        region ${region}
+        log_group_name ${system_log_group_name}
+        log_stream_prefix eks-
+        auto_create_group Off
         log_retention_days ${log_retention_days}
 
     [OUTPUT]
