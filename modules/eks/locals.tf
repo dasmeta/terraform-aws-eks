@@ -26,7 +26,7 @@ locals {
     },
     ingress_cluster_self = {
       description                   = "Access Security Group Self"
-      protocol                      = "tcp"
+      protocol                      = "-1"
       from_port                     = 0
       to_port                       = 0
       type                          = "ingress"
