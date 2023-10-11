@@ -11,7 +11,9 @@ No providers.
 
 ## Modules
 
-No modules.
+| Name | Source | Version |
+|------|--------|---------|
+| <a name="module_adot"></a> [adot](#module\_adot) | ../.. | n/a |
 
 ## Resources
 

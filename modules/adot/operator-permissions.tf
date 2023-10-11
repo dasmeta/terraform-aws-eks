@@ -9,8 +9,9 @@ locals {
 }
 
 resource "kubernetes_namespace" "operator" {
+  count = var.create_namespace ? 1 : 0
   metadata {
-    name = "opentelemetry-operator-system"
+    name = var.namespace
     labels = {
       "control-plane" = "controller-manager"
     }

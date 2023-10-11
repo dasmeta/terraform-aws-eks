@@ -22,7 +22,13 @@ variable "adot_version" {
 variable "namespace" {
   description = "The namespace to install the AWS Distro for OpenTelemetry addon."
   type        = string
-  default     = "adot"
+  default     = "meta-system"
+}
+
+variable "create_namespace" {
+  type        = bool
+  default     = false
+  description = "Create namespace if requested"
 }
 
 variable "adot_collector_policy_arns" {
