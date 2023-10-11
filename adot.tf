@@ -12,6 +12,7 @@ module "adot" {
   region                      = local.region
   depends_on = [
     module.eks-cluster,
-    helm_release.cert-manager
+    helm_release.cert-manager,
+    kubernetes_namespace.meta-system
   ]
 }

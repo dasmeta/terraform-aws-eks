@@ -1,8 +1,5 @@
-resource "kubernetes_namespace" "example" {
+resource "kubernetes_namespace" "meta-system" {
   metadata {
     name = "meta-syatem"
   }
-  depends_on = [
-    module.adot
-  ]
 }
