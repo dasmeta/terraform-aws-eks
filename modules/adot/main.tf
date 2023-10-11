@@ -29,6 +29,7 @@ resource "helm_release" "adot-collector" {
       metrics                    = local.merged_metrics
       metrics_namespace_specific = local.merged_namespace_specific
       prometheus_metrics         = var.prometheus_metrics
+      namespace                  = var.namespace
     })
   ]
 

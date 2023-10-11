@@ -12,7 +12,7 @@ adotCollector:
     sidecarPullPolicy: "Always"
   daemonSet:
     createNamespace: false
-    namespace: adot
+    namespace: ${namespace}
     serviceAccount:
       create: false
       annotations: {}
