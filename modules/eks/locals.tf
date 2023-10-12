@@ -25,12 +25,12 @@ locals {
       source_cluster_security_group = true
     },
     ingress_cluster_self = {
-      description                   = "Access Security Group Self"
-      protocol                      = "-1"
-      from_port                     = 0
-      to_port                       = 0
-      type                          = "ingress"
-      source_cluster_security_group = true
+      description = "Access Security Group Self"
+      protocol    = "-1"
+      from_port   = 0
+      to_port     = 0
+      type        = "ingress"
+      self        = true
     },
     egress_all = {
       description      = "Node all egress"

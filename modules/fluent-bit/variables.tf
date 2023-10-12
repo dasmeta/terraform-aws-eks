@@ -95,7 +95,9 @@ variable "drop_namespaces" {
     "kube-system",
     "opentelemetry-operator-system",
     "adot",
-    "cert-manager"
+    "cert-manager",
+    "opentelemetry.*",
+    "meta.*",
   ]
   description = "Flunt bit doesn't send logs for this namespaces"
 }
@@ -106,7 +108,6 @@ variable "kube_namespaces" {
     "kube.*",
     "meta.*",
     "adot.*",
-    "example.*",
     "devops.*",
     "cert-manager.*",
     "git.*",
