@@ -249,6 +249,10 @@ module "alb-ingress-controller" {
   # create_alb_log_bucket       = true
   # alb_log_bucket_name = var.alb_log_bucket_name != "" ? var.alb_log_bucket_name : "${module.eks-cluster[0].cluster_id}-ingress-controller-log-bucket"
   # alb_log_bucket_path = var.alb_log_bucket_path != "" ? var.alb_log_bucket_path : module.eks-cluster[0].cluster_id
+
+  depends_on = [
+    module.eks-cluster
+  ]
 }
 
 module "metrics-server" {
@@ -256,7 +260,7 @@ module "metrics-server" {
 
   count = var.create ? 1 : 0
 
-  name = var.metrics_server_name != "" ? var.metrics_server_name : "${module.eks-cluster[0].cluster_id}-metrics-server"
+  name = var.metrics_server_name != "" ? var.metrics_server_name : "${module.eks-cluster[0].cluster_name}-metrics-server"
 }
 
 module "external-secrets" {
@@ -294,24 +298,6 @@ module "efs-csi-driver" {
   cluster_name     = var.cluster_name
   efs_id           = var.efs_id
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
-}
-
-module "adot" {
-  source = "./modules/adot"
-
-  count = var.metrics_exporter == "adot" ? 1 : 0
-
-  cluster_name                = var.cluster_name
-  eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
-  oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
-  adot_config                 = var.adot_config
-  adot_version                = var.adot_version
-  prometheus_metrics          = var.prometheus_metrics
-  region                      = local.region
-  depends_on = [
-    module.eks-cluster,
-    helm_release.cert-manager
-  ]
 }
 
 resource "helm_release" "cert-manager" {

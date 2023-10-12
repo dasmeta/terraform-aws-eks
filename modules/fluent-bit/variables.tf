@@ -95,9 +95,27 @@ variable "drop_namespaces" {
     "kube-system",
     "opentelemetry-operator-system",
     "adot",
-    "cert-manager"
+    "cert-manager",
+    "opentelemetry.*",
+    "meta.*",
   ]
   description = "Flunt bit doesn't send logs for this namespaces"
+}
+
+variable "kube_namespaces" {
+  type = list(string)
+  default = [
+    "kube.*",
+    "meta.*",
+    "adot.*",
+    "devops.*",
+    "cert-manager.*",
+    "git.*",
+    "opentelemetry.*",
+    "stakater.*",
+    "renovate.*"
+  ]
+  description = "Kubernates namespaces"
 }
 
 variable "log_filters" {

@@ -40,4 +40,8 @@ module "fluent-bit" {
     outputs = ""
     filters = ""
   })
+
+  depends_on = [
+    module.eks-cluster
+  ]
 }

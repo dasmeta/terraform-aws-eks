@@ -47,7 +47,7 @@ module "cluster_min" {
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_eks-cluster"></a> [eks-cluster](#module\_eks-cluster) | terraform-aws-modules/eks/aws | 18.30.0 |
+| <a name="module_eks-cluster"></a> [eks-cluster](#module\_eks-cluster) | terraform-aws-modules/eks/aws | 18.31.2 |
 
 ## Resources
 

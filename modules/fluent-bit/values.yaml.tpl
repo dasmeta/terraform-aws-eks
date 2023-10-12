@@ -31,24 +31,31 @@ config:
 
     [FILTER]
         Name          grep
-        Match         app.*
-        Exclude       $message ${log_filters}
-
-    [FILTER]
-        Name          grep
-        Match         app.*
-        Exclude       $message ${additional_log_filters}
+        Match         kube.*
+        Exclude       $log ${log_filters}
 
     [FILTER]
         Name          grep
         Match         kube.*
+        Exclude       $log ${additional_log_filters}
+
+%{ for value in kube_namespaces }
+    [FILTER]
+        Name          rewrite_tag
+        Match         kube.*
+        Rule          $kubernetes['namespace_name'] ^${value}$ system.$TAG false
+%{ endfor ~}
+
+    [FILTER]
+        Name          grep
+        Match         *
         Exclude       $kubernetes['namespace_name'] ${drop_namespaces}
 
     ${indent(4, filters)}
   outputs: |
     [OUTPUT]
         Name cloudwatch_logs
-        Match   *
+        Match  kube.*
         region ${region}
         log_group_name ${log_group_name}
         log_stream_prefix from-fluent-bit-
@@ -57,7 +64,16 @@ config:
 
     [OUTPUT]
         Name cloudwatch_logs
-        Match  kube.*
+        Match host.*
+        region ${region}
+        log_group_name ${system_log_group_name}
+        log_stream_prefix eks-
+        auto_create_group Off
+        log_retention_days ${log_retention_days}
+
+    [OUTPUT]
+        Name cloudwatch_logs
+        Match  system.*
         region ${region}
         log_group_name ${system_log_group_name}
         log_stream_prefix from-fluent-bit-
