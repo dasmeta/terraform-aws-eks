@@ -119,6 +119,7 @@ variable "fluent_bit_configs" {
     drop_namespaces        = optional(list(string), [])
     log_filters            = optional(list(string), [])
     additional_log_filters = optional(list(string), [])
+    kube_namespaces        = optional(list(string), [])
   })
   default = {
     fluent_bit_name       = ""
@@ -135,7 +136,9 @@ variable "fluent_bit_configs" {
       "kube-system",
       "opentelemetry-operator-system",
       "adot",
-      "cert-manager"
+      "cert-manager",
+      "opentelemetry.*",
+      "meta.*",
     ]
     log_filters = [
       "kube-probe",
@@ -146,6 +149,17 @@ variable "fluent_bit_configs" {
     additional_log_filters = [
       "ELB-HealthChecker",
       "Amazon-Route53-Health-Check-Service",
+    ]
+    kube_namespaces = [
+      "kube.*",
+      "meta.*",
+      "adot.*",
+      "devops.*",
+      "cert-manager.*",
+      "git.*",
+      "opentelemetry.*",
+      "stakater.*",
+      "renovate.*"
     ]
   }
   description = "Fluent Bit configs"

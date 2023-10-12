@@ -21,13 +21,28 @@ module "fluent-bit" {
     "kube-system",
     "opentelemetry-operator-system",
     "adot",
-    "cert-manager"
+    "cert-manager",
+    "opentelemetry.*",
+    "meta.*",
   ])
+
   log_filters = try(var.fluent_bit_configs.log_filters, [
     "kube-probe",
     "health",
     "prometheus",
     "liveness"
+  ])
+
+  kube_namespaces = try(var.fluent_bit_configs.kube_namespaces, [
+    "kube.*",
+    "meta.*",
+    "adot.*",
+    "devops.*",
+    "cert-manager.*",
+    "git.*",
+    "opentelemetry.*",
+    "stakater.*",
+    "renovate.*"
   ])
 
   additional_log_filters = try(var.fluent_bit_configs.additional_log_filters, [
