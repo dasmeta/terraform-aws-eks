@@ -1,16 +1,13 @@
 version: 2
 
 updates:
-  - package-ecosystem: "terraform"
-    directory:
-      - modules/aws-load-balancer-controller
-      - modules/cloudwatch-metrics
-      - modules/eks
-      - modules/external-secrets
-      - modules/fluent-bit
-      - modules/metrics-server
-      - modules/sso-rbac
-      - modules/vpc
-      - modules/weave-scope
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: terraform
+    directory: "/"
     schedule:
       interval: "daily"
