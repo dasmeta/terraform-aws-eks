@@ -3,7 +3,7 @@ resource "aws_eks_addon" "this" {
   addon_name               = "adot"
   addon_version            = var.adot_version
   service_account_role_arn = aws_iam_role.adot_collector.arn
-  resolve_conflicts_on_update = "OVERWRITE"
+  # resolve_conflicts_on_update = "OVERWRITE"
   depends_on = [
     kubectl_manifest.this
   ]

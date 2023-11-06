@@ -211,6 +211,7 @@ worker_groups = {
 | <a name="module_eks-cluster"></a> [eks-cluster](#module\_eks-cluster) | ./modules/eks | n/a |
 | <a name="module_external-secrets"></a> [external-secrets](#module\_external-secrets) | ./modules/external-secrets | n/a |
 | <a name="module_fluent-bit"></a> [fluent-bit](#module\_fluent-bit) | ./modules/fluent-bit | n/a |
+| <a name="module_loki"></a> [loki](#module\_loki) | /Users/juliaaghamyan/Desktop/dasmeta/terraform-any-shared/modules/loki | n/a |
 | <a name="module_metrics-server"></a> [metrics-server](#module\_metrics-server) | ./modules/metrics-server | n/a |
 | <a name="module_node-problem-detector"></a> [node-problem-detector](#module\_node-problem-detector) | ./modules/node-problem-detector | n/a |
 | <a name="module_olm"></a> [olm](#module\_olm) | ./modules/olm | n/a |
