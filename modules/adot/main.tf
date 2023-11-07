@@ -20,7 +20,7 @@ resource "helm_release" "adot-collector" {
 
   values = [
     contains(keys(var.adot_config), "helm_values") && contains(keys(var.adot_config), "helm_values") != null ?
-    contains(keys(var.adot_config), "helm_values") :
+    try(var.adot_config.helm_values, null) :
     templatefile("${path.module}/templates/adot-values.yaml.tpl", {
       region                     = local.region
       cluster_name               = var.cluster_name
