@@ -1,9 +1,8 @@
 resource "aws_eks_addon" "this" {
-  cluster_name                = var.cluster_name
-  addon_name                  = "adot"
-  addon_version               = var.adot_version
-  service_account_role_arn    = aws_iam_role.adot_collector.arn
-  resolve_conflicts_on_update = var.resolve_conflicts_on_update
+  cluster_name             = var.cluster_name
+  addon_name               = "adot"
+  addon_version            = var.adot_version
+  service_account_role_arn = aws_iam_role.adot_collector.arn
   depends_on = [
     kubectl_manifest.this
   ]

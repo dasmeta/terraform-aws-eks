@@ -69,9 +69,3 @@ variable "adot_log_group_name" {
   type        = string
   default     = "adot_log_group_name"
 }
-
-variable "resolve_conflicts_on_update" {
-  type        = string
-  default     = "NONE"
-  description = "How to resolve field value conflicts for an Amazon EKS add-on if you've changed a value from the Amazon EKS default value"
-}
