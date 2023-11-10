@@ -68,7 +68,7 @@ config:
         region ${region}
         log_group_name ${system_log_group_name}
         log_stream_prefix eks-
-        auto_create_group Off
+        auto_create_group ${auto_create_group}
         log_retention_days ${log_retention_days}
 
     [OUTPUT]
