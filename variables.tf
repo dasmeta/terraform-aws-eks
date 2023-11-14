@@ -4,45 +4,6 @@ variable "create" {
   description = "Whether to create cluster and other resources or not"
 }
 
-# VPC
-variable "vpc_name" {
-  type        = string
-  description = "Creating VPC name."
-}
-
-variable "cidr" {
-  type = string
-  # default = "172.16.0.0/16"
-  description = "CIDR ip range."
-}
-
-variable "availability_zones" {
-  type        = list(string)
-  description = "List of VPC availability zones, e.g. ['eu-west-1a', 'eu-west-1b', 'eu-west-1c']."
-}
-
-variable "private_subnets" {
-  type = list(string)
-  # default = ["172.16.1.0/24", "172.16.2.0/24", "172.16.3.0/24"]
-  description = "Private subnets of VPC."
-}
-
-variable "public_subnets" {
-  type = list(string)
-  # default = ["172.16.4.0/24", "172.16.5.0/24", "172.16.6.0/24"]
-  description = "Public subnets of VPC."
-}
-
-variable "public_subnet_tags" {
-  type    = map(any)
-  default = {}
-}
-
-variable "private_subnet_tags" {
-  type    = map(any)
-  default = {}
-}
-
 #EKS
 variable "cluster_name" {
   type        = string
@@ -65,10 +26,11 @@ variable "node_groups" {
   type        = any
   default = {
     default = {
-      min_size       = 2
-      max_size       = 4
-      desired_size   = 2
-      instance_types = ["t3.medium"]
+      min_size                     = 2
+      max_size                     = 4
+      desired_size                 = 2
+      instance_types               = ["t3.medium"]
+      iam_role_additional_policies = ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"]
     }
   }
 }
@@ -84,6 +46,14 @@ variable "node_security_group_additional_rules" {
       type                          = "ingress"
       source_cluster_security_group = true
     },
+    ingress_cluster_10250 = {
+      description = "Metric server to node groups"
+      protocol    = "tcp"
+      from_port   = 10250
+      to_port     = 10250
+      type        = "ingress"
+      self        = true
+    }
   }
 }
 
@@ -91,8 +61,9 @@ variable "node_groups_default" {
   description = "Map of EKS managed node group default configurations"
   type        = any
   default = {
-    disk_size      = 50
-    instance_types = ["t3.medium"]
+    disk_size                    = 50
+    instance_types               = ["t3.medium"]
+    iam_role_additional_policies = ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"]
   }
 }
 
@@ -132,14 +103,66 @@ variable "alb_log_bucket_name" {
 }
 
 # FLUENT-BIT
-variable "fluent_bit_name" {
-  type    = string
-  default = ""
-}
 
-variable "log_group_name" {
-  type    = string
-  default = ""
+variable "fluent_bit_configs" {
+  type = object({
+    fluent_bit_name       = optional(string, "")
+    log_group_name        = optional(string, "")
+    system_log_group_name = optional(string, "")
+    log_retention_days    = optional(number, 90)
+    values_yaml           = optional(string, "")
+    configs = optional(object({
+      inputs  = optional(string, "")
+      filters = optional(string, "")
+      outputs = optional(string, "")
+    }), {})
+    drop_namespaces        = optional(list(string), [])
+    log_filters            = optional(list(string), [])
+    additional_log_filters = optional(list(string), [])
+    kube_namespaces        = optional(list(string), [])
+  })
+  default = {
+    fluent_bit_name       = ""
+    log_group_name        = ""
+    system_log_group_name = ""
+    log_retention_days    = 90
+    values_yaml           = ""
+    configs = {
+      inputs  = ""
+      outputs = ""
+      filters = ""
+    }
+    drop_namespaces = [
+      "kube-system",
+      "opentelemetry-operator-system",
+      "adot",
+      "cert-manager",
+      "opentelemetry.*",
+      "meta.*",
+    ]
+    log_filters = [
+      "kube-probe",
+      "health",
+      "prometheus",
+      "liveness"
+    ]
+    additional_log_filters = [
+      "ELB-HealthChecker",
+      "Amazon-Route53-Health-Check-Service",
+    ]
+    kube_namespaces = [
+      "kube.*",
+      "meta.*",
+      "adot.*",
+      "devops.*",
+      "cert-manager.*",
+      "git.*",
+      "opentelemetry.*",
+      "stakater.*",
+      "renovate.*"
+    ]
+  }
+  description = "Fluent Bit configs"
 }
 
 # METRICS-SERVER
@@ -166,13 +189,13 @@ variable "external_secrets_namespace" {
 variable "cluster_enabled_log_types" {
   description = "A list of the desired control plane logs to enable. For more information, see Amazon EKS Control Plane Logging documentation (https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html)"
   type        = list(string)
-  default     = ["audit"]
+  default     = []
 }
 
 variable "cluster_version" {
   description = "Allows to set/change kubernetes cluster version, kubernetes version needs to be updated at leas once a year. Please check here for available versions https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html"
   type        = string
-  default     = "1.22"
+  default     = "1.27"
 }
 
 variable "map_roles" {
@@ -251,6 +274,185 @@ variable "region" {
   type        = string
   default     = null
   description = "AWS Region name."
+}
+
+variable "vpc" {
+  type = object({
+    # for linking using existing vpc
+    link = optional(object({
+      id                 = string
+      private_subnet_ids = list(string)
+    }), { id = null, private_subnet_ids = null })
+    # for creating new vpc
+    create = optional(object({
+      name                = string
+      availability_zones  = list(string)
+      cidr                = string
+      private_subnets     = list(string)
+      public_subnets      = list(string)
+      public_subnet_tags  = optional(map(any), {})
+      private_subnet_tags = optional(map(any), {})
+    }), { name = null, availability_zones = null, cidr = null, private_subnets = null, public_subnets = null })
+  })
+
+  # default     = {}
+  description = "VPC configuration for eks, we support both cases create new vpc(create field) and using already created one(link)"
+
+  validation {
+    condition     = (try(var.vpc.link.id, null) != null || try(var.vpc.create.name, null) != null) && (try(var.vpc.link.id, null) == null || try(var.vpc.create.name, null) == null)
+    error_message = "One of(just one, not both) vpc.link.* and vpc.create.* field list is must to set for vpc configuration"
+  }
+}
+
+variable "metrics_exporter" {
+  type        = string
+  default     = "cloudwatch"
+  description = "Metrics Exporter, can use cloudwatch or adot"
+}
+
+variable "adot_config" {
+  type = any
+  default = {
+    accept_namespace_regex = "(default|kube-system)"
+    additional_metrics     = {}
+    log_group_name         = "adot_log_group"
+  }
+}
+
+variable "adot_version" {
+  description = "The version of the AWS Distro for OpenTelemetry addon to use."
+  type        = string
+  default     = "v0.78.0-eksbuild.1"
+}
+
+variable "enable_kube_state_metrics" {
+  type        = bool
+  default     = false
+  description = "Enable kube-state-metrics"
+}
+
+// Cert manager
+// If you want enable ADOT you should enable cert_manager
+variable "create_cert_manager" {
+  description = "If enabled it always gets deployed to the cert-manager namespace."
+  type        = bool
+  default     = false
+}
+
+variable "enable_efs_driver" {
+  type        = bool
+  default     = false
+  description = "Weather install EFS driver or not in EKS"
+}
+
+variable "efs_id" {
+  description = "EFS filesystem id in AWS"
+  type        = string
+  default     = null
+}
+
+variable "autoscaling" {
+  description = "Weather enable autoscaling or not in EKS"
+  type        = bool
+  default     = false
+}
+
+variable "autoscaler_image_patch" {
+  type        = number
+  description = "The patch number of autoscaler image"
+  default     = 0
+}
+
+variable "scale_down_unneeded_time" {
+  type        = number
+  description = "Scale down unneeded in minutes"
+  default     = 2
+}
+
+variable "enable_ebs_driver" {
+  description = "Weather enable EBS-CSI driver or not"
+  type        = bool
+  default     = true
+}
+
+variable "ebs_csi_version" {
+  description = "EBS CSI driver addon version"
+  type        = string
+  default     = "v1.15.0-eksbuild.1"
+}
+
+variable "autoscaler_limits" {
+  type = object({
+    cpu    = string
+    memory = string
+  })
+  default = {
+    cpu    = "100m"
+    memory = "600Mi"
+  }
+}
+
+variable "autoscaler_requests" {
+  type = object({
+    cpu    = string
+    memory = string
+  })
+  default = {
+    cpu    = "100m"
+    memory = "600Mi"
+  }
+}
+
+variable "enable_api_gw_controller" {
+  description = "Weather enable API-GW controller or not"
+  type        = bool
+  default     = false
+}
+
+variable "api_gw_deploy_region" {
+  description = "Region in which API gatewat will be configured"
+  type        = string
+  default     = ""
+}
+
+variable "api_gateway_resources" {
+  description = "Nested map containing API, Stage, and VPC Link resources"
+  default     = []
+  type = list(object({
+    namespace = string
+    api = object({
+      name         = string
+      protocolType = string
+    })
+    stages = optional(list(object({
+      name        = string
+      namespace   = string
+      apiRef_name = string
+      stageName   = string
+      autoDeploy  = bool
+      description = string
+    })))
+    vpc_links = optional(list(object({
+      name      = string
+      namespace = string
+    })))
+  }))
+}
+variable "enable_node_problem_detector" {
+  type    = bool
+  default = true
+}
+
+variable "enable_olm" {
+  type        = bool
+  default     = false
+  description = "To install OLM controller (experimental)."
+}
+
+variable "prometheus_metrics" {
+  description = "Prometheus Metrics"
+  type        = any
+  default     = []
 }
 
 variable "enable_portainer" {

@@ -35,12 +35,13 @@ resource "helm_release" "weave-scope" {
   create_namespace = var.create_namespace
   name             = var.release_name
   chart            = "weave-scope"
-  version          = "1.0.1"
+  version          = var.chart_version
   repository       = "https://dasmeta.github.io/helm/"
   reuse_values     = true
   values = [
     templatefile("${path.module}/resources/values.yaml.tpl",
       {
+        image_version = var.weave_scope_image_version
         config        = var.annotations
         service_type  = var.service_type
         ingress_host  = var.ingress_host
