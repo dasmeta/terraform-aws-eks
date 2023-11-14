@@ -370,3 +370,11 @@ module "api-gw-controller" {
   vpc_id                = var.api_gateway_resources[0].vpc_links != null ? module.vpc[0].id : null
   subnet_ids            = var.api_gateway_resources[0].vpc_links != null ? (var.vpc.create.private_subnets != {} ? module.vpc[0].private_subnets : var.vpc.link.private_subnet_ids) : null
 }
+
+module "portainer" {
+  count = var.enable_portainer ? 1 : 0
+
+  source         = "./modules/portainer"
+  host           = var.portainer_config.host
+  enable_ingress = var.portainer_config.enable_ingress
+}
