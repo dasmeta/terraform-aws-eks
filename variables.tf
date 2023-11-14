@@ -461,14 +461,11 @@ variable "enable_portainer" {
   default     = false
 }
 
-variable "portainer_host" {
-  description = "Portainer hostname to apply to ingress"
-  type        = string
-  default     = "portainer.dasmeta.com"
-}
-
-variable "portainer_ingress" {
-  description = "Weather to enable portainer ingress or  not"
-  type        = bool
-  default     = true
+variable "portainer_config" {
+  description = "Portainer hostname and ingress config."
+  type = object({
+    host           = optional(string, "portainer.dasmeta.com")
+    enable_ingress = optional(bool, true)
+  })
+  default = {}
 }

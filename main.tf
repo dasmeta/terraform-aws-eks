@@ -372,8 +372,9 @@ module "api-gw-controller" {
 }
 
 module "portainer" {
+  count = var.enable_portainer ? 1 : 0
+
   source         = "./modules/portainer"
-  count          = var.enable_portainer ? 1 : 0
-  host           = var.portainer_host
-  enable_ingress = var.portainer_ingress
+  host           = var.portainer_config.host
+  enable_ingress = var.portainer_config.enable_ingress
 }
