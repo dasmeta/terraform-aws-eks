@@ -43,29 +43,31 @@ adotCollector:
                 kubernetes_sd_configs:
                 - role: endpoints
                 relabel_configs:
-                - action: keep
-                  regex: true
-                  source_labels:
+                # collect if service.annotation: prometheus.io/scrape: true
+                - source_labels:
                   - __meta_kubernetes_service_annotation_prometheus_io_scrape
-                - action: replace
-                  regex: (https?)
-                  source_labels:
+                  regex: true
+                  action: keep
+                # replaces the schema
+                - source_labels:
                   - __meta_kubernetes_service_annotation_prometheus_io_scheme
+                  regex: (https?)
+                  action: replace
                   target_label: __scheme__
-                - action: replace
-                  regex: (.+)
-                  source_labels:
+                - source_labels:
                   - __meta_kubernetes_service_annotation_prometheus_io_path
+                  regex: (.+)
+                  action: replace
                   target_label: __metrics_path__
-                - action: replace
-                  regex: ([^:]+)(?::\d+)?;(\d+)
-                  replacement: $$1:$$2
-                  source_labels:
+                - source_labels:
                   - __address__
                   - __meta_kubernetes_service_annotation_prometheus_io_port
+                  regex: ([^:]+)(?::\d+)?;(\d+)
+                  action: replace
+                  replacement: $$1:$$2
                   target_label: __address__
-                - action: labelmap
-                  regex: __meta_service_pod_label_(.+)
+                - regex: __meta_service_pod_label_(.+)
+                  action: labelmap
                 metric_relabel_configs:
                 - action: keep
                   source_labels:
@@ -154,80 +156,62 @@ adotCollector:
             enabled: true
           parse_json_encoded_attr_values: [Sources, kubernetes]
           metric_declarations:
-          # node metrics
-          - dimensions: [[ClusterName]]
-            metric_name_selectors:
-              - node_cpu_utilization
-              - node_memory_utilization
-              - node_network_total_bytes
-              - node_cpu_reserved_capacity
-              - node_number_of_running_pods
-              - node_number_of_running_containers
-              - node_cpu_usage_total
-              - node_cpu_limit
-              - node_memory_working_set
-              - node_memory_limit
-              - node_network_tx_bytes
-              - node_network_rx_bytes
-              - node_disk_utilization
-              - kube_deployment_spec_replicas
-              - kube_deployment_status_replicas_available
-          # pod metrics
-          - dimensions: [[PodName, Namespace, ClusterName], [Service, Namespace, ClusterName], [Namespace, ClusterName], [ClusterName]]
-            metric_name_selectors:
-              - pod_cpu_utilization
-              - pod_memory_utilization
-              - pod_network_rx_bytes
-              - pod_network_tx_bytes
-              - pod_cpu_utilization_over_pod_limit
-              - pod_memory_utilization_over_pod_limit
-          - dimensions: [[PodName, Namespace, ClusterName], [ClusterName]]
-            metric_name_selectors:
-              - pod_cpu_reserved_capacity
-              - pod_memory_reserved_capacity
-          - dimensions: [[PodName, Namespace, ClusterName]]
-            metric_name_selectors:
-              - pod_number_of_container_restarts
-              - pod_cpu_utilization
-              - pod_memory_utilization
-              - pod_network_tx_bytes
-              - pod_network_rx_bytes
-              - pod_cpu_usage_total
-          - dimensions: [[PodName, Namespace, ClusterName]]
-            metric_name_selectors:
-              - pod_number_of_container_restarts
-              - container_cpu_limit
-              - container_cpu_request
-              - container_cpu_utilization
-              - container_memory_limit
-              - container_memory_request
-              - container_memory_utilization
-              - container_memory_working_set
-              - pod_cpu_limit
-              - pod_memory_limit
-              - pod_cpu_usage_total
-              - pod_memory_working_set
-
           # cluster metrics
           - dimensions: [[ClusterName]]
             metric_name_selectors:
               - cluster_node_count
               - cluster_failed_node_count
 
-          # service metrics
-          - dimensions: [[Service, Namespace, ClusterName], [ClusterName]]
-            metric_name_selectors:
-              - service_number_of_running_pods
-
-          # node fs metrics
-          - dimensions: [[NodeName, InstanceId, ClusterName], [ClusterName]]
-            metric_name_selectors:
+              # (OK) node fs metrics - used to catch disk pressures (should be used with max)
               - node_filesystem_utilization
 
-          # namespace metrics
-          - dimensions: [[Namespace, ClusterName], [ClusterName]]
+              - node_cpu_usage_total
+              - node_cpu_limit
+              - node_cpu_utilization
+
+              - node_memory_working_set
+              - node_memory_limit
+              - node_memory_utilization
+
+              - node_network_tx_bytes
+              - node_network_rx_bytes
+
+              # - node_disk_utilization
+              # - node_number_of_running_containers
+              # - node_number_of_running_pods
+
+          - dimensions: [[ClusterName, Namespace]]
             metric_name_selectors:
+              # (OK) namespace metrics - used to performance tune giant workloads (prefect)
               - namespace_number_of_running_pods
+
+          - dimensions: [[ClusterName, Namespace, Service]]
+            metric_name_selectors:
+              # (OK) service metrics - used to performance tune deployments
+              - service_number_of_running_pods
+
+          #- dimensions: [[ClusterName, Namespace, Deployment]]
+            #metric_name_selectors:
+              # Check for HPA maximum
+              #- kube_deployment_spec_replicas # CHECK
+              #- kube_deployment_status_replicas_available # CHECK
+
+          - dimensions: [[ClusterName, Namespace, PodName]]
+            metric_name_selectors:
+              - pod_number_of_container_restarts
+              - pod_cpu_usage_total
+              - pod_cpu_limit
+              - pod_memory_working_set
+              - pod_memory_limit
+              - pod_network_tx_bytes
+              - pod_network_rx_bytes
+
+          #- dimensions: [[ClusterName, Namespace, PodName, Phase]]
+          #  metric_name_selectors:
+          #    - kube_pod_status_phase
+
+          # - dimensions: [[ClusterName, Namespace, Volume]]
+          #  metric_name_selectors:
         logging:
           loglevel: debug
         awsxray:
@@ -235,9 +219,9 @@ adotCollector:
       service:
         pipelines:
           metrics/awsemf_prometheus:
-            exporters: ["awsemf/prometheus"]
-            processors: ["resource/set_attributes"]
             receivers: ["prometheus"]
+            processors: ["resource/set_attributes"]
+            exporters: ["awsemf/prometheus"]
           metrics/awsemf_namespace_specific:
             receivers: ["awscontainerinsightreceiver", "prometheus"]
             processors: ["filter/metrics_namespace_specific", "filter/namespaces", "resource/set_attributes", "batch/metrics"]
