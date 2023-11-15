@@ -12,7 +12,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_helm"></a> [helm](#provider\_helm) | n/a |
+| <a name="provider_helm"></a> [helm](#provider\_helm) | 2.11.0 |
 | <a name="provider_test"></a> [test](#provider\_test) | n/a |
 
 ## Modules
