@@ -213,7 +213,7 @@ adotCollector:
           # - dimensions: [[ClusterName, Namespace, Volume]]
           #  metric_name_selectors:
         logging:
-          loglevel: debug
+          loglevel: error
         awsxray:
           region: "${region}"
       service:
