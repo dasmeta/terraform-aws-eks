@@ -73,4 +73,14 @@ resource "helm_release" "aws-load-balancer-controller" {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
     value = "arn:aws:iam::${var.account_id}:role/${aws_iam_role.aws-load-balancer-role.name}"
   }
+
+  set {
+    name  = "enableWaf"
+    value = var.enable_waf
+  }
+
+  set {
+    name  = "enableWafv2"
+    value = var.enable_waf
+  }
 }

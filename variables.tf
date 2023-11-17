@@ -454,3 +454,24 @@ variable "prometheus_metrics" {
   type        = any
   default     = []
 }
+
+variable "enable_portainer" {
+  description = "Enable Portainer provisioning or not"
+  type        = bool
+  default     = false
+}
+
+variable "portainer_config" {
+  description = "Portainer hostname and ingress config."
+  type = object({
+    host           = optional(string, "portainer.dasmeta.com")
+    enable_ingress = optional(bool, true)
+  })
+  default = {}
+}
+
+variable "enable_waf_for_alb" {
+  type        = bool
+  description = "Enables WAF and WAF V2 addons for ALB"
+  default     = false
+}
