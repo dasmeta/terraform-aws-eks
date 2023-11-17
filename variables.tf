@@ -469,3 +469,9 @@ variable "portainer_config" {
   })
   default = {}
 }
+
+variable "enable_waf_for_alb" {
+  type        = bool
+  description = "Enables WAF and WAF V2 addons for ALB"
+  default     = false
+}

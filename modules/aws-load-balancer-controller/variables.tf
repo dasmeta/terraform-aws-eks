@@ -67,3 +67,9 @@ variable "tags" {
   type        = any
   default     = null
 }
+
+variable "enable_waf" {
+  type        = bool
+  description = "Enables WAF and WAF V2 addons for ALB"
+  default     = false
+}
