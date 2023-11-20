@@ -16,6 +16,22 @@ locals {
       type                          = "ingress"
       source_cluster_security_group = true
     },
+    ingress_cluster_8088 = {
+      description                   = "LinkerD to node groups"
+      protocol                      = "tcp"
+      from_port                     = 8088
+      to_port                       = 8088
+      type                          = "ingress"
+      source_cluster_security_group = true
+    },
+    ingress_cluster_8089 = {
+      description                   = "LinkerD to node groups"
+      protocol                      = "tcp"
+      from_port                     = 8089
+      to_port                       = 8089
+      type                          = "ingress"
+      source_cluster_security_group = true
+    },
     ingress_cluster_9443 = {
       description                   = "ALB to node groups"
       protocol                      = "tcp"
