@@ -73,18 +73,14 @@ adotCollector:
                   source_labels:
                   - namespace
                   regex: ${accept_namespace_regex}
-                - action: replace
+                - action: keep
                   source_labels:
-                  - namespace
-                  target_label: Namespace
+                  - condition
+                  regex: (Ready)
                 - action: replace
                   source_labels:
                   - node
                   target_label: Node
-                - action: replace
-                  source_labels:
-                  - resource
-                  target_label: Resource
                 - action: replace
                   source_labels:
                   - status
@@ -93,6 +89,10 @@ adotCollector:
                   source_labels:
                   - condition
                   target_label: Condition
+                - action: replace
+                  source_labels:
+                  - namespace
+                  target_label: Namespace
                 - action: replace
                   source_labels:
                   - deployment
@@ -156,14 +156,12 @@ adotCollector:
             - ${value}
 %{ endfor ~}
           - dimensions:
-            - - ClusterName
-              - Node
+            - - Node
               - Resource
             metric_name_selectors:
             - kube_node_status_capacity
           - dimensions:
-            - - ClusterName
-              - Node
+            - - Node
               - Condition
               - Status
             metric_name_selectors:
