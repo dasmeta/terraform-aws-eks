@@ -156,12 +156,14 @@ adotCollector:
             - ${value}
 %{ endfor ~}
           - dimensions:
-            - - Node
+            - - ClusterName
+              - Node
               - Resource
             metric_name_selectors:
             - kube_node_status_capacity
           - dimensions:
-            - - Node
+            - - ClusterName
+              - Node
               - Condition
               - Status
             metric_name_selectors:
