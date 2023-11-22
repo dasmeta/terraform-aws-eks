@@ -32,6 +32,55 @@ adotCollector:
               endpoint: 0.0.0.0:4317
             http:
               endpoint: 0.0.0.0:4318
+        prometheus/node2:
+          config:
+            global:
+              scrape_interval: 60s
+              scrape_timeout: 10s
+            scrape_configs:
+              - job_name: kubernetes-service-endpoints
+                sample_limit: 10000
+                kubernetes_sd_configs:
+                - role: endpoints
+                relabel_configs:
+                # collect if service.annotation: prometheus.io/scrape: true
+                - source_labels:
+                  - __meta_kubernetes_service_annotation_prometheus_io_scrape
+                  regex: true
+                  action: keep
+                # replaces the schema
+                - source_labels:
+                  - __meta_kubernetes_service_annotation_prometheus_io_scheme
+                  regex: (https?)
+                  action: replace
+                  target_label: __scheme__
+                - source_labels:
+                  - __meta_kubernetes_service_annotation_prometheus_io_path
+                  regex: (.+)
+                  action: replace
+                  target_label: __metrics_path__
+                - source_labels:
+                  - __address__
+                  - __meta_kubernetes_service_annotation_prometheus_io_port
+                  regex: ([^:]+)(?::\d+)?;(\d+)
+                  action: replace
+                  replacement: $$1:$$2
+                  target_label: __address__
+                - regex: __meta_service_pod_label_(.+)
+                  action: labelmap
+                metric_relabel_configs:
+                - action: keep
+                  source_labels:
+                  - resource
+                  regex: (pods)
+                - action: replace
+                  source_labels:
+                  - node
+                  target_label: Node
+                - action: replace
+                  source_labels:
+                  - resource
+                  target_label: Resource
         prometheus/node:
           config:
             global:
@@ -307,7 +356,7 @@ adotCollector:
       service:
         pipelines:
           metrics/awsemf_prometheus:
-            receivers: ["prometheus","prometheus/node"]
+            receivers: ["prometheus","prometheus/node","prometheus/node2"]
             processors: ["resource/set_attributes"]
             exporters: ["awsemf/prometheus"]
           metrics/awsemf_namespace_specific:
