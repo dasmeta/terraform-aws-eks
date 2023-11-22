@@ -79,6 +79,18 @@ adotCollector:
                   target_label: Namespace
                 - action: replace
                   source_labels:
+                  - node
+                  target_label: Node
+                - action: replace
+                  source_labels:
+                  - resource
+                  target_label: Resource
+                - action: replace
+                  source_labels:
+                  - condition
+                  target_label: Condition
+                - action: replace
+                  source_labels:
                   - deployment
                   target_label: Deployment
       processors:
@@ -139,6 +151,16 @@ adotCollector:
 %{ for value in prometheus_metrics }
             - ${value}
 %{ endfor ~}
+          - dimensions:
+            - - Node
+              - Resource
+            metric_name_selectors:
+            - kube_node_status_capacity
+          - dimensions:
+            - - Node
+              - Condition
+            metric_name_selectors:
+            - kube_node_status_condition
           namespace: ContainerInsights
           parse_json_encoded_attr_values:
           - Sources
