@@ -71,12 +71,12 @@ adotCollector:
                 metric_relabel_configs:
                 - action: keep
                   source_labels:
-                  - namespace
-                  regex: ${accept_namespace_regex}
-                - action: keep
-                  source_labels:
                   - condition
                   regex: (Ready)
+                - action: keep
+                  source_labels:
+                  - namespace
+                  regex: ${accept_namespace_regex}
                 - action: replace
                   source_labels:
                   - node
