@@ -87,6 +87,10 @@ adotCollector:
                   target_label: Resource
                 - action: replace
                   source_labels:
+                  - status
+                  target_label: Status
+                - action: replace
+                  source_labels:
                   - condition
                   target_label: Condition
                 - action: replace
@@ -159,6 +163,7 @@ adotCollector:
           - dimensions:
             - - Node
               - Condition
+              - Status
             metric_name_selectors:
             - kube_node_status_condition
           namespace: ContainerInsights
