@@ -216,6 +216,7 @@ adotCollector:
                 type: scale
                 metric1: kube_node_status_condition
                 operation: multiply
+                scale_by: 1
         filter/metrics_include:
           metrics:
             include:
