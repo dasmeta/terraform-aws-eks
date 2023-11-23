@@ -209,6 +209,13 @@ adotCollector:
               resource_attributes:
               - key: Namespace
                 value: ${accept_namespace_regex}
+        experimental_metricsgeneration:
+          rules:
+              - name: kube_node_status_condition_all
+                unit: Bytes
+                type: scale
+                metric1: kube_node_status_condition
+                operation: multiply
         filter/metrics_include:
           metrics:
             include:
@@ -268,6 +275,11 @@ adotCollector:
               - Status
             metric_name_selectors:
             - kube_node_status_condition
+          - dimensions:
+            - - Condition
+              - Status
+            metric_name_selectors:
+            - kube_node_status_condition_all
           namespace: ContainerInsights
           parse_json_encoded_attr_values:
           - Sources
@@ -347,8 +359,12 @@ adotCollector:
           region: "${region}"
       service:
         pipelines:
+          metrics/awsemf_prometheus_new:
+            receivers: ["prometheus/node2"]
+            processors: ["experimental_metricsgeneration"]
+            exporters: ["awsemf/prometheus"]
           metrics/awsemf_prometheus:
-            receivers: ["prometheus","prometheus/node","prometheus/node2"]
+            receivers: ["prometheus","prometheus/node"]
             processors: ["resource/set_attributes"]
             exporters: ["awsemf/prometheus"]
           metrics/awsemf_namespace_specific:
