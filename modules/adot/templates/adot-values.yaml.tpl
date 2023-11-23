@@ -124,20 +124,12 @@ adotCollector:
                   regex: (Ready)
                 - action: keep
                   source_labels:
-                  - resource
-                  regex: (pods)
-                - action: keep
-                  source_labels:
                   - status
                   regex: (true)
                 - action: replace
                   source_labels:
                   - node
                   target_label: Node
-                - action: replace
-                  source_labels:
-                  - resource
-                  target_label: Resource
                 - action: replace
                   source_labels:
                   - status
