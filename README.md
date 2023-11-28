@@ -243,7 +243,7 @@ worker_groups = {
 | <a name="input_autoscaler_image_patch"></a> [autoscaler\_image\_patch](#input\_autoscaler\_image\_patch) | The patch number of autoscaler image | `number` | `0` | no |
 | <a name="input_autoscaler_limits"></a> [autoscaler\_limits](#input\_autoscaler\_limits) | n/a | <pre>object({<br>    cpu    = string<br>    memory = string<br>  })</pre> | <pre>{<br>  "cpu": "100m",<br>  "memory": "600Mi"<br>}</pre> | no |
 | <a name="input_autoscaler_requests"></a> [autoscaler\_requests](#input\_autoscaler\_requests) | n/a | <pre>object({<br>    cpu    = string<br>    memory = string<br>  })</pre> | <pre>{<br>  "cpu": "100m",<br>  "memory": "600Mi"<br>}</pre> | no |
-| <a name="input_autoscaling"></a> [autoscaling](#input\_autoscaling) | Weather enable autoscaling or not in EKS | `bool` | `true` | no |
+| <a name="input_autoscaling"></a> [autoscaling](#input\_autoscaling) | Weather enable autoscaling or not in EKS | `bool` | `false` | no |
 | <a name="input_bindings"></a> [bindings](#input\_bindings) | Variable which describes group and role binding | <pre>list(object({<br>    group     = string<br>    namespace = string<br>    roles     = list(string)<br><br>  }))</pre> | `[]` | no |
 | <a name="input_cluster_enabled_log_types"></a> [cluster\_enabled\_log\_types](#input\_cluster\_enabled\_log\_types) | A list of the desired control plane logs to enable. For more information, see Amazon EKS Control Plane Logging documentation (https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html) | `list(string)` | `[]` | no |
 | <a name="input_cluster_endpoint_public_access"></a> [cluster\_endpoint\_public\_access](#input\_cluster\_endpoint\_public\_access) | n/a | `bool` | `true` | no |
