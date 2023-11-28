@@ -354,7 +354,7 @@ variable "efs_id" {
 variable "autoscaling" {
   description = "Weather enable autoscaling or not in EKS"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "autoscaler_image_patch" {
