@@ -75,18 +75,6 @@ adotCollector:
                   regex: ${accept_namespace_regex}
                 - action: replace
                   source_labels:
-                  - node
-                  target_label: Node
-                - action: replace
-                  source_labels:
-                  - status
-                  target_label: Status
-                - action: replace
-                  source_labels:
-                  - condition
-                  target_label: Condition
-                - action: replace
-                  source_labels:
                   - namespace
                   target_label: Namespace
                 - action: replace
