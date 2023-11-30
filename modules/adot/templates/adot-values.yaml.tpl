@@ -32,7 +32,6 @@ adotCollector:
               endpoint: 0.0.0.0:4317
             http:
               endpoint: 0.0.0.0:4318
-        prometheus/node:
           config:
             global:
               scrape_interval: 60s
@@ -208,16 +207,6 @@ adotCollector:
 %{ for value in prometheus_metrics }
             - ${value}
 %{ endfor ~}
-          - dimensions:
-            - - Node
-              - Resource
-            metric_name_selectors:
-            - kube_node_status_capacity
-          - dimensions:
-            - - Condition
-              - Status
-            metric_name_selectors:
-            - kube_node_status_condition
           namespace: ContainerInsights
           parse_json_encoded_attr_values:
           - Sources
@@ -298,7 +287,7 @@ adotCollector:
       service:
         pipelines:
           metrics/awsemf_prometheus:
-            receivers: ["prometheus","prometheus/node"]
+            receivers: ["prometheus"]
             processors: ["resource/set_attributes"]
             exporters: ["awsemf/prometheus"]
           metrics/awsemf_namespace_specific:
