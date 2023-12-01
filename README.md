@@ -206,6 +206,7 @@ worker_groups = {
 | <a name="module_api-gw-controller"></a> [api-gw-controller](#module\_api-gw-controller) | ./modules/api-gw | n/a |
 | <a name="module_autoscaler"></a> [autoscaler](#module\_autoscaler) | ./modules/autoscaler | n/a |
 | <a name="module_cloudwatch-metrics"></a> [cloudwatch-metrics](#module\_cloudwatch-metrics) | ./modules/cloudwatch-metrics | n/a |
+| <a name="module_cw_alerts"></a> [cw\_alerts](#module\_cw\_alerts) | dasmeta/monitoring/aws//modules/alerts | 1.3.5 |
 | <a name="module_ebs-csi"></a> [ebs-csi](#module\_ebs-csi) | ./modules/ebs-csi | n/a |
 | <a name="module_efs-csi-driver"></a> [efs-csi-driver](#module\_efs-csi-driver) | ./modules/efs-csi | n/a |
 | <a name="module_eks-cluster"></a> [eks-cluster](#module\_eks-cluster) | ./modules/eks | n/a |
@@ -236,6 +237,7 @@ worker_groups = {
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | AWS Account Id to apply changes into | `string` | `null` | no |
 | <a name="input_adot_config"></a> [adot\_config](#input\_adot\_config) | n/a | `any` | <pre>{<br>  "accept_namespace_regex": "(default|kube-system)",<br>  "additional_metrics": {},<br>  "log_group_name": "adot_log_group"<br>}</pre> | no |
 | <a name="input_adot_version"></a> [adot\_version](#input\_adot\_version) | The version of the AWS Distro for OpenTelemetry addon to use. | `string` | `"v0.78.0-eksbuild.1"` | no |
+| <a name="input_alarms"></a> [alarms](#input\_alarms) | n/a | <pre>object({<br>    enabled       = optional(bool, true)<br>    sns_topic     = string<br>    custom_values = optional(any, {})<br>  })</pre> | n/a | yes |
 | <a name="input_alb_log_bucket_name"></a> [alb\_log\_bucket\_name](#input\_alb\_log\_bucket\_name) | n/a | `string` | `""` | no |
 | <a name="input_alb_log_bucket_path"></a> [alb\_log\_bucket\_path](#input\_alb\_log\_bucket\_path) | ALB-INGRESS-CONTROLLER | `string` | `""` | no |
 | <a name="input_api_gateway_resources"></a> [api\_gateway\_resources](#input\_api\_gateway\_resources) | Nested map containing API, Stage, and VPC Link resources | <pre>list(object({<br>    namespace = string<br>    api = object({<br>      name         = string<br>      protocolType = string<br>    })<br>    stages = optional(list(object({<br>      name        = string<br>      namespace   = string<br>      apiRef_name = string<br>      stageName   = string<br>      autoDeploy  = bool<br>      description = string<br>    })))<br>    vpc_links = optional(list(object({<br>      name      = string<br>      namespace = string<br>    })))<br>  }))</pre> | `[]` | no |

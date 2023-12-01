@@ -475,3 +475,11 @@ variable "enable_waf_for_alb" {
   description = "Enables WAF and WAF V2 addons for ALB"
   default     = false
 }
+
+variable "alarms" {
+  type = object({
+    enabled       = optional(bool, true)
+    sns_topic     = string
+    custom_values = optional(any, {})
+  })
+}
