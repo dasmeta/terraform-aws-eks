@@ -15,6 +15,12 @@ module "cluster_min" {
   }
   account_id = data.aws_caller_identity.current.account_id
 
+  # users = [
+  #   {
+  #     username : "julia.aghamyan"
+  #   }
+  # ]
+
   node_groups = {
     example = {
       max_capacity = 1
@@ -25,11 +31,12 @@ module "cluster_min" {
   }
 
   node_groups_default = {
-    instance_types = ["t3.medium"]
+    instance_types = ["t3.large"]
     capacity_type  = "SPOT"
   }
 
   alarms = {
-    sns_topic = "Default"
+    enabled   = false
+    sns_topic = ""
   }
 }

@@ -330,9 +330,13 @@ resource "helm_release" "kube-state-metrics" {
   version          = "4.22.3"
   create_namespace = false
   atomic           = true
+
   set_list {
-    name  = "metricAllowlist"
-    value = var.prometheus_metrics
+    name = "metricAllowlist"
+    value = concat(var.prometheus_metrics, [
+      "kube_deployment_spec_replicas",
+      "kube_deployment_status_replicas_available"
+    ])
   }
 }
 

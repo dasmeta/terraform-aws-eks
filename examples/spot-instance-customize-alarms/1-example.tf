@@ -31,5 +31,12 @@ module "cluster_min" {
 
   alarms = {
     sns_topic = "Default"
+    custom_values = {
+      node_failed = {
+        period    = "62"
+        threshold = "1"
+        statistic = "max"
+      }
+    }
   }
 }

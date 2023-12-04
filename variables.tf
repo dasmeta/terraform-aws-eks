@@ -354,7 +354,7 @@ variable "efs_id" {
 variable "autoscaling" {
   description = "Weather enable autoscaling or not in EKS"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "autoscaler_image_patch" {
@@ -474,4 +474,13 @@ variable "enable_waf_for_alb" {
   type        = bool
   description = "Enables WAF and WAF V2 addons for ALB"
   default     = false
+}
+
+variable "alarms" {
+  type = object({
+    enabled       = optional(bool, true)
+    sns_topic     = string
+    custom_values = optional(any, {})
+  })
+  description = "Alarms enabled by default you need set sns topic name for send alarms for customize alarms threshold use custom_values"
 }
