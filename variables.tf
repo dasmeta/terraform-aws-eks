@@ -360,7 +360,7 @@ variable "autoscaling" {
 variable "autoscaler_image_patch" {
   type        = number
   description = "The patch number of autoscaler image"
-  default     = 0
+  default     = 1
 }
 
 variable "scale_down_unneeded_time" {
