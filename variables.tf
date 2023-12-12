@@ -306,16 +306,24 @@ variable "vpc" {
 
 variable "metrics_exporter" {
   type        = string
-  default     = "cloudwatch"
+  default     = "adot"
   description = "Metrics Exporter, can use cloudwatch or adot"
 }
 
 variable "adot_config" {
-  type = any
+  type = object({
+    accept_namespace_regex = optional(string, "(default|kube-system)")
+    additional_metrics     = optional(list(string), [])
+    log_group_name         = optional(string, "adot")
+    log_retention          = optional(number, 14)
+    helm_values            = optional(any, null)
+  })
+  description = "Adot configs"
   default = {
     accept_namespace_regex = "(default|kube-system)"
-    additional_metrics     = {}
-    log_group_name         = "adot_log_group"
+    additional_metrics     = []
+    log_group_name         = "adot"
+    log_retention          = 14
   }
 }
 
@@ -360,7 +368,7 @@ variable "autoscaling" {
 variable "autoscaler_image_patch" {
   type        = number
   description = "The patch number of autoscaler image"
-  default     = 1
+  default     = 0
 }
 
 variable "scale_down_unneeded_time" {

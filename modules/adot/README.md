@@ -58,6 +58,7 @@ No modules.
 | Name | Type |
 |------|------|
 | [aws_eks_addon.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
+| [aws_iam_policy.adot](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
 | [aws_iam_role.adot_collector](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role_policy_attachment.CloudWatchAgentServerPolicy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [helm_release.adot-collector](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
@@ -73,8 +74,8 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_adot_collector_policy_arns"></a> [adot\_collector\_policy\_arns](#input\_adot\_collector\_policy\_arns) | List of IAM policy ARNs to attach to the ADOT collector service account. | `list(string)` | <pre>[<br>  "arn:aws:iam::aws:policy/AmazonPrometheusRemoteWriteAccess",<br>  "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",<br>  "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"<br>]</pre> | no |
-| <a name="input_adot_config"></a> [adot\_config](#input\_adot\_config) | accept\_namespace\_regex defines the list of namespaces from which metrics will be exported, and additional\_metrics defines additional metrics to export. | `any` | <pre>{<br>  "accept_namespace_regex": "(default|kube-system)",<br>  "additional_metrics": [],<br>  "helm_values": null,<br>  "log_group_name": "adot_log_group"<br>}</pre> | no |
+| <a name="input_adot_collector_policy_arns"></a> [adot\_collector\_policy\_arns](#input\_adot\_collector\_policy\_arns) | List of IAM policy ARNs to attach to the ADOT collector service account. | `list(string)` | `[]` | no |
+| <a name="input_adot_config"></a> [adot\_config](#input\_adot\_config) | accept\_namespace\_regex defines the list of namespaces from which metrics will be exported, and additional\_metrics defines additional metrics to export. | <pre>object({<br>    accept_namespace_regex = optional(string, "(default|kube-system)")<br>    additional_metrics     = optional(list(string), [])<br>    log_group_name         = optional(string, "adot")<br>    log_retention          = optional(number, 14)<br>    helm_values            = optional(any, null)<br>  })</pre> | <pre>{<br>  "accept_namespace_regex": "(default|kube-system)",<br>  "additional_metrics": [],<br>  "helm_values": null,<br>  "log_group_name": "adot",<br>  "log_retention": 21<br>}</pre> | no |
 | <a name="input_adot_log_group_name"></a> [adot\_log\_group\_name](#input\_adot\_log\_group\_name) | ADOT log group name | `string` | `"adot_log_group_name"` | no |
 | <a name="input_adot_version"></a> [adot\_version](#input\_adot\_version) | The version of the AWS Distro for OpenTelemetry addon to use. | `string` | `"v0.78.0-eksbuild.1"` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | K8s cluster name. | `string` | n/a | yes |
