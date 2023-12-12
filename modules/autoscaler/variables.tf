@@ -38,7 +38,7 @@ variable "eks_version" {
 variable "autoscaler_image_patch" {
   type        = number
   description = "The patch number of autoscaler image"
-  default     = 1
+  default     = 0
 }
 
 variable "scale_down_unneeded_time" {

@@ -15,6 +15,9 @@ module "cluster_min" {
   }
   account_id = data.aws_caller_identity.current.account_id
 
+  # metrics_exporter = "adot"
+  # adot_config = {"accept_namespace_regex":"(default|kube-system)","additional_metrics":[],"log_group_name":"adot"}
+
   node_groups = {
     example = {
       max_capacity = 1
