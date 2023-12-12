@@ -28,13 +28,11 @@ locals {
   merged_metrics            = concat(local.default_metrics, lookup(var.adot_config, "additional_metrics", []))
   merged_namespace_specific = concat(local.default_metrics_namespace_specific, lookup(var.adot_config, "namespace_specific_metrics", []))
 
-
   adot_policies = concat([
     "${aws_iam_policy.adot.arn}",
     "arn:aws:iam::aws:policy/AmazonPrometheusRemoteWriteAccess",
     "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
     "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
   ], var.adot_collector_policy_arns)
-
 
 }

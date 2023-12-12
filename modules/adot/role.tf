@@ -35,8 +35,6 @@ resource "aws_iam_policy" "adot" {
   path        = "/"
   description = "Adot Policy"
 
-  # Terraform's "jsonencode" function converts a
-  # Terraform expression result to valid JSON syntax.
   policy = jsonencode({
     "Version" : "2012-10-17",
     "Statement" : [
