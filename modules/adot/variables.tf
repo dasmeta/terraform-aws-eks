@@ -50,7 +50,7 @@ variable "adot_config" {
     accept_namespace_regex = "(default|kube-system)"
     additional_metrics     = []
     log_group_name         = "adot"
-    log_retention          = 21
+    log_retention          = 14
     # ADOT helm chart values.yaml, if you don't use variable adot will be deployed with module default values file
     helm_values = null
   }
