@@ -29,7 +29,7 @@ variable "node_groups" {
       min_size                     = 2
       max_size                     = 4
       desired_size                 = 2
-      instance_types               = ["t3.medium"]
+      instance_types               = ["t3.large"]
       iam_role_additional_policies = ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"]
     }
   }
@@ -62,7 +62,7 @@ variable "node_groups_default" {
   type        = any
   default = {
     disk_size                    = 50
-    instance_types               = ["t3.medium"]
+    instance_types               = ["t3.large"]
     iam_role_additional_policies = ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"]
   }
 }
@@ -306,16 +306,24 @@ variable "vpc" {
 
 variable "metrics_exporter" {
   type        = string
-  default     = "cloudwatch"
+  default     = "adot"
   description = "Metrics Exporter, can use cloudwatch or adot"
 }
 
 variable "adot_config" {
-  type = any
+  type = object({
+    accept_namespace_regex = optional(string, "(default|kube-system)")
+    additional_metrics     = optional(list(string), [])
+    log_group_name         = optional(string, "adot")
+    log_retention          = optional(number, 14)
+    helm_values            = optional(any, null)
+  })
+  description = "Adot configs"
   default = {
     accept_namespace_regex = "(default|kube-system)"
-    additional_metrics     = {}
-    log_group_name         = "adot_log_group"
+    additional_metrics     = []
+    log_group_name         = "adot"
+    log_retention          = 14
   }
 }
 

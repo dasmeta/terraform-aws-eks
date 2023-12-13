@@ -34,20 +34,23 @@ variable "create_namespace" {
 variable "adot_collector_policy_arns" {
   description = "List of IAM policy ARNs to attach to the ADOT collector service account."
   type        = list(string)
-  default = [
-    "arn:aws:iam::aws:policy/AmazonPrometheusRemoteWriteAccess",
-    "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
-    "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
-  ]
+  default     = []
 }
 
 variable "adot_config" {
   description = "accept_namespace_regex defines the list of namespaces from which metrics will be exported, and additional_metrics defines additional metrics to export."
-  type        = any
+  type = object({
+    accept_namespace_regex = optional(string, "(default|kube-system)")
+    additional_metrics     = optional(list(string), [])
+    log_group_name         = optional(string, "adot")
+    log_retention          = optional(number, 14)
+    helm_values            = optional(any, null)
+  })
   default = {
     accept_namespace_regex = "(default|kube-system)"
     additional_metrics     = []
-    log_group_name         = "adot_log_group"
+    log_group_name         = "adot"
+    log_retention          = 14
     # ADOT helm chart values.yaml, if you don't use variable adot will be deployed with module default values file
     helm_values = null
   }

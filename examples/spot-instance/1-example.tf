@@ -25,7 +25,7 @@ module "cluster_min" {
   }
 
   node_groups_default = {
-    instance_types = ["t3.medium"]
+    instance_types = ["t3.large"]
     capacity_type  = "SPOT"
   }
 

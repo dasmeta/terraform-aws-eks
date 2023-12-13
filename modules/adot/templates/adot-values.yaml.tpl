@@ -128,6 +128,7 @@ adotCollector:
           dimension_rollup_option: NoDimensionRollup
           log_group_name: "${log_group_name}"
           log_stream_name: "adot-metrics-prometheus"
+          log_retention: "${log_retention}"
           metric_declarations:
           - dimensions:
             - - Namespace
@@ -150,6 +151,7 @@ adotCollector:
           namespace: "ContainerInsights"
           log_group_name: "${log_group_name}"
           log_stream_name: "adot-metrics"
+          log_retention: "${log_retention}"
           region: "${region}"
           dimension_rollup_option: "NoDimensionRollup"
           resource_to_telemetry_conversion:

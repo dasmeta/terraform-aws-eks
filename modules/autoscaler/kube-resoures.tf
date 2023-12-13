@@ -216,7 +216,7 @@ resource "kubernetes_deployment" "cluster-autoscaler" {
         }
         service_account_name = "cluster-autoscaler"
         container {
-          image = "k8s.gcr.io/autoscaling/cluster-autoscaler:v${var.eks_version}.${var.autoscaler_image_patch}"
+          image = "registry.k8s.io/autoscaling/cluster-autoscaler:v${var.eks_version}.${var.autoscaler_image_patch}"
           name  = "cluster-autoscaler"
 
           resources {
