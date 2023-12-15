@@ -311,19 +311,22 @@ variable "metrics_exporter" {
 }
 
 variable "adot_config" {
+  description = "accept_namespace_regex defines the list of namespaces from which metrics will be exported, and additional_metrics defines additional metrics to export."
   type = object({
     accept_namespace_regex = optional(string, "(default|kube-system)")
     additional_metrics     = optional(list(string), [])
     log_group_name         = optional(string, "adot")
     log_retention          = optional(number, 14)
     helm_values            = optional(any, null)
+    logging_enable         = optional(bool, false)
   })
-  description = "Adot configs"
   default = {
     accept_namespace_regex = "(default|kube-system)"
     additional_metrics     = []
     log_group_name         = "adot"
     log_retention          = 14
+    logging_enable         = false
+    helm_values            = null
   }
 }
 

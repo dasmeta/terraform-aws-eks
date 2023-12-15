@@ -126,9 +126,9 @@ adotCollector:
       exporters:
         awsemf/prometheus:
           dimension_rollup_option: NoDimensionRollup
-          log_group_name: "${log_group_name}"
-          log_stream_name: "adot-metrics-prometheus"
-          log_retention: "${log_retention}"
+%{ for key,value in loging }
+          ${key}: ${value}
+%{ endfor ~}
           metric_declarations:
           - dimensions:
             - - Namespace
@@ -149,9 +149,9 @@ adotCollector:
             enabled: true
         awsemf:
           namespace: "ContainerInsights"
-          log_group_name: "${log_group_name}"
-          log_stream_name: "adot-metrics"
-          log_retention: "${log_retention}"
+%{ for key, value in loging }
+          ${key}: ${value}
+%{ endfor ~}
           region: "${region}"
           dimension_rollup_option: "NoDimensionRollup"
           resource_to_telemetry_conversion:
@@ -214,8 +214,6 @@ adotCollector:
 
           # - dimensions: [[ClusterName, Namespace, Volume]]
           #  metric_name_selectors:
-        logging:
-          loglevel: error
         awsxray:
           region: "${region}"
       service:
@@ -232,10 +230,6 @@ adotCollector:
             receivers: ["awscontainerinsightreceiver"]
             processors: ["filter/metrics_include", "resource/set_attributes", "batch/metrics"]
             exporters: ["awsemf"]
-          traces/logging:
-            receivers: ["otlp"]
-            processors: ["memory_limiter"]
-            exporters: ["logging"]
           traces/to-aws-xray:
             receivers: [otlp]
             processors: ["memory_limiter", "batch/tracing", "resource/tracing_attributes"]
