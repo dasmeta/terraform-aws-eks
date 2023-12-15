@@ -2,6 +2,13 @@ locals {
   service_account_name = "adot-collector"
   oidc_provider        = regex("^arn:aws:iam::[0-9]+:oidc-provider/(.*)$", var.oidc_provider_arn)[0]
   region               = coalesce(var.region, try(data.aws_region.current[0].name, null))
+
+
+  logging = var.adot_config.logging_enable ? {
+    "log_group_name"  = "${var.adot_config.log_group_name}"
+    "log_stream_name" = "adot-metrics"
+    "log_retention"   = "${var.adot_config.log_retention}"
+  } : {}
 }
 
 data "aws_region" "current" {
@@ -26,8 +33,7 @@ resource "helm_release" "adot-collector" {
       region                     = local.region
       cluster_name               = var.cluster_name
       accept_namespace_regex     = var.adot_config.accept_namespace_regex
-      log_group_name             = var.adot_config.log_group_name
-      log_retention              = var.adot_config.log_retention
+      loging                     = local.logging
       metrics                    = local.merged_metrics
       metrics_namespace_specific = local.merged_namespace_specific
       prometheus_metrics         = var.prometheus_metrics
