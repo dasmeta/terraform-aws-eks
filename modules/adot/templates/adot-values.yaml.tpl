@@ -19,6 +19,13 @@ adotCollector:
       name: "adot-collector"
     service:
       create: true
+    resources:
+      limits:
+        cpu: ${resources_limit_cpu}
+        memory: ${resources_limit_memory}
+      requests:
+        cpu: ${resources_requests_cpu}
+        memory: ${resources_requests_memory}
     adotConfig:
       extensions:
         health_check: {}

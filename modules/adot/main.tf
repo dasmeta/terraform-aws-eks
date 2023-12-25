@@ -38,6 +38,10 @@ resource "helm_release" "adot-collector" {
       metrics_namespace_specific = local.merged_namespace_specific
       prometheus_metrics         = var.prometheus_metrics
       namespace                  = var.namespace
+      resources_limit_cpu        = var.adot_config.resources.limit["cpu"]
+      resources_limit_memory     = var.adot_config.resources.limit["memory"]
+      resources_requests_cpu     = var.adot_config.resources.requests["cpu"]
+      resources_requests_memory  = var.adot_config.resources.requests["memory"]
     })
   ]
 

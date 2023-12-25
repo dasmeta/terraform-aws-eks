@@ -319,6 +319,25 @@ variable "adot_config" {
     log_retention          = optional(number, 14)
     helm_values            = optional(any, null)
     logging_enable         = optional(bool, false)
+    resources = optional({
+      limit = object({
+        cpu    = optional(string, "200m")
+        memory = optional(string, "200Mi")
+      })
+      requests = object({
+        cpu    = optional(string, "200m")
+        memory = optional(string, "200Mi")
+      })
+      }, {
+      limit = {
+        cpu    = "200m"
+        memory = "200Mi"
+      }
+      requests = {
+        cpu    = "200m"
+        memory = "200Mi"
+      }
+    })
   })
   default = {
     accept_namespace_regex = "(default|kube-system)"
@@ -327,6 +346,16 @@ variable "adot_config" {
     log_retention          = 14
     logging_enable         = false
     helm_values            = null
+    resources = {
+      limit = {
+        cpu    = "200m"
+        memory = "200Mi"
+      }
+      requests = {
+        cpu    = "200m"
+        memory = "200Mi"
+      }
+    }
   }
 }
 
