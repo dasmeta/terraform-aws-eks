@@ -319,7 +319,7 @@ variable "adot_config" {
     log_retention          = optional(number, 14)
     helm_values            = optional(any, null)
     logging_enable         = optional(bool, false)
-    resources = object({
+    resources = optional(object({
       limit = object({
         cpu    = optional(string, "200m")
         memory = optional(string, "200Mi")
@@ -328,6 +328,15 @@ variable "adot_config" {
         cpu    = optional(string, "200m")
         memory = optional(string, "200Mi")
       })
+      }), {
+      limit = {
+        cpu    = "200m"
+        memory = "200Mi"
+      }
+      requests = {
+        cpu    = "200m"
+        memory = "200Mi"
+      }
     })
   })
   default = {
