@@ -71,4 +71,8 @@ module "this" {
       "liveness"
     ]
   }
+  alarms = {
+    enabled   = false
+    sns_topic = ""
+  }
 }
