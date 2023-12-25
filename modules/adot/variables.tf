@@ -102,27 +102,3 @@ variable "adot_log_group_name" {
   type        = string
   default     = "adot_log_group_name"
 }
-
-# variable "resources" {
-#   type = object({
-#     limit = object({
-#       cpu    = optional(string, "200m")
-#       memory = optional(string, "200Mi")
-#     })
-#     requests = object({
-#       cpu    = optional(string, "200m")
-#       memory = optional(string, "200Mi")
-#     })
-#   })
-#   description = "description"
-#   default = {
-#     limit = {
-#       cpu    = "200m"
-#       memory = "200Mi"
-#     }
-#     requests = {
-#       cpu    = "200m"
-#       memory = "200Mi"
-#     }
-#   }
-# }
