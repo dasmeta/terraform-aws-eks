@@ -39,4 +39,9 @@ module "basic" {
     "kube_deployment_spec_replicas",
     "kube_deployment_status_replicas_available"
   ]
+
+  alarms = {
+    enabled   = false
+    sns_topic = ""
+  }
 }

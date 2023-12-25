@@ -23,4 +23,8 @@ module "basic" {
   }
 
   # enable_olm = true
+  alarms = {
+    enabled   = false
+    sns_topic = ""
+  }
 }
