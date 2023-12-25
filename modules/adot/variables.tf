@@ -46,6 +46,16 @@ variable "adot_config" {
     log_retention          = optional(number, 14)
     helm_values            = optional(any, null)
     logging_enable         = optional(bool, false)
+    resources = {
+      limit = object({
+        cpu    = optional(string, "200m")
+        memory = optional(string, "200Mi")
+      })
+      requests = object({
+        cpu    = optional(string, "200m")
+        memory = optional(string, "200Mi")
+      })
+    }
   })
   default = {
     accept_namespace_regex = "(default|kube-system)"
@@ -55,6 +65,16 @@ variable "adot_config" {
     logging_enable         = false
     # ADOT helm chart values.yaml, if you don't use variable adot will be deployed with module default values file
     helm_values = null
+    resources = {
+      limit = {
+        cpu    = "200m"
+        memory = "200Mi"
+      }
+      requests = {
+        cpu    = "200m"
+        memory = "200Mi"
+      }
+    }
   }
 }
 
