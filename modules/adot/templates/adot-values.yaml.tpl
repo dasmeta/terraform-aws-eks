@@ -128,8 +128,8 @@ adotCollector:
           timeout: 30s
           send_batch_size: 8192
         memory_limiter:
-          limit_mib: 4000
-          check_interval: 1s
+          limit_mib: ${limit_mib}
+          check_interval: ${check_interval}
       exporters:
         awsemf/prometheus:
           dimension_rollup_option: NoDimensionRollup
