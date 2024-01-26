@@ -48,11 +48,11 @@ variable "adot_config" {
     logging_enable         = optional(bool, false)
     memory_limiter = optional(object(
       {
-        limit_mib      = optional(number, 4000)
+        limit_mib      = optional(number, 1000)
         check_interval = optional(string, "1s")
       }
       ), {
-      limit_mib      = 4000
+      limit_mib      = 1000
       check_interval = "1s"
       }
     )
