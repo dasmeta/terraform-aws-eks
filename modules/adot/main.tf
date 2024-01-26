@@ -42,6 +42,8 @@ resource "helm_release" "adot-collector" {
       resources_limit_memory     = var.adot_config.resources.limit["memory"]
       resources_requests_cpu     = var.adot_config.resources.requests["cpu"]
       resources_requests_memory  = var.adot_config.resources.requests["memory"]
+      limit_mib                  = var.adot_config.memory_limiter.limit_mib
+      check_interval             = var.adot_config.memory_limiter.check_interval
     })
   ]
 
