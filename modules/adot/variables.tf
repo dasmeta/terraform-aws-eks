@@ -46,6 +46,16 @@ variable "adot_config" {
     log_retention          = optional(number, 14)
     helm_values            = optional(any, null)
     logging_enable         = optional(bool, false)
+    memory_limiter = optional(object(
+      {
+        limit_mib      = optional(number, 1000)
+        check_interval = optional(string, "1s")
+      }
+      ), {
+      limit_mib      = 1000
+      check_interval = "1s"
+      }
+    )
     resources = optional(object({
       limit = object({
         cpu    = optional(string, "200m")
