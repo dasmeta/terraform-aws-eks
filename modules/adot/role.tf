@@ -31,7 +31,7 @@ POLICY
 }
 
 resource "aws_iam_policy" "adot" {
-  name        = "adot_policy"
+  name        = "${var.cluster_name}-adot_policy"
   path        = "/"
   description = "Adot Policy"
 

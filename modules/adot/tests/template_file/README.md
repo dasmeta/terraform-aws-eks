@@ -15,8 +15,8 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 4.63.0 |
-| <a name="provider_helm"></a> [helm](#provider\_helm) | 2.9.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 3.41 |
+| <a name="provider_helm"></a> [helm](#provider\_helm) | >= 2.0 |
 | <a name="provider_test"></a> [test](#provider\_test) | n/a |
 
 ## Modules
