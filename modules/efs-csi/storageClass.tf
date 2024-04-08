@@ -8,5 +8,6 @@ resource "kubernetes_storage_class" "efs-storage-class" {
     fileSystemId : var.efs_id
     directoryPerms : "755"
     basePath : "/eks"
+    uid : "0"
   }
 }
