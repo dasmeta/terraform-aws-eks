@@ -14,6 +14,13 @@ variable "cluster_name" {
 }
 
 variable "storage_class_name" {
-  type    = string
-  default = "efs-sc"
+  type        = string
+  description = "Storage class name"
+  default     = "efs-sc"
+}
+
+variable "service_account_name" {
+  type        = string
+  description = "Service account name"
+  default     = "efs-csi-controller-sa"
 }

@@ -17,7 +17,7 @@ resource "helm_release" "efs-driver" {
 
   set {
     name  = "controller.serviceAccount.name"
-    value = "efs-csi-controller-sa"
+    value = var.service_account_name
   }
 
 }
