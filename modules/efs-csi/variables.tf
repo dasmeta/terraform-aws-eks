@@ -24,3 +24,9 @@ variable "service_account_name" {
   description = "Service account name"
   default     = "efs-csi-controller-sa"
 }
+
+variable "namespace" {
+  type        = string
+  description = "Namespace name"
+  default     = "kube-system"
+}
