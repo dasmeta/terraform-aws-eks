@@ -12,3 +12,27 @@ variable "cluster_name" {
   description = "Parent cluster name"
   type        = string
 }
+
+variable "storage_class_name" {
+  type        = string
+  description = "Storage class name"
+  default     = "efs-sc"
+}
+
+variable "service_account_name" {
+  type        = string
+  description = "Service account name"
+  default     = "efs-csi-controller-sa"
+}
+
+variable "service_account_node_name" {
+  type        = string
+  description = "Node Service account name"
+  default     = "efs-csi-node-sa"
+}
+
+variable "namespace" {
+  type        = string
+  description = "Namespace name"
+  default     = "kube-system"
+}

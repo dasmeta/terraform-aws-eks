@@ -1,6 +1,6 @@
 resource "kubernetes_storage_class" "efs-storage-class" {
   metadata {
-    name = "efs-sc"
+    name = var.storage_class_name
   }
   storage_provisioner = "efs.csi.aws.com"
   parameters = {

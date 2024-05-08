@@ -3,7 +3,7 @@ resource "helm_release" "efs-driver" {
   repository = "https://kubernetes-sigs.github.io/aws-efs-csi-driver/"
   chart      = "aws-efs-csi-driver"
   version    = "2.3.2"
-  namespace  = "kube-system"
+  namespace  = var.namespace
 
   set {
     name  = "image.repository"
@@ -17,7 +17,7 @@ resource "helm_release" "efs-driver" {
 
   set {
     name  = "controller.serviceAccount.name"
-    value = "efs-csi-controller-sa"
+    value = var.service_account_name
   }
 
 }

@@ -57,6 +57,10 @@ No modules.
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | Parent cluster name | `string` | n/a | yes |
 | <a name="input_cluster_oidc_arn"></a> [cluster\_oidc\_arn](#input\_cluster\_oidc\_arn) | oidc arn of cluster | `string` | n/a | yes |
 | <a name="input_efs_id"></a> [efs\_id](#input\_efs\_id) | Id of EFS filesystem in AWS (Required) | `string` | n/a | yes |
+| <a name="input_namespace"></a> [namespace](#input\_namespace) | Namespace name | `string` | `"kube-system"` | no |
+| <a name="input_service_account_name"></a> [service\_account\_name](#input\_service\_account\_name) | Service account name | `string` | `"efs-csi-controller-sa"` | no |
+| <a name="input_service_account_node_name"></a> [service\_account\_node\_name](#input\_service\_account\_node\_name) | Node Service account name | `string` | `"efs-csi-node-sa"` | no |
+| <a name="input_storage_class_name"></a> [storage\_class\_name](#input\_storage\_class\_name) | Storage class name | `string` | `"efs-sc"` | no |
 
 ## Outputs
 

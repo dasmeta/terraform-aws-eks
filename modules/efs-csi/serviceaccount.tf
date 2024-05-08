@@ -1,7 +1,7 @@
 resource "kubernetes_service_account" "servciceaccount" {
   metadata {
-    name      = "efs-csi-controller-sa"
-    namespace = "kube-system"
+    name      = var.service_account_name
+    namespace = var.namespace
     labels = {
       "app.kubernetes.io/name" = "aws-efs-csi-driver"
     }
