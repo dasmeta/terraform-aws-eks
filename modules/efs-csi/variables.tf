@@ -12,3 +12,8 @@ variable "cluster_name" {
   description = "Parent cluster name"
   type        = string
 }
+
+variable "storage_class_name" {
+  type    = string
+  default = "efs-sc"
+}
