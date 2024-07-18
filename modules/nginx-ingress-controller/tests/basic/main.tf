@@ -1,0 +1,4 @@
+module "this" {
+  source = "../../"
+
+}
