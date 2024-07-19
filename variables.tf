@@ -310,6 +310,28 @@ variable "metrics_exporter" {
   description = "Metrics Exporter, can use cloudwatch or adot"
 }
 
+variable "nginx_ingress_controller_config" {
+  type = object({
+    enabled          = optional(bool, false)
+    name             = optional(string, "nginx")
+    create_namespace = optional(bool, true)
+    namespace        = optional(string, "ingress-nginx")
+    replicacount     = optional(number, 3)
+    metrics_enabled  = optional(bool, true)
+  })
+
+  default = {
+    enabled          = false
+    name             = "nginx"
+    create_namespace = true
+    namespace        = "ingress-nginx"
+    replicacount     = 3
+    metrics_enabled  = true
+  }
+
+  description = "Nginx ingress controller configs"
+}
+
 variable "adot_config" {
   description = "accept_namespace_regex defines the list of namespaces from which metrics will be exported, and additional_metrics defines additional metrics to export."
   type = object({

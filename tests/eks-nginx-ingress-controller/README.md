@@ -1,4 +1,4 @@
-# basic
+# eks-nginx-ingress-controller
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
