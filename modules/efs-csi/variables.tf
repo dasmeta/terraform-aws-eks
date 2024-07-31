@@ -12,3 +12,15 @@ variable "cluster_name" {
   description = "Parent cluster name"
   type        = string
 }
+
+variable "storage_classes" {
+  description = "Additional storage class configurations"
+  type = list(object({
+    name : string
+    file_system_id : string
+    directory_perms : string
+    base_path : string
+    uid : optional(number)
+  }))
+  default = []
+}

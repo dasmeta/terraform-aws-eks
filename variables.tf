@@ -407,6 +407,19 @@ variable "enable_efs_driver" {
   description = "Weather install EFS driver or not in EKS"
 }
 
+variable "efs_storage_classes" {
+  description = "Additional storage class configurations for EFS"
+  type = list(object({
+    name : string
+    provisioning_mode : string
+    file_system_id : string
+    directory_perms : string
+    base_path : string
+    uid : optional(number)
+  }))
+  default = []
+}
+
 variable "efs_id" {
   description = "EFS filesystem id in AWS"
   type        = string

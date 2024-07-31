@@ -275,6 +275,7 @@ module "efs-csi-driver" {
   cluster_name     = var.cluster_name
   efs_id           = var.efs_id
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
+  storage_classes  = var.efs_storage_classes
 }
 
 resource "helm_release" "cert-manager" {
