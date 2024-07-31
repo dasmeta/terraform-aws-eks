@@ -57,7 +57,7 @@ No modules.
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | Parent cluster name | `string` | n/a | yes |
 | <a name="input_cluster_oidc_arn"></a> [cluster\_oidc\_arn](#input\_cluster\_oidc\_arn) | oidc arn of cluster | `string` | n/a | yes |
 | <a name="input_efs_id"></a> [efs\_id](#input\_efs\_id) | Id of EFS filesystem in AWS (Required) | `string` | n/a | yes |
-| <a name="input_storage_classes"></a> [storage\_classes](#input\_storage\_classes) | Additional storage class configurations | <pre>list(object({<br>    name : string<br>    file_system_id : string<br>    directory_perms : string<br>    base_path : string<br>    uid : optional(number)<br>  }))</pre> | `[]` | no |
+| <a name="input_storage_classes"></a> [storage\_classes](#input\_storage\_classes) | Additional storage class configurations: by default, 2 storage classes are created - efs-sc and efs-sc-root which has 0 uid. One can add another storage classes besides these 2. | <pre>list(object({<br>    name : string<br>    provisioning_mode : optional(string, "efs-ap")<br>    file_system_id : string<br>    directory_perms : optional(string, "755")<br>    base_path : optional(string, "/")<br>    uid : optional(number)<br>  }))</pre> | `[]` | no |
 
 ## Outputs
 

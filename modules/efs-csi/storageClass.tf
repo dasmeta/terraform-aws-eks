@@ -2,6 +2,7 @@ locals {
   default_storage_classes = [
     {
       name : "efs-sc"
+      provisioning_mode : "efs-ap"
       file_system_id : var.efs_id
       directory_perms : "755"
       base_path : "/eks"
@@ -9,9 +10,10 @@ locals {
     },
     {
       name : "efs-sc-root"
+      provisioning_mode : "efs-ap"
       file_system_id : var.efs_id
       directory_perms : "755"
-      base_path : "/eks"
+      base_path : "/eks-root"
       uid : 0
     }
   ]
@@ -31,10 +33,10 @@ resource "kubernetes_storage_class" "efs_storage_class" {
 
   parameters = merge(
     {
-      provisioningMode = "efs-ap"
+      provisioningMode = each.value.provisioning_mode
       fileSystemId     = each.value.file_system_id
       directoryPerms   = each.value.directory_perms
-      basePath         = coalesce(each.value.base_path, "/eks")
+      basePath         = each.value.base_path
     },
     each.value.uid != null ? { "uid" : each.value.uid } : {}
   )
