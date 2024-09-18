@@ -121,6 +121,7 @@ variable "fluent_bit_configs" {
     log_filters            = optional(list(string), [])
     additional_log_filters = optional(list(string), [])
     kube_namespaces        = optional(list(string), [])
+    image_pull_secrets     = optional(list(string), [])
   })
   default = {
     fluent_bit_name       = ""
@@ -128,6 +129,7 @@ variable "fluent_bit_configs" {
     system_log_group_name = ""
     log_retention_days    = 90
     values_yaml           = ""
+    image_pull_secrets    = []
     configs = {
       inputs                     = ""
       outputs                    = ""

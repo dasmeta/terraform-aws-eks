@@ -1,16 +1,12 @@
 terraform {
   required_providers {
-    test = {
-      source = "terraform.io/builtin/test"
-    }
-
     aws = {
       source  = "hashicorp/aws"
       version = ">= 3.41"
     }
   }
 
-  required_version = ">= 1.3.0, < 1.6.0"
+  required_version = ">= 1.3.0, < 2.0.0"
 }
 
 /**

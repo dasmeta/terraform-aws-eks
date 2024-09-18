@@ -16,6 +16,7 @@ locals {
     filters                    = try(var.fluent_bit_config.filters, "")
     cloudwatch_outputs_enabled = try(var.fluent_bit_config.cloudwatch_outputs_enabled, true)
     kube_namespaces            = var.kube_namespaces
+    imagePullSecrets           = [for item in var.image_pull_secrets : { name : item }]
   }
 
   values = var.values_yaml == "" ? templatefile("${path.module}/values.yaml.tpl", local.config_settings) : var.values_yaml

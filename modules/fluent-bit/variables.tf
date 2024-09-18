@@ -138,3 +138,9 @@ variable "additional_log_filters" {
   ]
   description = "Fluent bit doesn't send logs if message consists of this values"
 }
+
+variable "image_pull_secrets" {
+  type        = list(string)
+  default     = []
+  description = "Secret name which can we use for download image"
+}

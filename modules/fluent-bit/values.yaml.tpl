@@ -1,3 +1,4 @@
+imagePullSecrets: ${jsonencode(imagePullSecrets)}
 config:
   ## https://docs.fluentbit.io/manual/pipeline/inputs
   inputs: |
