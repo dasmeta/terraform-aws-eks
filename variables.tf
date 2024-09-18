@@ -112,9 +112,10 @@ variable "fluent_bit_configs" {
     log_retention_days    = optional(number, 90)
     values_yaml           = optional(string, "")
     configs = optional(object({
-      inputs  = optional(string, "")
-      filters = optional(string, "")
-      outputs = optional(string, "")
+      inputs                     = optional(string, "")
+      filters                    = optional(string, "")
+      outputs                    = optional(string, "")
+      cloudwatch_outputs_enabled = optional(bool, true)
     }), {})
     drop_namespaces        = optional(list(string), [])
     log_filters            = optional(list(string), [])
@@ -128,9 +129,10 @@ variable "fluent_bit_configs" {
     log_retention_days    = 90
     values_yaml           = ""
     configs = {
-      inputs  = ""
-      outputs = ""
-      filters = ""
+      inputs                     = ""
+      outputs                    = ""
+      filters                    = ""
+      cloudwatch_outputs_enabled = true # whether to disable default cloudwatch exporter/output
     }
     drop_namespaces = [
       "kube-system",

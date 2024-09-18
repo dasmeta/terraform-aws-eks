@@ -51,9 +51,10 @@ module "fluent-bit" {
   ])
 
   fluent_bit_config = try(var.fluent_bit_configs.configs, {
-    inputs  = ""
-    outputs = ""
-    filters = ""
+    inputs                     = ""
+    outputs                    = ""
+    filters                    = ""
+    cloudwatch_outputs_enabled = true
   })
 
   depends_on = [

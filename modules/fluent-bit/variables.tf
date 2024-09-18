@@ -76,9 +76,10 @@ variable "values_yaml" {
 variable "fluent_bit_config" {
   description = "You can add other inputs,outputs and filters which module doesn't have by default"
   default = {
-    inputs  = ""
-    outputs = ""
-    filters = ""
+    inputs                     = ""
+    outputs                    = ""
+    filters                    = ""
+    cloudwatch_outputs_enabled = true # whether to disable default cloudwatch exporter/output
   }
   type = any
 }
