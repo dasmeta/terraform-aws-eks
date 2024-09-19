@@ -76,9 +76,10 @@ variable "values_yaml" {
 variable "fluent_bit_config" {
   description = "You can add other inputs,outputs and filters which module doesn't have by default"
   default = {
-    inputs  = ""
-    outputs = ""
-    filters = ""
+    inputs                     = ""
+    outputs                    = ""
+    filters                    = ""
+    cloudwatch_outputs_enabled = true # whether to disable default cloudwatch exporter/output
   }
   type = any
 }
@@ -136,4 +137,10 @@ variable "additional_log_filters" {
     "Amazon-Route53-Health-Check-Service",
   ]
   description = "Fluent bit doesn't send logs if message consists of this values"
+}
+
+variable "image_pull_secrets" {
+  type        = list(string)
+  default     = []
+  description = "Secret name which can we use for download image"
 }

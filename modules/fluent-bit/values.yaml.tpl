@@ -1,3 +1,4 @@
+imagePullSecrets: ${jsonencode(imagePullSecrets)}
 config:
   ## https://docs.fluentbit.io/manual/pipeline/inputs
   inputs: |
@@ -53,6 +54,9 @@ config:
 
     ${indent(4, filters)}
   outputs: |
+
+    %{ if cloudwatch_outputs_enabled }
+
     [OUTPUT]
         Name cloudwatch_logs
         Match  kube.*
@@ -79,5 +83,7 @@ config:
         log_stream_prefix from-fluent-bit-
         auto_create_group ${auto_create_group}
         log_retention_days ${log_retention_days}
+
+    %{ endif ~}
 
     ${indent(4, outputs)}
