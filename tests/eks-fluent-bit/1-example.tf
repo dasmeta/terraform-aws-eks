@@ -17,10 +17,9 @@ module "this" {
     "additional_metrics" : [],
     "log_group_name" : "adot-logs"
   }
-  cluster_enabled_log_types = ["audit"]
-  cluster_name              = "test-eks-fluent-bit"
-  cluster_version           = "1.27"
-  metrics_exporter          = "adot"
+  cluster_name     = "test-eks-fluent-bit"
+  cluster_version  = "1.27"
+  metrics_exporter = "adot"
   node_groups = {
     "dev_nodes" : {
       "desired_size" : 1,
@@ -43,10 +42,10 @@ module "this" {
 
   fluent_bit_configs = {
     configs = {
-      inputs  = templatefile("${path.module}/templates/inputs.yaml.tpl", {})
-      outputs = templatefile("${path.module}/templates/outputs.yaml.tpl", {})
-      filters = templatefile("${path.module}/templates/filters.yaml.tpl", {})
-      # cloudwatch_outputs_enabled = false # uncomment in case you want also to disable default cloudwatch log exporters/outputs
+      inputs                     = templatefile("${path.module}/templates/inputs.yaml.tpl", {})
+      outputs                    = templatefile("${path.module}/templates/outputs.yaml.tpl", {})
+      filters                    = templatefile("${path.module}/templates/filters.yaml.tpl", {})
+      cloudwatch_outputs_enabled = false # have false in case you want also disable default cloudwatch log exporters/outputs
     }
     drop_namespaces = [
       "kube-system",
