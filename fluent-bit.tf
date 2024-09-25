@@ -14,7 +14,7 @@ module "fluent-bit" {
   log_group_name        = try(var.fluent_bit_configs.log_group_name, "") != "" ? var.fluent_bit_configs.log_group_name : "fluent-bit-cloudwatch-${module.eks-cluster[0].cluster_id}"
   system_log_group_name = try(var.fluent_bit_configs.system_log_group_name, "")
   log_retention_days    = try(var.fluent_bit_configs.log_retention_days, 90)
-  imagePullSecrets      = try(var.fluent_bit_configs.imagePullSecrets, [])
+  image_pull_secrets    = try(var.fluent_bit_configs.image_pull_secrets, [])
 
   values_yaml = try(var.fluent_bit_configs.values_yaml, "")
 

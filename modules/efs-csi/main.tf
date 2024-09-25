@@ -1,5 +1,4 @@
 resource "helm_release" "efs-driver" {
-  count      = var.helm_install ? 1 : 0
   name       = "efs-csi"
   repository = "https://kubernetes-sigs.github.io/aws-efs-csi-driver/"
   chart      = "aws-efs-csi-driver"

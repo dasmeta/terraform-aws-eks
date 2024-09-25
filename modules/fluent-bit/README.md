@@ -55,7 +55,6 @@ No modules.
 | <a name="input_eks_oidc_root_ca_thumbprint"></a> [eks\_oidc\_root\_ca\_thumbprint](#input\_eks\_oidc\_root\_ca\_thumbprint) | n/a | `string` | n/a | yes |
 | <a name="input_fluent_bit_config"></a> [fluent\_bit\_config](#input\_fluent\_bit\_config) | You can add other inputs,outputs and filters which module doesn't have by default | `any` | <pre>{<br>  "cloudwatch_outputs_enabled": true,<br>  "filters": "",<br>  "inputs": "",<br>  "outputs": ""<br>}</pre> | no |
 | <a name="input_fluent_bit_name"></a> [fluent\_bit\_name](#input\_fluent\_bit\_name) | Container resource name. | `string` | `"fluent-bit"` | no |
-| <a name="input_imagePullSecrets"></a> [imagePullSecrets](#input\_imagePullSecrets) | Secret name which can we use for download image | `list(string)` | `[]` | no |
 | <a name="input_image_pull_secrets"></a> [image\_pull\_secrets](#input\_image\_pull\_secrets) | Secret name which can we use for download image | `list(string)` | `[]` | no |
 | <a name="input_kube_namespaces"></a> [kube\_namespaces](#input\_kube\_namespaces) | Kubernates namespaces | `list(string)` | <pre>[<br>  "kube.*",<br>  "meta.*",<br>  "adot.*",<br>  "devops.*",<br>  "cert-manager.*",<br>  "git.*",<br>  "opentelemetry.*",<br>  "stakater.*",<br>  "renovate.*"<br>]</pre> | no |
 | <a name="input_log_filters"></a> [log\_filters](#input\_log\_filters) | Fluent bit doesn't send logs if message consists of this values | `list(string)` | <pre>[<br>  "kube-probe",<br>  "health",<br>  "prometheus",<br>  "liveness"<br>]</pre> | no |
