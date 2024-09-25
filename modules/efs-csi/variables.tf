@@ -13,6 +13,12 @@ variable "cluster_name" {
   type        = string
 }
 
+variable "helm_install" {
+  description = "Helm Install"
+  type        = bool
+  default     = false
+}
+
 variable "storage_classes" {
   description = "Additional storage class configurations: by default, 2 storage classes are created - efs-sc and efs-sc-root which has 0 uid. One can add another storage classes besides these 2."
   type = list(object({

@@ -25,6 +25,12 @@ variable "namespace" {
   description = "k8s namespace fluent-bit should be deployed into."
 }
 
+variable "imagePullSecrets" {
+  type        = list(string)
+  default     = []
+  description = "Secret name which can we use for download image"
+}
+
 variable "create_namespace" {
   type        = bool
   default     = false

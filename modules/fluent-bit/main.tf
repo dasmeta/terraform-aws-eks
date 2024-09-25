@@ -30,6 +30,11 @@ resource "helm_release" "fluent-bit" {
   }
 
   set {
+    name  = "imagePullSecrets"
+    value = var.imagePullSecrets
+  }
+
+  set {
     name  = "serviceAccount.name"
     value = "fluent-bit"
   }

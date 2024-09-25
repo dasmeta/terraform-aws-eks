@@ -217,6 +217,7 @@ worker_groups = {
 | <a name="module_node-problem-detector"></a> [node-problem-detector](#module\_node-problem-detector) | ./modules/node-problem-detector | n/a |
 | <a name="module_olm"></a> [olm](#module\_olm) | ./modules/olm | n/a |
 | <a name="module_portainer"></a> [portainer](#module\_portainer) | ./modules/portainer | n/a |
+| <a name="module_priority_class"></a> [priority\_class](#module\_priority\_class) | ./modules/priority-class/ | n/a |
 | <a name="module_sso-rbac"></a> [sso-rbac](#module\_sso-rbac) | ./modules/sso-rbac | n/a |
 | <a name="module_vpc"></a> [vpc](#module\_vpc) | dasmeta/vpc/aws | 1.0.1 |
 | <a name="module_weave-scope"></a> [weave-scope](#module\_weave-scope) | ./modules/weave-scope | n/a |
@@ -278,6 +279,7 @@ worker_groups = {
 | <a name="input_node_groups_default"></a> [node\_groups\_default](#input\_node\_groups\_default) | Map of EKS managed node group default configurations | `any` | <pre>{<br>  "disk_size": 50,<br>  "iam_role_additional_policies": [<br>    "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"<br>  ],<br>  "instance_types": [<br>    "t3.large"<br>  ]<br>}</pre> | no |
 | <a name="input_node_security_group_additional_rules"></a> [node\_security\_group\_additional\_rules](#input\_node\_security\_group\_additional\_rules) | n/a | `any` | <pre>{<br>  "ingress_cluster_10250": {<br>    "description": "Metric server to node groups",<br>    "from_port": 10250,<br>    "protocol": "tcp",<br>    "self": true,<br>    "to_port": 10250,<br>    "type": "ingress"<br>  },<br>  "ingress_cluster_8443": {<br>    "description": "Metric server to node groups",<br>    "from_port": 8443,<br>    "protocol": "tcp",<br>    "source_cluster_security_group": true,<br>    "to_port": 8443,<br>    "type": "ingress"<br>  }<br>}</pre> | no |
 | <a name="input_portainer_config"></a> [portainer\_config](#input\_portainer\_config) | Portainer hostname and ingress config. | <pre>object({<br>    host           = optional(string, "portainer.dasmeta.com")<br>    enable_ingress = optional(bool, true)<br>  })</pre> | `{}` | no |
+| <a name="input_priority_class"></a> [priority\_class](#input\_priority\_class) | Defines Priority Classes in Kubernetes, used to assign different levels of priority to pods. By default, this module creates three Priority Classes: 'high', 'medium' and 'low' . You can also provide a custom list of Priority Classes if needed. | `list(any)` | <pre>[<br>  {}<br>]</pre> | no |
 | <a name="input_prometheus_metrics"></a> [prometheus\_metrics](#input\_prometheus\_metrics) | Prometheus Metrics | `any` | `[]` | no |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region name. | `string` | `null` | no |
 | <a name="input_roles"></a> [roles](#input\_roles) | Variable describes which role will user have K8s | <pre>list(object({<br>    actions   = list(string)<br>    resources = list(string)<br>  }))</pre> | `[]` | no |
