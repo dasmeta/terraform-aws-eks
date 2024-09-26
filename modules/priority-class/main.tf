@@ -13,15 +13,14 @@ locals {
       value = "250000"
     }
   ]
-  merged_priority_class = concat(local.priority_class_default, var.priority_class)
-  priority_class        = [for map in local.merged_priority_class : map if length(map) > 0]
+  priority_class = concat(local.priority_class_default, var.additional_priority_classes)
 }
 
 output "priority_class" {
   value = local.priority_class
 }
 
-resource "kubernetes_priority_class" "example" {
+resource "kubernetes_priority_class" "this" {
   # Transform the list of maps into a key-value map suitable for for_each
   for_each = { for pc in local.priority_class : pc.name => pc }
 

@@ -1,14 +1,10 @@
 module "test" {
   source = "../../"
 
-  priority_class = [
+  additional_priority_classes = [
     {
       name  = "important"
       value = "2000000"
     },
   ]
-}
-
-output "priority_class" {
-  value = module.test.priority_class
 }

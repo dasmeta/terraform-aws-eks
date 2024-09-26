@@ -1,5 +1,5 @@
 module "priority_class" {
   source = "./modules/priority-class/"
 
-  priority_class = var.priority_class
+  additional_priority_classes = var.additional_priority_classes
 }
