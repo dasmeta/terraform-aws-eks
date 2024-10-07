@@ -188,13 +188,25 @@ module "vpc" {
 
   count = try(var.vpc.create.name) != null ? 1 : 0
 
-  name                = var.vpc.create.name
-  availability_zones  = var.vpc.create.availability_zones
-  cidr                = var.vpc.create.cidr
-  private_subnets     = var.vpc.create.private_subnets
-  public_subnets      = var.vpc.create.public_subnets
-  public_subnet_tags  = var.vpc.create.public_subnet_tags
-  private_subnet_tags = var.vpc.create.private_subnet_tags
+  name               = var.vpc.create.name
+  availability_zones = var.vpc.create.availability_zones
+  cidr               = var.vpc.create.cidr
+  private_subnets    = var.vpc.create.private_subnets
+  public_subnets     = var.vpc.create.public_subnets
+  public_subnet_tags = merge(
+    {
+      "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+      "kubernetes.io/role/elb"                    = 1
+    },
+    var.vpc.create.public_subnet_tags
+  )
+  private_subnet_tags = merge(
+    {
+      "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+      "kubernetes.io/role/internal-elb"           = 1
+    },
+    var.vpc.create.private_subnet_tags
+  )
 }
 
 module "eks-cluster" {
@@ -361,4 +373,18 @@ module "portainer" {
   source         = "./modules/portainer"
   host           = var.portainer_config.host
   enable_ingress = var.portainer_config.enable_ingress
+}
+
+module "external-dns" {
+  count = var.create && var.external_dns.enabled ? 1 : 0
+
+  source            = "./modules/external-dns"
+  cluster_name      = var.cluster_name
+  oidc_provider_arn = module.eks-cluster[0].oidc_provider_arn
+  region            = local.region
+  configs           = var.external_dns.configs
+
+  depends_on = [
+    module.eks-cluster
+  ]
 }

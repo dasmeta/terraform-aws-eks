@@ -1,14 +1,21 @@
-module "terraform-aws-eks" {
-  source             = "../terraform-aws-eks"
-  availability_zones = ["eu-west-1a", "eu-west-1b", "eu-west-1c"]
-  cidr               = "172.16.0.0/16"
-  cluster_name       = "my-cluster-sso"
-  private_subnets    = ["172.16.1.0/24", "172.16.2.0/24", "172.16.3.0/24"]
-  public_subnets     = ["172.16.4.0/24", "172.16.5.0/24", "172.16.6.0/24"]
+module "this" {
+  source = "../../"
+
+  cluster_name = "eks-test-rbac-from-locals"
+
+  vpc = {
+    create = {
+      name               = "test-eks-spot-instances"
+      cidr               = "172.16.0.0/16"
+      availability_zones = ["eu-west-1a", "eu-west-1b", "eu-west-1c"]
+      private_subnets    = ["172.16.1.0/24", "172.16.2.0/24", "172.16.3.0/24"]
+      public_subnets     = ["172.16.4.0/24", "172.16.5.0/24", "172.16.6.0/24"]
+    }
+  }
+
   users = [{
     username = "macos"
   }]
-  vpc_name        = "eks-vpc"
   enable_sso_rbac = true
 
   weave_scope_config = {
@@ -29,6 +36,10 @@ module "terraform-aws-eks" {
   roles    = local.roles
   bindings = local.bindings
 
+  alarms = {
+    enabled   = false
+    sns_topic = ""
+  }
 }
 
 locals {

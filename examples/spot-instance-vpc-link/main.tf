@@ -40,4 +40,9 @@ module "this" {
   }
   node_groups         = local.node_groups
   node_groups_default = local.node_groups_default
+
+  alarms = {
+    enabled   = false
+    sns_topic = ""
+  }
 }
