@@ -4,17 +4,9 @@ on:
   push:
     branches: [main, master]
 jobs:
-  terraform-tfsec:
+  tfsec-check:
     runs-on: ubuntu-latest
-    permissions:
-      actions: write
-      contents: write
-      discussions: write
-      pull-requests: write
-      id-token: write
-      security-events: write
+    permissions: {}
     steps:
-    - uses: dasmeta/reusable-actions-workflows/tfsec@main
-      with:
-        fetch-depth: 0
+      - uses: dasmeta/reusable-actions-workflows/tfsec@4.2.0
     continue-on-error: true

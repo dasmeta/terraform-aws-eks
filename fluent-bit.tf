@@ -1,7 +1,7 @@
 module "fluent-bit" {
   source = "./modules/fluent-bit"
 
-  count = var.create ? 1 : 0
+  count = var.create && var.fluent_bit_configs.enabled ? 1 : 0
 
   account_id = local.account_id
   region     = local.region

@@ -5,34 +5,16 @@ on:
     branches: [main, master]
 
 jobs:
-  terraform-validate:
-    permissions:
-      actions: write
-      contents: write
-      discussions: write
-      pull-requests: write
-      id-token: write
-      security-events: write
+  tflint-check:
     runs-on: ubuntu-latest
+    permissions: {}
     strategy:
       matrix:
         path:
-          - aws-load-balancer-controller
-          - cloudwatch-metrics
-          - eks
-          - external-secrets
-          - fluent-bit
-          - metrics-server
-          - sso-rbac
-          - vpc
-          - weave-scope
-
+          - ./
     steps:
-    - uses: dasmeta/reusable-actions-workflows/tflint@main
-      with:
-        aws-region: ${{ secrets.AWS_REGION}}
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        path: ${{ matrix.path }}
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-      continue-on-error: true
+      - uses: dasmeta/reusable-actions-workflows/tflint@4.2.0
+        with:
+          path: ${{ matrix.path }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true

@@ -106,6 +106,7 @@ variable "alb_log_bucket_name" {
 
 variable "fluent_bit_configs" {
   type = object({
+    enabled               = optional(string, true)
     fluent_bit_name       = optional(string, "")
     log_group_name        = optional(string, "")
     system_log_group_name = optional(string, "")
@@ -124,6 +125,7 @@ variable "fluent_bit_configs" {
     image_pull_secrets     = optional(list(string), [])
   })
   default = {
+    enabled               = true
     fluent_bit_name       = ""
     log_group_name        = ""
     system_log_group_name = ""
@@ -285,7 +287,7 @@ variable "vpc" {
     # for linking using existing vpc
     link = optional(object({
       id                 = string
-      private_subnet_ids = list(string)
+      private_subnet_ids = list(string) # please have the existing vpc public/private subnets(at least 2 needed) tagged with corresponding tags(look into create case subnet tags defaults)
     }), { id = null, private_subnet_ids = null })
     # for creating new vpc
     create = optional(object({
@@ -294,8 +296,8 @@ variable "vpc" {
       cidr                = string
       private_subnets     = list(string)
       public_subnets      = list(string)
-      public_subnet_tags  = optional(map(any), {})
-      private_subnet_tags = optional(map(any), {})
+      public_subnet_tags  = optional(map(any), {}) # to pass additional tags for public subnet or override default ones. The default ones are: {"kubernetes.io/cluster/${var.cluster_name}" = "shared","kubernetes.io/role/elb" = 1}
+      private_subnet_tags = optional(map(any), {}) # to pass additional tags for public subnet or override default ones. The default ones are: {"kubernetes.io/cluster/${var.cluster_name}" = "shared","kubernetes.io/role/internal-elb" = 1}
     }), { name = null, availability_zones = null, cidr = null, private_subnets = null, public_subnets = null })
   })
 
@@ -571,4 +573,15 @@ variable "additional_priority_classes" {
   }))
   description = "Defines Priority Classes in Kubernetes, used to assign different levels of priority to pods. By default, this module creates three Priority Classes: 'high'(1000000), 'medium'(500000) and 'low'(250000) . You can also provide a custom list of Priority Classes if needed."
   default     = []
+}
+
+variable "external_dns" {
+  type = object({
+    enabled = optional(bool, false)
+    configs = optional(any, {})
+  })
+  default = {
+    enabled = false
+  }
+  description = "Allows to install external-dns helm chart and related roles, which allows to automatically create R53 records based on ingress/service domain/host configs"
 }

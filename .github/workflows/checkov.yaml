@@ -4,31 +4,15 @@ on:
   push:
     branches: [main, master]
 jobs:
-  terraform-validate:
+  checkov-check:
     runs-on: ubuntu-latest
-    permissions:
-      actions: write
-      contents: write
-      discussions: write
-      pull-requests: write
-      security-events: write
-      id-token: write
+    permissions: {}
     strategy:
       matrix:
         path:
-          - aws-load-balancer-controller
-          - cloudwatch-metrics
-          - eks
-          - external-secrets
-          - fluent-bit
-          - metrics-server
-          - sso-rbac
-          - vpc
-          - weave-scope
-
+          - ./
     steps:
-    - uses: dasmeta/reusable-actions-workflows/checkov@main
-      with:
-        fetch-depth: 0
-        directory: ${{ matrix.path }}
-      continue-on-error: true
+      - uses: dasmeta/reusable-actions-workflows/checkov@4.2.0
+        with:
+          directory: ${{ matrix.path }}
+        continue-on-error: true
