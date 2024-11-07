@@ -97,6 +97,12 @@ variable "send_alb_logs_to_cloudwatch" {
   description = "Whether send alb logs to CloudWatch or not."
 }
 
+variable "enable_alb_ingress_controller" {
+  type        = bool
+  default     = true
+  description = "Whether alb ingress controller enabled."
+}
+
 variable "alb_log_bucket_name" {
   type    = string
   default = ""
@@ -184,6 +190,12 @@ variable "metrics_server_name" {
 variable "cluster_endpoint_public_access" {
   type    = bool
   default = true
+}
+
+variable "enable_external_secrets" {
+  type        = bool
+  description = "Whether to enable external-secrets operator"
+  default     = true
 }
 
 variable "external_secrets_namespace" {
@@ -584,4 +596,19 @@ variable "external_dns" {
     enabled = false
   }
   description = "Allows to install external-dns helm chart and related roles, which allows to automatically create R53 records based on ingress/service domain/host configs"
+}
+
+variable "flagger" {
+  type = object({
+    enabled                 = optional(bool, false)
+    namespace               = optional(string, "ingress-nginx") # The flagger operator helm being installed on same namespace as mesh/ingress provider so this field need to be set based on which ingress/mesh we are going to use, more info in https://artifacthub.io/packages/helm/flagger/flagger
+    configs                 = optional(any, {})                 # available options can be found in https://artifacthub.io/packages/helm/flagger/flagger
+    metric_template_configs = optional(any, {})                 # available options can be found in https://github.com/dasmeta/helm/tree/flagger-metric-template-0.1.0/charts/flagger-metric-template
+    enable_metric_template  = optional(bool, false)
+    enable_loadtester       = optional(bool, false)
+  })
+  default = {
+    enabled = false
+  }
+  description = "Allows to create/deploy flagger operator to have custom rollout strategies like canary/blue-green and also it allows to create custom flagger metric templates"
 }

@@ -255,7 +255,7 @@ module "metrics-server" {
 module "external-secrets" {
   source = "./modules/external-secrets"
 
-  count = var.create ? 1 : 0
+  count = var.create && var.enable_external_secrets ? 1 : 0
 
   namespace = var.external_secrets_namespace
 
@@ -383,6 +383,21 @@ module "external-dns" {
   oidc_provider_arn = module.eks-cluster[0].oidc_provider_arn
   region            = local.region
   configs           = var.external_dns.configs
+
+  depends_on = [
+    module.eks-cluster
+  ]
+}
+
+module "flagger" {
+  count = var.create && var.flagger.enabled ? 1 : 0
+
+  source                  = "./modules/flagger"
+  namespace               = var.flagger.namespace
+  configs                 = var.flagger.configs
+  metric_template_configs = var.flagger.metric_template_configs
+  enable_metric_template  = var.flagger.enable_metric_template
+  enable_loadtester       = var.flagger.enable_loadtester
 
   depends_on = [
     module.eks-cluster

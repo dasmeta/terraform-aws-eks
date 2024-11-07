@@ -1,7 +1,7 @@
 module "alb-ingress-controller" {
   source = "./modules/aws-load-balancer-controller"
 
-  count = var.create ? 1 : 0
+  count = var.create && var.enable_alb_ingress_controller ? 1 : 0
 
   account_id = local.account_id
   region     = local.region

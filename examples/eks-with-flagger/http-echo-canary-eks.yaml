@@ -1,0 +1,82 @@
+image:
+  repository: mendhak/http-https-echo
+  tag: 34
+
+containerPort: 8080
+
+service:
+  enabled: true
+  type: ClusterIP
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 99
+
+readinessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 1
+  httpGet:
+    path: /health
+    port: http
+livenessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 3
+  httpGet:
+    path: /health
+    port: http
+resources:
+  requests:
+    cpu: 6m
+
+ingress:
+  enabled: true
+  class: nginx
+  hosts:
+    - host: http-echo.devops.dasmeta.com
+      paths:
+        - path: "/ping"
+          backend:
+            serviceName: http-echo
+            servicePort: 80
+
+rolloutStrategy:
+  enabled: true
+  operator: flagger
+  configs:
+    progressDeadlineSeconds: 60 # the maximum time in seconds for the canary deployment to make progress before it is rollback (default 600s)
+    canaryReadyThreshold: 51 # minimum percentage of canary pods that must be ready before considering canary ready for traffic shifting (default 100)
+    primaryReadyThreshold: 51 # minimum percentage of primary pods that must be ready before considering primary ready for traffic shifting (default 100)
+    interval: 11s # schedule interval (default 60s)
+    threshold: 11 # max number of failed metric checks before rollback (default 10)
+    maxWeight: 31 # max traffic percentage (0-100) routed to canary (default 30)
+    stepWeight: 11 # canary increment step percentage (0-100) (default 10)
+    # min and max replicas count for primary hpa, default to main app hpa, the main app hpa values also being used for canary deploy hpa so we use this options to have custom values for primary hpa
+    primaryScalerMinReplicas: 2
+    primaryScalerMaxReplicas: 5
+    metrics: # metrics template configs to use for identifying if canary deploy handles request normally, the `request-success-rate` and `request-duration` named ones are available by default, and you can create custom metric templates
+      - name: request-success-rate
+        # minimum req success rate (non 5xx responses) percentage (0-100)
+        thresholdRange:
+          min: 99
+        interval: 1m
+      - name: request-duration
+        # maximum req duration P99, milliseconds
+        thresholdRange:
+          max: 500
+        interval: 1m
+
+    webhooks: # webhooks can be used for load testing before traffic switching to canaries by using `pre-rollout` type and also generating traffic
+      - name: acceptance-test
+        type: pre-rollout
+        url: http://flagger-loadtester.ingress-nginx/
+        timeout: 30s
+        metadata:
+          type: bash
+          cmd: "curl -sd 'test' http://http-echo-canary/ping | grep ping"
+      - name: load-test
+        url: http://flagger-loadtester.ingress-nginx/
+        timeout: 5s
+        metadata:
+          cmd: "hey -z 1m -q 3 -c 1 http://http-echo.devops.dasmeta.com/ping"
