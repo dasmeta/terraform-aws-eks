@@ -63,7 +63,33 @@ module "this" {
       prometheus = {
         install = true
       }
+      # slack = { # (optional) enable global flagger slack notify
+      #   channel = "#test-canary-notifications"
+      #   url     = "https://hooks.slack.com/services/xx/yyy/zzzz"
+      #   user    = "Flagger"
+      # }
     }
+    # metrics_and_alerts_configs = { # (optional) configure custom flagger metric template and alert providers
+    #   # createNginxCustomMetricTemplates: true # false by default
+    #   metricTemplates : {
+    #     "my-custom-request-rate-metric-template" : {
+    #       provider : { # (optional, defaults to metricTemplatesDefaultProvider)
+    #         type : "prometheus"
+    #         address : "http://flagger-prometheus.ingress-nginx:9090"
+    #       }
+    #       query : "sum(rate(nginx_ingress_controller_requests{namespace=\"{{ namespace }}\",ingress=\"{{ ingress }}\",status!~\"5.*\"}[1m]))/sum(rate(nginx_ingress_controller_requests{namespace=\"{{ namespace }\",ingress=\"{{ ingress }}\"}[1m]))*100"
+    #     }
+    #   }
+
+    #   alertProviders : {
+    #     on-call : { # The uniq name of channel
+    #       type : "slack"
+    #       channel : "test-canary-notifications-alert-provider" # The channel of notify/alerting (optional default to "general") # The channel of notify/alerting (optional default to "general")
+    #       username : "flagger"                                 # The sender name in notify/alert (optional default to "flagger")
+    #       address : "https://hooks.slack.com/services/xx/yyy/zzzz"
+    #     }
+    #   }
+    # }
   }
 }
 
@@ -72,7 +98,7 @@ resource "helm_release" "http_echo" {
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
   namespace  = "default"
-  version    = "0.2.7"
+  version    = "0.2.8"
   wait       = true
 
   values = [file("${path.module}/http-echo-canary-eks.yaml")]

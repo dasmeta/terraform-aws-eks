@@ -600,12 +600,11 @@ variable "external_dns" {
 
 variable "flagger" {
   type = object({
-    enabled                 = optional(bool, false)
-    namespace               = optional(string, "ingress-nginx") # The flagger operator helm being installed on same namespace as mesh/ingress provider so this field need to be set based on which ingress/mesh we are going to use, more info in https://artifacthub.io/packages/helm/flagger/flagger
-    configs                 = optional(any, {})                 # available options can be found in https://artifacthub.io/packages/helm/flagger/flagger
-    metric_template_configs = optional(any, {})                 # available options can be found in https://github.com/dasmeta/helm/tree/flagger-metric-template-0.1.0/charts/flagger-metric-template
-    enable_metric_template  = optional(bool, false)
-    enable_loadtester       = optional(bool, false)
+    enabled                    = optional(bool, false)
+    namespace                  = optional(string, "ingress-nginx") # The flagger operator helm being installed on same namespace as mesh/ingress provider so this field need to be set based on which ingress/mesh we are going to use, more info in https://artifacthub.io/packages/helm/flagger/flagger
+    configs                    = optional(any, {})                 # Available options can be found in https://artifacthub.io/packages/helm/flagger/flagger
+    metrics_and_alerts_configs = optional(any, {})                 # Available options can be found in https://github.com/dasmeta/helm/tree/flagger-metrics-and-alerts-0.1.0/charts/flagger-metrics-and-alerts
+    enable_loadtester          = optional(bool, false)             # Whether to install flagger loadtester helm
   })
   default = {
     enabled = false

@@ -2,6 +2,9 @@ image:
   repository: mendhak/http-https-echo
   tag: 34
 
+config:
+  TEST_CONFIG_FOR_ROLLOUT_TRIGGER: "1"
+
 containerPort: 8080
 
 service:

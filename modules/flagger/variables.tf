@@ -37,23 +37,17 @@ variable "wait" {
 variable "configs" {
   type        = any
   default     = {}
-  description = "Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/flagger/flagger?modal=values"
+  description = "Configurations to pass and override default flagger chart configs. Check the helm chart available configs here: https://artifacthub.io/packages/helm/flagger/flagger?modal=values"
 }
 
-variable "enable_metric_template" {
-  type        = bool
-  default     = false
-  description = "Whether to install flagger-metric-template helm"
-}
-
-variable "metric_template_configs" {
+variable "metrics_and_alerts_configs" {
   type        = any
   default     = {}
-  description = "Configurations to pass and override default ones. Check the helm chart available configs here: https://github.com/dasmeta/helm/tree/flagger-metric-template-0.1.0/charts/flagger-metric-template"
+  description = "Configurations to pass and override default flagger-metrics-and-alerts chart configs. If empty no chart will be deployed. Check the helm chart available configs here: https://github.com/dasmeta/helm/tree/flagger-metrics-and-alerts-0.1.0/charts/flagger-metrics-and-alerts"
 }
 
 variable "enable_loadtester" {
   type        = bool
   default     = false
-  description = "Whether to install loadtester helm"
+  description = "Whether to install flagger loadtester helm"
 }
