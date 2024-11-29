@@ -19,6 +19,12 @@ variable "cluster_name" {
   description = "AWS EKS Cluster name."
 }
 
+variable "chart_version" {
+  type        = string
+  default     = "0.48.1"
+  description = "Fluent-bit chart version to use."
+}
+
 variable "namespace" {
   type        = string
   default     = "kube-system"

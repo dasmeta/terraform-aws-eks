@@ -4,13 +4,14 @@
 
 module "eks-cluster" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "18.31.2"
+  version = "20.30.1"
 
   # per Upgrade from v17.x to v18.x, see here for details https://github.com/terraform-aws-modules/terraform-aws-eks/blob/681e00aafea093be72ec06ada3825a23a181b1c5/docs/UPGRADE-18.0.md
-  prefix_separator                   = ""
-  iam_role_name                      = var.cluster_name
-  cluster_security_group_name        = var.cluster_name
-  cluster_security_group_description = "EKS cluster security group."
+  prefix_separator                         = ""
+  iam_role_name                            = var.cluster_name
+  cluster_security_group_name              = var.cluster_name
+  cluster_security_group_description       = "EKS cluster security group."
+  enable_cluster_creator_admin_permissions = true # assign eks administrator accesses to the identity used by Terraform, to allow the other depending components to get created by terraform apply
 
   # Required parameters
   cluster_name    = var.cluster_name
@@ -29,15 +30,13 @@ module "eks-cluster" {
   self_managed_node_group_defaults = var.workers_group_defaults
   eks_managed_node_group_defaults  = var.node_groups_default
   eks_managed_node_groups          = var.node_groups
+  cluster_addons                   = var.cluster_addons
 
-  manage_aws_auth_configmap = true
-  aws_auth_users            = local.map_users
-  aws_auth_roles            = var.map_roles
+  # manage_aws_auth_configmap = true
+  # aws_auth_users            = local.map_users
+  # aws_auth_roles            = var.map_roles
 
-  tags = {
-    "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
-    "k8s.io/cluster-autoscaler/enabled"             = "true"
-  }
+  tags = var.tags
 }
 
 resource "null_resource" "enable_cloudwatch_metrics_autoscaling" {
@@ -50,4 +49,15 @@ resource "null_resource" "enable_cloudwatch_metrics_autoscaling" {
   depends_on = [
     module.eks-cluster
   ]
+}
+
+module "aws_auth_config_map" {
+  source  = "terraform-aws-modules/eks/aws//modules/aws-auth"
+  version = "20.29.0"
+
+  manage_aws_auth_configmap = true
+  aws_auth_users            = local.map_users
+  aws_auth_roles            = var.map_roles
+
+  depends_on = [module.eks-cluster]
 }

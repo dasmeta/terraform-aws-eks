@@ -30,7 +30,7 @@ No providers.
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_release"></a> [release](#module\_release) | terraform-module/release/helm | 2.8.0 |
+| <a name="module_release"></a> [release](#module\_release) | terraform-module/release/helm | 2.8.2 |
 
 ## Resources
 
@@ -40,6 +40,7 @@ No resources.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The app chart version to use | `string` | `"0.10.7"` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | The namespace of kubernetes resources | `string` | `"kube-system"` | no |
 
 ## Outputs

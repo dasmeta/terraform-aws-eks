@@ -10,6 +10,12 @@ variable "namespace" {
   description = "Namespace name"
 }
 
+variable "chart_version" {
+  type        = string
+  default     = "4.11.3"
+  description = "The app chart version"
+}
+
 variable "create_namespace" {
   type        = bool
   default     = true

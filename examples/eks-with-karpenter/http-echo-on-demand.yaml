@@ -1,0 +1,51 @@
+image:
+  repository: mendhak/http-https-echo
+  tag: 34
+
+containerPort: 8080
+
+service:
+  enabled: true
+  type: ClusterIP
+
+autoscaling:
+  enabled: true
+  minReplicas: 4
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 99
+
+readinessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 1
+  httpGet:
+    path: /health
+    port: http
+livenessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 3
+  httpGet:
+    path: /health
+    port: http
+resources:
+  requests:
+    cpu: 15m
+ingress:
+  enabled: true
+  class: nginx
+  hosts:
+    - host: http-echo-on-demand.devops.dasmeta.com
+      paths:
+        - path: "/ping"
+          backend:
+            serviceName: http-echo
+            servicePort: 80
+# explicitly ask k8s/karpenter to place this app pods on on-demand nodes
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: karpenter.sh/nodepool
+              operator: In
+              values:
+                - on-demand

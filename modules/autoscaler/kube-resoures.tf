@@ -253,4 +253,8 @@ resource "kubernetes_deployment" "cluster-autoscaler" {
       }
     }
   }
+
+  depends_on = [
+    kubernetes_service_account.cluster-autoscaler
+  ]
 }

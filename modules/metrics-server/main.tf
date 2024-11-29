@@ -6,7 +6,7 @@ resource "helm_release" "metrics_server" {
   name       = var.name
   repository = "https://charts.bitnami.com/bitnami"
   chart      = "metrics-server"
-  version    = "6.6.3"
+  version    = var.chart_version
   namespace  = "kube-system"
 
   values = [
