@@ -1,6 +1,8 @@
-# terraform module allows to create/deploy karpenter operator to have custom/configurable node auto-scaling ability
-## for more info check https://karpenter.sh and https://artifacthub.io/packages/helm/karpenter/karpenter
 
+<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+
+ # terraform module allows to create/deploy karpenter operator to have custom/configurable node auto-scaling ability
+## for more info check https://karpenter.sh and https://artifacthub.io/packages/helm/karpenter/karpenter
 
 ## example
 ```terraform
@@ -34,7 +36,9 @@ module "karpenter" {
     }
 }
 ```
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+
+**/
+
 ## Requirements
 
 | Name | Version |
