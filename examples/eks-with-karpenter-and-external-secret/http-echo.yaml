@@ -49,7 +49,7 @@ ingress:
           backend:
             serviceName: http-echo
             servicePort: 80
-# # explicitly ask k8s/karpenter to place this app pods on on-demand nodes
+# # affinity rule example on how explicitly ask k8s/karpenter to place this app pods on on-demand nodes
 # affinity:
 #   nodeAffinity:
 #     requiredDuringSchedulingIgnoredDuringExecution:
@@ -59,7 +59,7 @@ ingress:
 #               operator: In
 #               values:
 #                 - general
-# here we explicitly ask k8s/karpenter to place this app pods on karpenter managed nodes
+# # affinity rule example on how explicitly ask k8s/karpenter to place this app pods on karpenter managed nodes
 # affinity:
 #   nodeAffinity:
 #     requiredDuringSchedulingIgnoredDuringExecution:

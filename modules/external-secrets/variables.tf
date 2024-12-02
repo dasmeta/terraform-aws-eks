@@ -6,6 +6,6 @@ variable "namespace" {
 
 variable "chart_version" {
   type        = string
-  default     = "0.10.7" # upgrade to >= 0.5.x requires some changes in base chart also where we use crd for defining secrets, look for detail https://external-secrets.io/v0.5.0/guides-v1beta1/
+  default     = "0.10.7"
   description = "The app chart version to use"
 }

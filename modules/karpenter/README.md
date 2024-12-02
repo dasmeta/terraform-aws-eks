@@ -8,9 +8,30 @@ module "karpenter" {
   source  = "dasmeta/eks/aws//modules/karpenter"
   version = "2.19.0"
 
-  configs = {
+  cluster_name      = "test-cluster-with-karpenter"
+  cluster_endpoint  = "<endpoint-to-eks-cluster>"
+  oidc_provider_arn = "<eks-oidc-provider-arn>"
+  subnet_ids        = ["<subnet-1>", "<subnet-2>", "<subnet-3>"]
 
-  }
+  resource_configs = {
+      nodePools = {
+        general = { weight = 1 } # by default it use linux amd64 cpu<6, memory<10000Mi, >2 generation and  ["spot", "on-demand"] type nodes so that it tries to get spot at first and if no then on-demand
+        on-demand = {
+          # weight = 0 # by default the weight is 0 and this is lowest priority, we can schedule pod in this not
+          template = {
+            spec = {
+              requirements = [
+                {
+                  key      = "karpenter.sh/capacity-type"
+                  operator = "In"
+                  values   = ["on-demand"]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
 }
 ```
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
@@ -61,7 +82,7 @@ module "karpenter" {
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | EKC oidc provider arn in format 'arn:aws:iam::<account-id>:oidc-provider/oidc.eks.<region>.amazonaws.com/id/<oidc-id>'. | `string` | n/a | yes |
 | <a name="input_resource_chart_version"></a> [resource\_chart\_version](#input\_resource\_chart\_version) | The dasmeta karpenter-resources chart version | `string` | `"0.1.0"` | no |
 | <a name="input_resource_configs"></a> [resource\_configs](#input\_resource\_configs) | Configurations to pass and override default ones for karpenter-resources chart. Check the helm chart available configs here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources | `any` | `{}` | no |
-| <a name="input_resource_configs_defaults"></a> [resource\_configs\_defaults](#input\_resource\_configs\_defaults) | Configurations to pass and override default ones for karpenter-resources chart. Check the helm chart available configs here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources | <pre>object({<br>    nodeClass = optional(any, {<br>      amiFamily          = "AL2" # Amazon Linux 2<br>      detailedMonitoring = true<br>      metadataOptions = {<br>        httpEndpoint            = "enabled"<br>        httpProtocolIPv6        = "disabled"<br>        httpPutResponseHopLimit = 2 # This is changed to disable IMDS access from containers not on the host network<br>        httpTokens              = "required"<br>      }<br>    })<br>    nodeClassRef = optional(any, {<br>      group = "karpenter.k8s.aws"<br>      kind  = "EC2NodeClass"<br>      name  = "default"<br>    }),<br>    requirements = optional(any, [<br>      {<br>        key      = "karpenter.k8s.aws/instance-cpu"<br>        operator = "Lt"<br>        values   = ["5"] # 1, 2 or 4 core cpu nodes<br>      },<br>      # {<br>      #   key      = "karpenter.k8s.aws/instance-cpu"<br>      #   operator = "Gt"<br>      #   values   = ["1"] # 2 or 4 core cpu nodes<br>      # },<br>      {<br>        key      = "karpenter.k8s.aws/instance-memory"<br>        operator = "Lt"<br>        values   = ["90000"] # 2,4,8 Gb memory nodes<br>      },<br>      {<br>        key      = "karpenter.k8s.aws/instance-memory"<br>        operator = "Gt"<br>        values   = ["1000"] #  2,4,8 Gb memory nodes<br>      },<br>      {<br>        key      = "karpenter.k8s.aws/instance-generation"<br>        operator = "Gt"<br>        values   = ["2"] # generation of ec2 instances grater than 2 are more performance and effectiveness<br>      },<br>      {<br>        key      = "kubernetes.io/arch"<br>        operator = "In"<br>        values   = ["amd64"] # amd64 linux is main platform arch we will use<br>      },<br>      {<br>        key      = "karpenter.sh/capacity-type"<br>        operator = "In"<br>        values   = ["spot", "on-demand"] # both spot and on-demand nodes, it will look at first available spot and if no then on-demand<br>      }<br>    ])<br>    disruption = optional(any, {<br>      consolidationPolicy = "WhenEmptyOrUnderutilized"<br>      consolidateAfter    = "1m"<br>    }),<br>    limits = optional(any, {<br>      cpu = 10<br>    })<br>  })</pre> | `{}` | no |
+| <a name="input_resource_configs_defaults"></a> [resource\_configs\_defaults](#input\_resource\_configs\_defaults) | Configurations to pass and override default ones for karpenter-resources chart. Check the helm chart available configs here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources | <pre>object({<br>    nodeClass = optional(any, {<br>      amiFamily          = "AL2" # Amazon Linux 2<br>      detailedMonitoring = true<br>      metadataOptions = {<br>        httpEndpoint            = "enabled"<br>        httpProtocolIPv6        = "disabled"<br>        httpPutResponseHopLimit = 2 # This is changed to disable IMDS access from containers not on the host network<br>        httpTokens              = "required"<br>      }<br>    })<br>    nodeClassRef = optional(any, {<br>      group = "karpenter.k8s.aws"<br>      kind  = "EC2NodeClass"<br>      name  = "default"<br>    }),<br>    requirements = optional(any, [<br>      {<br>        key      = "karpenter.k8s.aws/instance-cpu"<br>        operator = "Lt"<br>        values   = ["9"] # <=8 core cpu nodes<br>      },<br>      {<br>        key      = "karpenter.k8s.aws/instance-memory"<br>        operator = "Lt"<br>        values   = ["33000"] # <=32 Gb memory nodes<br>      },<br>      {<br>        key      = "karpenter.k8s.aws/instance-memory"<br>        operator = "Gt"<br>        values   = ["1000"] #  >1Gb Gb memory nodes<br>      },<br>      {<br>        key      = "karpenter.k8s.aws/instance-generation"<br>        operator = "Gt"<br>        values   = ["2"] # generation of ec2 instances >2 (like t3a.medium) are more performance and effectiveness<br>      },<br>      {<br>        key      = "kubernetes.io/arch"<br>        operator = "In"<br>        values   = ["amd64"] # amd64 linux is main platform arch we will use<br>      },<br>      {<br>        key      = "karpenter.sh/capacity-type"<br>        operator = "In"<br>        values   = ["spot", "on-demand"] # both spot and on-demand nodes, it will look at first available spot and if no then on-demand<br>      }<br>    ])<br>    disruption = optional(any, {<br>      consolidationPolicy = "WhenEmptyOrUnderutilized"<br>      consolidateAfter    = "1m"<br>    }),<br>    limits = optional(any, {<br>      cpu = 10<br>    })<br>  })</pre> | `{}` | no |
 | <a name="input_subnet_ids"></a> [subnet\_ids](#input\_subnet\_ids) | VPC subnet ids used for default Ec2NodeClass as subnet selector. | `list(string)` | n/a | yes |
 | <a name="input_wait"></a> [wait](#input\_wait) | Whether use helm deploy with --wait flag | `bool` | `true` | no |
 

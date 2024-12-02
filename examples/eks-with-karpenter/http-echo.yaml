@@ -8,6 +8,8 @@ service:
   enabled: true
   type: ClusterIP
 
+externalSecretsApiVersion: external-secrets.io/v1beta1 # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
+
 autoscaling:
   enabled: true
   minReplicas: 4
@@ -40,7 +42,7 @@ ingress:
           backend:
             serviceName: http-echo
             servicePort: 80
-# # explicitly ask k8s/karpenter to place this app pods on on-demand nodes
+# # affinity rule example on how explicitly ask k8s/karpenter to place this app pods on on-demand nodes
 # affinity:
 #   nodeAffinity:
 #     requiredDuringSchedulingIgnoredDuringExecution:
@@ -50,7 +52,7 @@ ingress:
 #               operator: In
 #               values:
 #                 - general
-# here we explicitly ask k8s/karpenter to place this app pods on karpenter managed nodes
+# # affinity rule example on how explicitly ask k8s/karpenter to place this app pods on karpenter managed nodes
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:

@@ -27,10 +27,6 @@ resource "helm_release" "this" {
   wait             = var.wait
 
   values = [jsonencode(merge({
-    controller = {
-      tag    = "1.0.8"
-      digest = "sha256:9ea26ba59f3b104bf7df24bb0ae6eeaec94938d86c47bca81028dff1c777b654"
-    }
     serviceAccount = {
       name = module.this.service_account
       annotations = {
@@ -42,7 +38,6 @@ resource "helm_release" "this" {
       clusterEndpoint   = var.cluster_endpoint
       interruptionQueue = module.this.queue_name
       featureGates = {
-        # Drift                   = true
         spotToSpotConsolidation = true
       }
     }

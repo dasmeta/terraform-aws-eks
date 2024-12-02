@@ -55,7 +55,7 @@ module "this" {
     }
     resource_configs = {
       nodePools = {
-        general = { weight = 1 } # by default it use linux amd64 cpu<6, memory<10000Mi, >2 generation and  ["spot", "on-demand"] type nodes so that it tries to get spot at first and if no then on-demand
+        general = { weight = 1 } # by default it use linux amd64 cpu<=8, memory<=32Gi, >2 generation and  ["spot", "on-demand"] type nodes so that it tries to get spot at first and if no then on-demand
         on-demand = {
           # weight = 0 # by default the weight is 0 and this is lowest priority, we can schedule pod in this not
           template = {

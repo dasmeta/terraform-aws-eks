@@ -76,7 +76,7 @@ module "this" {
     }
     resource_configs = {
       nodePools = {
-        general = { weight = 1 } # by default it use linux amd64 cpu<6, memory<10000Mi, >2 generation and  ["spot", "on-demand"] type nodes so that it tries to get spot at first and if no then on-demand
+        general = { weight = 1 } # by default it use linux amd64 cpu<=8, memory<=32Gi, >2 generation and  ["spot", "on-demand"] type nodes so that it tries to get spot at first and if no then on-demand
         on-demand = {
           # weight = 0 # by default the weight is 0 and this is lowest priority, we can schedule pod in this not
           template = {
@@ -96,25 +96,25 @@ module "this" {
   }
 }
 
-# resource "helm_release" "http_echo_on_demand" {
-#   name       = "http-echo-on-demand"
-#   repository = "https://dasmeta.github.io/helm"
-#   chart      = "base"
-#   namespace  = "default"
-#   version    = "0.2.9"
-#   wait       = false
+resource "helm_release" "http_echo_on_demand" {
+  name       = "http-echo-on-demand"
+  repository = "https://dasmeta.github.io/helm"
+  chart      = "base"
+  namespace  = "default"
+  version    = "0.2.10"
+  wait       = false
 
-#   values = [file("${path.module}/http-echo-on-demand.yaml")]
+  values = [file("${path.module}/http-echo-on-demand.yaml")]
 
-#   depends_on = [module.this]
-# }
+  depends_on = [module.this]
+}
 
 resource "helm_release" "http_echo" {
   name       = "http-echo"
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
   namespace  = "default"
-  version    = "0.2.9"
+  version    = "0.2.10"
   wait       = false
 
   values = [file("${path.module}/http-echo.yaml")]

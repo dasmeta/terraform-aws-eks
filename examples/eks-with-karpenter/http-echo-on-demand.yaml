@@ -8,6 +8,8 @@ service:
   enabled: true
   type: ClusterIP
 
+externalSecretsApiVersion: external-secrets.io/v1beta1 # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
+
 autoscaling:
   enabled: true
   minReplicas: 4

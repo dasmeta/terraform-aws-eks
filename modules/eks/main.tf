@@ -32,10 +32,6 @@ module "eks-cluster" {
   eks_managed_node_groups          = var.node_groups
   cluster_addons                   = var.cluster_addons
 
-  # manage_aws_auth_configmap = true
-  # aws_auth_users            = local.map_users
-  # aws_auth_roles            = var.map_roles
-
   tags = var.tags
 }
 

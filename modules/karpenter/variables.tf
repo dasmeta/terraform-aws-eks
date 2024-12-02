@@ -111,27 +111,22 @@ variable "resource_configs_defaults" {
       {
         key      = "karpenter.k8s.aws/instance-cpu"
         operator = "Lt"
-        values   = ["5"] # 1, 2 or 4 core cpu nodes
+        values   = ["9"] # <=8 core cpu nodes
       },
-      # {
-      #   key      = "karpenter.k8s.aws/instance-cpu"
-      #   operator = "Gt"
-      #   values   = ["1"] # 2 or 4 core cpu nodes
-      # },
       {
         key      = "karpenter.k8s.aws/instance-memory"
         operator = "Lt"
-        values   = ["90000"] # 2,4,8 Gb memory nodes
+        values   = ["33000"] # <=32 Gb memory nodes
       },
       {
         key      = "karpenter.k8s.aws/instance-memory"
         operator = "Gt"
-        values   = ["1000"] #  2,4,8 Gb memory nodes
+        values   = ["1000"] #  >1Gb Gb memory nodes
       },
       {
         key      = "karpenter.k8s.aws/instance-generation"
         operator = "Gt"
-        values   = ["2"] # generation of ec2 instances grater than 2 are more performance and effectiveness
+        values   = ["2"] # generation of ec2 instances >2 (like t3a.medium) are more performance and effectiveness
       },
       {
         key      = "kubernetes.io/arch"
