@@ -9,5 +9,6 @@ resource "helm_release" "ingress-nginx" {
   ]
   chart            = "ingress-nginx"
   namespace        = var.namespace
+  version          = var.chart_version
   create_namespace = true
 }

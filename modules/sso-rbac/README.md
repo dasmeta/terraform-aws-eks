@@ -54,7 +54,7 @@ locals {
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_eks_auth"></a> [eks\_auth](#module\_eks\_auth) | aidanmelen/eks-auth/aws | n/a |
+| <a name="module_eks_auth"></a> [eks\_auth](#module\_eks\_auth) | aidanmelen/eks-auth/aws | 1.0.0 |
 | <a name="module_permission_sets"></a> [permission\_sets](#module\_permission\_sets) | ./terraform-aws-sso/modules/permission-sets | n/a |
 | <a name="module_sso_account_assignments"></a> [sso\_account\_assignments](#module\_sso\_account\_assignments) | ./terraform-aws-sso/modules/account-assignments | n/a |
 

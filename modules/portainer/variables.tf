@@ -9,3 +9,9 @@ variable "enable_ingress" {
   type        = bool
   default     = true
 }
+
+variable "chart_version" {
+  type        = string
+  default     = "1.0.58"
+  description = "The app chart version"
+}

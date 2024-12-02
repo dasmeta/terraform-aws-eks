@@ -73,3 +73,9 @@ variable "enable_waf" {
   description = "Enables WAF and WAF V2 addons for ALB"
   default     = false
 }
+
+variable "chart_version" {
+  type        = string
+  default     = "1.10.1"
+  description = "The app chart version"
+}

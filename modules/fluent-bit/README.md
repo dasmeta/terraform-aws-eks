@@ -48,6 +48,7 @@ No modules.
 |------|-------------|------|---------|:--------:|
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | AWS Account Id to apply changes into | `string` | n/a | yes |
 | <a name="input_additional_log_filters"></a> [additional\_log\_filters](#input\_additional\_log\_filters) | Fluent bit doesn't send logs if message consists of this values | `list(string)` | <pre>[<br>  "ELB-HealthChecker",<br>  "Amazon-Route53-Health-Check-Service"<br>]</pre> | no |
+| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | Fluent-bit chart version to use. | `string` | `"0.48.1"` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | AWS EKS Cluster name. | `string` | n/a | yes |
 | <a name="input_create_log_group"></a> [create\_log\_group](#input\_create\_log\_group) | Wether or no to create log group. | `bool` | `true` | no |
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | Wether or no to create namespace. | `bool` | `false` | no |

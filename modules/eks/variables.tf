@@ -102,3 +102,15 @@ variable "region" {
   type        = string
   description = "AWS Region name."
 }
+
+variable "cluster_addons" {
+  description = "Cluster addon configurations to enable."
+  type        = any
+  default     = {}
+}
+
+variable "tags" {
+  description = "Tags to attach to eks cluster."
+  type        = any
+  default     = {}
+}

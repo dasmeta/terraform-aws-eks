@@ -8,14 +8,6 @@ locals {
   ])
 
   node_security_group_rules = {
-    ingress_cluster_8443 = {
-      description                   = "Metric server to node groups"
-      protocol                      = "tcp"
-      from_port                     = 8443
-      to_port                       = 8443
-      type                          = "ingress"
-      source_cluster_security_group = true
-    },
     ingress_cluster_8088 = {
       description                   = "LinkerD to node groups"
       protocol                      = "tcp"
@@ -29,14 +21,6 @@ locals {
       protocol                      = "tcp"
       from_port                     = 8089
       to_port                       = 8089
-      type                          = "ingress"
-      source_cluster_security_group = true
-    },
-    ingress_cluster_9443 = {
-      description                   = "ALB to node groups"
-      protocol                      = "tcp"
-      from_port                     = 9443
-      to_port                       = 9443
       type                          = "ingress"
       source_cluster_security_group = true
     },

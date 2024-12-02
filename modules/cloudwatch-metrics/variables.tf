@@ -11,7 +11,7 @@ variable "region" {
 variable "cloudwatch_agent_chart_version" {
   type        = string
   description = "CloudWatch Agent Helm Chart version."
-  default     = "0.0.7"
+  default     = "0.0.11"
 }
 
 variable "cluster_name" {

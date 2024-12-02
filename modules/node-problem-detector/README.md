@@ -19,7 +19,7 @@ No providers.
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_node-problem-detector"></a> [node-problem-detector](#module\_node-problem-detector) | terraform-module/release/helm | 2.6.0 |
+| <a name="module_node-problem-detector"></a> [node-problem-detector](#module\_node-problem-detector) | terraform-module/release/helm | 2.8.2 |
 
 ## Resources
 
@@ -27,7 +27,9 @@ No resources.
 
 ## Inputs
 
-No inputs.
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The app chart version to use | `string` | `"2.3.14"` | no |
 
 ## Outputs
 

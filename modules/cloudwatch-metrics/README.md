@@ -53,7 +53,7 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | AWS Account Id to apply changes into | `string` | n/a | yes |
-| <a name="input_cloudwatch_agent_chart_version"></a> [cloudwatch\_agent\_chart\_version](#input\_cloudwatch\_agent\_chart\_version) | CloudWatch Agent Helm Chart version. | `string` | `"0.0.7"` | no |
+| <a name="input_cloudwatch_agent_chart_version"></a> [cloudwatch\_agent\_chart\_version](#input\_cloudwatch\_agent\_chart\_version) | CloudWatch Agent Helm Chart version. | `string` | `"0.0.11"` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | eks cluster name | `string` | `""` | no |
 | <a name="input_containerd_sock_path"></a> [containerd\_sock\_path](#input\_containerd\_sock\_path) | n/a | `string` | `"/run/dockershim.sock"` | no |
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | wether or no to create namespace | `bool` | `true` | no |

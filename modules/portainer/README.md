@@ -27,6 +27,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The app chart version | `string` | `"1.0.58"` | no |
 | <a name="input_enable_ingress"></a> [enable\_ingress](#input\_enable\_ingress) | Weather create ingress or not in k8s | `bool` | `true` | no |
 | <a name="input_host"></a> [host](#input\_host) | Ingress host name | `string` | `"portainer.dasmeta.com"` | no |
 
