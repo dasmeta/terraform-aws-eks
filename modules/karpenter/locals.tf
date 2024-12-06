@@ -28,7 +28,7 @@ locals {
         })
       })
       disruption = merge(var.resource_configs_defaults.disruption, try(value.disruption, {}))
-      limits     = merge(var.resource_configs_defaults.limits, try(value.limit, {}))
+      limits     = merge(var.resource_configs_defaults.limits, try(value.limits, {}))
     }
   ) }
 }

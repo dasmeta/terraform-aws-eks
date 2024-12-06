@@ -69,32 +69,7 @@ resource "helm_release" "this" {
   atomic           = var.atomic
   wait             = var.wait
 
-  values = [jsonencode(merge({
-    serviceAccount = {
-      name = module.this.service_account
-      annotations = {
-        "eks.amazonaws.com/role-arn" = module.this.iam_role_arn
-      }
-    }
-    settings = {
-      clusterName       = var.cluster_name
-      clusterEndpoint   = var.cluster_endpoint
-      interruptionQueue = module.this.queue_name
-      featureGates = {
-        spotToSpotConsolidation = true
-      }
-    }
-    resources = {
-      requests = {
-        cpu    = "100m"
-        memory = "256Mi"
-      }
-      limits = {
-        cpu    = "100m"
-        memory = "256Mi"
-      }
-    }
-  }, var.configs))]
+  values = [jsonencode(module.karpenter_custom_default_configs_merged.merged)]
 }
 
 # allows to create karpenter crd resources such as NodeClasses, NodePools
@@ -119,4 +94,36 @@ resource "helm_release" "karpenter_nodes" {
   ))]
 
   depends_on = [helm_release.this]
+}
+
+module "karpenter_custom_default_configs_merged" {
+  source  = "cloudposse/config/yaml//modules/deepmerge"
+  version = "1.0.2"
+
+  maps = [
+    {
+      serviceAccount = {
+        name = module.this.service_account
+        annotations = {
+          "eks.amazonaws.com/role-arn" = module.this.iam_role_arn
+        }
+      }
+      settings = {
+        clusterName       = var.cluster_name
+        clusterEndpoint   = var.cluster_endpoint
+        interruptionQueue = module.this.queue_name
+      }
+      resources = {
+        requests = {
+          cpu    = "100m"
+          memory = "256Mi"
+        }
+        limits = {
+          cpu    = "100m"
+          memory = "256Mi"
+        }
+      }
+    },
+    var.configs
+  ]
 }

@@ -10,11 +10,15 @@ Those include:
 - external secrets
 - metrics to cloudwatch
 
-## Upgrading module major version:
- - from 2.x.x to 3.x.x version needs some manual actions as we upgraded underlying eks module from 18.x.x to 20.x.x,
+## Upgrading guide:
+ - from <2.19.0 to >=2.19.0 version needs some manual actions as we upgraded underlying eks module from 18.x.x to 20.x.x,
    here you can find needed actions/changes docs and ready scripts which can be used:
+   docs:
      https://github.com/terraform-aws-modules/terraform-aws-eks/blob/master/docs/UPGRADE-19.0.md
      https://github.com/terraform-aws-modules/terraform-aws-eks/blob/master/docs/UPGRADE-20.0.md
+   params:
+     The node group create\_launch\_template=false and launch\_template\_name="" pair params have been replaced with use\_custom\_launch\_template=false
+   scripts:
    ```sh
     # commands to move some states, run before applying the `terraform apply` for new version
     terraform state mv "module.<eks-module-name>.module.eks-cluster[0].module.eks-cluster.kubernetes_config_map_v1_data.aws_auth[0]" "module.<eks-module-name>.module.eks-cluster[0].module.aws_auth_config_map.kubernetes_config_map_v1_data.aws_auth[0]"
@@ -199,11 +203,11 @@ worker_groups = {
 }
 ```
 
-# karpenter enabled
-# NOTES:
-#  - enabling karpenter automatically disables cluster auto-scaler
-#  - then enabling karpenter on existing old cluster there is possibility to see cycle-dependency error, to overcome this you need at first to apply main eks module change (`terraform apply --target "module.<eks-module-name>.module.eks-cluster"`) and then rest of cluster-autoloader destroy and karpenter install onse
-#  - when destroying cluster which have karpenter enabled there is possibility of failure on karpenter resource removal, you need to run destruction one more time to get it complete
+## karpenter enabled
+### NOTES:
+###  - enabling karpenter automatically disables cluster auto-scaler
+###  - then enabling karpenter on existing old cluster there is possibility to see cycle-dependency error, to overcome this you need at first to apply main eks module change (`terraform apply --target "module.<eks-module-name>.module.eks-cluster"`) and then rest of cluster-autoloader destroy and karpenter install onse
+###  - when destroying cluster which have karpenter enabled there is possibility of failure on karpenter resource removal, you need to run destruction one more time to get it complete
 ```terraform
 module "eks" {
  source  = "dasmeta/eks/aws"
