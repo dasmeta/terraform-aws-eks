@@ -57,6 +57,7 @@ module "karpenter" {
 
 | Name | Source | Version |
 |------|--------|---------|
+| <a name="module_karpenter_custom_default_configs_merged"></a> [karpenter\_custom\_default\_configs\_merged](#module\_karpenter\_custom\_default\_configs\_merged) | cloudposse/config/yaml//modules/deepmerge | 1.0.2 |
 | <a name="module_this"></a> [this](#module\_this) | terraform-aws-modules/eks/aws//modules/karpenter | 20.30.1 |
 
 ## Resources
