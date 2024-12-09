@@ -10,8 +10,9 @@ locals {
     amiSelectorTerms = [
       { id = data.aws_instance.ec2_from_eks_node_pool.ami }
     ]
-    detailedMonitoring = var.resource_configs_defaults.nodeClass.detailedMonitoring
-    metadataOptions    = var.resource_configs_defaults.nodeClass.metadataOptions
+    detailedMonitoring  = var.resource_configs_defaults.nodeClass.detailedMonitoring
+    metadataOptions     = var.resource_configs_defaults.nodeClass.metadataOptions
+    blockDeviceMappings = var.resource_configs_defaults.nodeClass.blockDeviceMappings
   }
 
   nodePoolDefaultNodeClassRef = var.resource_configs_defaults.nodeClassRef
@@ -28,7 +29,7 @@ locals {
         })
       })
       disruption = merge(var.resource_configs_defaults.disruption, try(value.disruption, {}))
-      limits     = merge(var.resource_configs_defaults.limits, try(value.limit, {}))
+      limits     = merge(var.resource_configs_defaults.limits, try(value.limits, {}))
     }
   ) }
 }

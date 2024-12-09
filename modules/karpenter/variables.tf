@@ -101,6 +101,16 @@ variable "resource_configs_defaults" {
         httpPutResponseHopLimit = 2 # This is changed to disable IMDS access from containers not on the host network
         httpTokens              = "required"
       }
+      blockDeviceMappings = [
+        {
+          deviceName = "/dev/xvda"
+          ebs = {
+            volumeSize = "100Gi"
+            volumeType = "gp3"
+            encrypted  = true
+          }
+        }
+      ]
     })
     nodeClassRef = optional(any, {
       group = "karpenter.k8s.aws"
