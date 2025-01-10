@@ -8,4 +8,5 @@ module "nginx-ingress-controller" {
   namespace        = var.nginx_ingress_controller_config.namespace
   replicacount     = var.nginx_ingress_controller_config.replicacount
   metrics_enabled  = var.nginx_ingress_controller_config.metrics_enabled
+  configs          = var.nginx_ingress_controller_config.configs
 }

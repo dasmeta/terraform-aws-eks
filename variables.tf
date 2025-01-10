@@ -334,6 +334,7 @@ variable "nginx_ingress_controller_config" {
     namespace        = optional(string, "ingress-nginx")
     replicacount     = optional(number, 3)
     metrics_enabled  = optional(bool, true)
+    configs          = optional(any, {}) # Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx/4.12.0?modal=values
   })
 
   default = {
