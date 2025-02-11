@@ -44,7 +44,7 @@
 # creates aws eks karpenter needed policy/role/queue/event-subscriber resources to use in karpenter helm
 module "this" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
-  version = "20.30.1"
+  version = "20.33.1"
 
   node_iam_role_name                = "Karpenter-${substr(var.cluster_name, 0, 25)}-"
   cluster_name                      = var.cluster_name
@@ -58,6 +58,20 @@ module "this" {
   create_node_iam_role              = true
 }
 
+# installs karpenter operator crds helm package (we need this separate chart for crds, as the below main chart do not support crds upgrade, doc: https://karpenter.sh/docs/upgrading/upgrade-guide/#crd-upgrades)
+resource "helm_release" "this_crds" {
+  name             = "karpenter-crd"
+  repository       = "oci://public.ecr.aws/karpenter"
+  chart            = "karpenter-crd"
+  namespace        = var.namespace
+  version          = var.chart_version
+  create_namespace = var.create_namespace
+  atomic           = var.atomic
+  wait             = var.wait
+
+  depends_on = [module.this]
+}
+
 # installs karpenter operator helm package
 resource "helm_release" "this" {
   name             = "karpenter"
@@ -65,11 +79,14 @@ resource "helm_release" "this" {
   chart            = "karpenter"
   namespace        = var.namespace
   version          = var.chart_version
-  create_namespace = var.create_namespace
+  create_namespace = false
   atomic           = var.atomic
   wait             = var.wait
+  skip_crds        = true
 
   values = [jsonencode(module.karpenter_custom_default_configs_merged.merged)]
+
+  depends_on = [helm_release.this_crds]
 }
 
 # allows to create karpenter crd resources such as NodeClasses, NodePools

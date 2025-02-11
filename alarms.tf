@@ -20,7 +20,5 @@ module "cw_alerts" {
     },
   ]
 
-  depends_on = [
-    module.eks-cluster
-  ]
+  depends_on = [module.eks-cluster]
 }

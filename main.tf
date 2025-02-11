@@ -32,6 +32,15 @@
  *     # command to apply when secret store fails to be linked, probably there will be need to remove the resource
  *     terraform import "module.secret_store.kubectl_manifest.main" external-secrets.io/v1beta1//SecretStore//app-test//default
  *    ```
+ *  - from <2.20.0 to >=2.20.0 version
+ *    - in case if karpenter is enabled.
+ *      the karpenter chart have been upgraded and CRDs creation have been moved into separate chart and there is need to run following kubectl commands before applying module update:
+ *      ```bash
+ *      kubectl patch crd ec2nodeclasses.karpenter.k8s.aws -p '{"metadata":{"labels":{"app.kubernetes.io/managed-by":"Helm"},"annotations":{"meta.helm.sh/release-name":"karpenter-crd","meta.helm.sh/release-namespace":"karpenter"}}}'
+ *      kubectl patch crd nodeclaims.karpenter.sh -p '{"metadata":{"labels":{"app.kubernetes.io/managed-by":"Helm"},"annotations":{"meta.helm.sh/release-name":"karpenter-crd","meta.helm.sh/release-namespace":"karpenter"}}}'
+ *      kubectl patch crd nodepools.karpenter.sh -p '{"metadata":{"labels":{"app.kubernetes.io/managed-by":"Helm"},"annotations":{"meta.helm.sh/release-name":"karpenter-crd","meta.helm.sh/release-namespace":"karpenter"}}}'
+ *      ```
+ *    - the alb ingress/load-balancer controller variables have been moved under one variable set `alb_load_balancer_controller` so you have to change old way passed config(if you have this variables manually passed), here is the moved ones: `enable_alb_ingress_controller`, `enable_waf_for_alb`, `alb_log_bucket_name`, `alb_log_bucket_path`, `send_alb_logs_to_cloudwatch`
  *
  *
  * ## How to run
@@ -307,6 +316,8 @@ module "cloudwatch-metrics" {
   eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
   oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
   cluster_name                = module.eks-cluster[0].cluster_name
+
+  depends_on = [module.eks-cluster]
 }
 
 module "metrics-server" {
@@ -315,6 +326,8 @@ module "metrics-server" {
   count = var.create ? 1 : 0
 
   name = var.metrics_server_name != "" ? var.metrics_server_name : "${module.eks-cluster[0].cluster_name}-metrics-server"
+
+  depends_on = [module.eks-cluster]
 }
 
 module "external-secrets" {
@@ -324,9 +337,7 @@ module "external-secrets" {
 
   namespace = var.external_secrets_namespace
 
-  depends_on = [
-    module.eks-cluster
-  ]
+  depends_on = [module.eks-cluster]
 }
 
 module "sso-rbac" {
@@ -340,9 +351,7 @@ module "sso-rbac" {
   bindings   = var.bindings
   eks_module = module.eks-cluster[0].eks_module
 
-  depends_on = [
-    module.eks-cluster
-  ]
+  depends_on = [module.eks-cluster]
 }
 
 module "efs-csi-driver" {
@@ -353,6 +362,8 @@ module "efs-csi-driver" {
   efs_id           = var.efs_id
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
   storage_classes  = var.efs_storage_classes
+
+  depends_on = [module.eks-cluster]
 }
 
 resource "helm_release" "cert-manager" {
@@ -371,9 +382,7 @@ resource "helm_release" "cert-manager" {
     value = "true"
   }
 
-  depends_on = [
-    module.eks-cluster
-  ]
+  depends_on = [module.eks-cluster]
 }
 
 resource "helm_release" "kube-state-metrics" {
@@ -394,6 +403,8 @@ resource "helm_release" "kube-state-metrics" {
       "kube_deployment_status_replicas_available"
     ])
   }
+
+  depends_on = [module.eks-cluster]
 }
 
 module "autoscaler" {
@@ -420,6 +431,8 @@ module "ebs-csi" {
   cluster_version  = var.cluster_version
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
   addon_version    = var.ebs_csi_version
+
+  depends_on = [module.eks-cluster]
 }
 
 module "api-gw-controller" {
@@ -434,6 +447,8 @@ module "api-gw-controller" {
   api_gateway_resources = var.api_gateway_resources
   vpc_id                = var.api_gateway_resources[0].vpc_links != null ? module.vpc[0].id : null
   subnet_ids            = var.api_gateway_resources[0].vpc_links != null ? (var.vpc.create.private_subnets != {} ? module.vpc[0].private_subnets : var.vpc.link.private_subnet_ids) : null
+
+  depends_on = [module.eks-cluster]
 }
 
 module "portainer" {
@@ -442,6 +457,8 @@ module "portainer" {
   source         = "./modules/portainer"
   host           = var.portainer_config.host
   enable_ingress = var.portainer_config.enable_ingress
+
+  depends_on = [module.eks-cluster]
 }
 
 module "external-dns" {
@@ -453,9 +470,7 @@ module "external-dns" {
   region            = local.region
   configs           = var.external_dns.configs
 
-  depends_on = [
-    module.eks-cluster
-  ]
+  depends_on = [module.alb-ingress-controller]
 }
 
 module "flagger" {
@@ -468,9 +483,7 @@ module "flagger" {
   enable_metric_template  = var.flagger.enable_metric_template
   enable_loadtester       = var.flagger.enable_loadtester
 
-  depends_on = [
-    module.eks-cluster
-  ]
+  depends_on = [module.eks-cluster]
 }
 
 module "karpenter" {
@@ -485,7 +498,5 @@ module "karpenter" {
   resource_configs          = var.karpenter.resource_configs
   resource_configs_defaults = var.karpenter.resource_configs_defaults
 
-  depends_on = [
-    module.eks-cluster
-  ]
+  depends_on = [module.eks-cluster]
 }

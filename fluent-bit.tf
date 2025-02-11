@@ -58,7 +58,5 @@ module "fluent-bit" {
     cloudwatch_outputs_enabled = true
   })
 
-  depends_on = [
-    module.eks-cluster
-  ]
+  depends_on = [module.eks-cluster]
 }

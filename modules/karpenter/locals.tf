@@ -5,7 +5,7 @@ locals {
     role                = module.this.node_iam_role_name
     subnetSelectorTerms = [for id in var.subnet_ids : { id = id }]
     securityGroupSelectorTerms = [
-      { tags = { "karpenter.sh/discovery" = var.cluster_name } }
+      { tags = { "karpenter.sh/discovery" = var.cluster_name, "Name" = "${var.cluster_name}-node" } }
     ]
     amiSelectorTerms = [
       { id = data.aws_instance.ec2_from_eks_node_pool.ami }

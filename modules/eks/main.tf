@@ -4,7 +4,7 @@
 
 module "eks-cluster" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "20.30.1"
+  version = "20.33.1"
 
   # per Upgrade from v17.x to v18.x, see here for details https://github.com/terraform-aws-modules/terraform-aws-eks/blob/681e00aafea093be72ec06ada3825a23a181b1c5/docs/UPGRADE-18.0.md
   prefix_separator                         = ""
@@ -42,9 +42,8 @@ resource "null_resource" "enable_cloudwatch_metrics_autoscaling" {
     command     = "aws autoscaling enable-metrics-collection --region ${var.region} --granularity \"1Minute\" --auto-scaling-group-name  ${each.value}"
     interpreter = ["bash", "-c"]
   }
-  depends_on = [
-    module.eks-cluster
-  ]
+
+  depends_on = [module.eks-cluster]
 }
 
 module "aws_auth_config_map" {

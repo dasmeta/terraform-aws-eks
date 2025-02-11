@@ -53,34 +53,33 @@ resource "aws_iam_role_policy_attachment" "AWSLoadBalancerControllerIAMPolicy" {
 }
 
 resource "helm_release" "aws-load-balancer-controller" {
-  name       = "aws-load-balancer-controller"
-  repository = "https://aws.github.io/eks-charts"
-  chart      = "aws-load-balancer-controller"
-  version    = var.chart_version
-  namespace  = var.namespace
+  name             = "aws-load-balancer-controller"
+  repository       = "https://aws.github.io/eks-charts"
+  chart            = "aws-load-balancer-controller"
+  version          = var.chart_version
+  namespace        = var.namespace
+  create_namespace = var.create_namespace
 
-  set {
-    name  = "clusterName"
-    value = var.cluster_name
-  }
+  values = [jsonencode(module.custom_default_configs_merged.merged)]
+}
 
-  set {
-    name  = "serviceAccount.name"
-    value = "aws-load-balancer-controller"
-  }
 
-  set {
-    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = "arn:aws:iam::${var.account_id}:role/${aws_iam_role.aws-load-balancer-role.name}"
-  }
+module "custom_default_configs_merged" {
+  source  = "cloudposse/config/yaml//modules/deepmerge"
+  version = "1.0.2"
 
-  set {
-    name  = "enableWaf"
-    value = var.enable_waf
-  }
-
-  set {
-    name  = "enableWafv2"
-    value = var.enable_waf
-  }
+  maps = [
+    {
+      clusterName = var.cluster_name
+      serviceAccount = {
+        name = var.service_account_name
+        annotations = {
+          "eks.amazonaws.com/role-arn" = "arn:aws:iam::${var.account_id}:role/${aws_iam_role.aws-load-balancer-role.name}"
+        }
+      }
+      enableWaf   = var.enable_waf
+      enableWafv2 = var.enable_waf
+    },
+    var.configs
+  ]
 }

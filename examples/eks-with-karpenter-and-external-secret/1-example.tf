@@ -11,10 +11,9 @@ module "this" {
     }
   }
 
-  send_alb_logs_to_cloudwatch = false
-  autoscaler_image_patch      = 1
-  ebs_csi_version             = "v1.32.0-eksbuild.1"
-  adot_version                = "v0.94.1-eksbuild.1"
+  autoscaler_image_patch = 1
+  ebs_csi_version        = "v1.32.0-eksbuild.1"
+  adot_version           = "v0.94.1-eksbuild.1"
   users = [
     { username = "terraform" }
   ]
