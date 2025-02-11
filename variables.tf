@@ -80,12 +80,12 @@ variable "users" {
 # ALB-INGRESS-CONTROLLER
 variable "alb_load_balancer_controller" {
   type = object({
-    enabled            = optional(bool, true)  # Whether alb ingress/load-balancer controller enabled, note that alb load balancer will be created also when nginx_ingress_controller_config.enabled=true as nginx loadbalancer service needs it
-    enable_waf_for_alb = optional(bool, false) # Enables WAF and WAF V2 addons for ALB
-    configs            = optional(any, {})     # allows to pass additional helm chart configs
-    # alb_log_bucket_name = optional(string, "") # The s3 bucket where alb logs will be placed, TODO: option and its related ability disable, check if we need this ability
-    # alb_log_bucket_path = optional(string, "") # The s3 bucket path/folder where alb logs will be placed, TODO: option and its related ability disable, check if we need this ability
-    # send_alb_logs_to_cloudwatch = optional(bool, true) # Whether logs will be pushed to cloudwatch also, TODO: option and its related ability disable, check if we need this ability
+    enabled                     = optional(bool, true)  # Whether alb ingress/load-balancer controller enabled, note that alb load balancer will be created also when nginx_ingress_controller_config.enabled=true as nginx loadbalancer service needs it
+    enable_waf_for_alb          = optional(bool, false) # Enables WAF and WAF V2 addons for ALB
+    configs                     = optional(any, {})     # allows to pass additional helm chart configs
+    alb_log_bucket_name         = optional(string, "")  # The s3 bucket where alb logs will be placed, TODO: option and its related ability disable, check if we need this ability
+    alb_log_bucket_path         = optional(string, "")  # The s3 bucket path/folder where alb logs will be placed, TODO: option and its related ability disable, check if we need this ability
+    send_alb_logs_to_cloudwatch = optional(bool, true)  # Whether logs will be pushed to cloudwatch also, TODO: option and its related ability disable, check if we need this ability
   })
   default     = {}
   description = "Aws alb ingress/load-balancer controller configs."
