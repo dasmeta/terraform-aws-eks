@@ -26,7 +26,14 @@ module "custom_default_configs_merged" {
         }
         service = {
           annotations = {
-            "service.beta.kubernetes.io/aws-load-balancer-scheme" = "internet-facing"
+            "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
+            "service.beta.kubernetes.io/aws-load-balancer-type"            = "external"
+            "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "instance"
+          }
+          internal = {
+            annotations = {
+              "service.beta.kubernetes.io/aws-load-balancer-scheme" = "internal"
+            }
           }
         }
       }

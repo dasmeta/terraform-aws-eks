@@ -28,12 +28,11 @@ module "this" {
     enabled   = false
     sns_topic = ""
   }
-  enable_ebs_driver             = false
-  enable_external_secrets       = false
-  create_cert_manager           = false
-  enable_alb_ingress_controller = false
-  enable_node_problem_detector  = false
-  metrics_exporter              = "disabled"
+  enable_ebs_driver            = false
+  enable_external_secrets      = false
+  create_cert_manager          = false
+  enable_node_problem_detector = false
+  metrics_exporter             = "disabled"
   fluent_bit_configs = {
     enabled = false
   }

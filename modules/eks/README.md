@@ -48,7 +48,7 @@ module "cluster_min" {
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_aws_auth_config_map"></a> [aws\_auth\_config\_map](#module\_aws\_auth\_config\_map) | terraform-aws-modules/eks/aws//modules/aws-auth | 20.29.0 |
-| <a name="module_eks-cluster"></a> [eks-cluster](#module\_eks-cluster) | terraform-aws-modules/eks/aws | 20.30.1 |
+| <a name="module_eks-cluster"></a> [eks-cluster](#module\_eks-cluster) | terraform-aws-modules/eks/aws | 20.33.1 |
 
 ## Resources
 

@@ -29,8 +29,8 @@ locals {
 module "this" {
   source = "../../"
 
-  cluster_name                = local.cluster_name
-  send_alb_logs_to_cloudwatch = false
+  cluster_name = local.cluster_name
+
   # TODO: test this
   vpc = {
     link = {

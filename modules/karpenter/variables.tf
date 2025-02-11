@@ -44,14 +44,14 @@ variable "node_iam_role_additional_policies" {
 
 variable "chart_version" {
   type        = string
-  default     = "1.0.8"
+  default     = "1.2.1"
   description = "The app chart version"
 }
 
 variable "resource_chart_version" {
   type        = string
   default     = "0.1.0"
-  description = "The dasmeta karpenter-resources chart version"
+  description = "The dasmeta karpenter-nodes chart version"
 }
 
 variable "namespace" {
@@ -85,9 +85,12 @@ variable "configs" {
 }
 
 variable "resource_configs" {
-  type        = any
+  type = object({
+    ec2NodeClasses = optional(any, {}) # This is for additional node classes configuration, by default it creates ec2NodeClass resource named 'default' and this attaches to all nodepools based on var.resource_configs_defaults configs
+    nodePools      = optional(any, {}) # The nodepool resources definition, it uses some predefined/default values from var.resource_configs_defaults which can be customized, check helm chart or/and karpenter docs for schema/fields
+  })
   default     = {}
-  description = "Configurations to pass and override default ones for karpenter-resources chart. Check the helm chart available configs here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources"
+  description = "Configurations to pass and override default ones for karpenter-nodes chart. Check the helm chart available configs here: https://github.com/dasmeta/helm/tree/karpenter-nodes-0.1.0/charts/karpenter-nodes"
 }
 
 variable "resource_configs_defaults" {
@@ -158,5 +161,5 @@ variable "resource_configs_defaults" {
     })
   })
   default     = {}
-  description = "Configurations to pass and override default ones for karpenter-resources chart. Check the helm chart available configs here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources"
+  description = "Configurations to pass and override default ones for karpenter-nodes chart. Check the helm chart available configs here: https://github.com/dasmeta/helm/tree/karpenter-nodes-0.1.0/charts/karpenter-nodes"
 }

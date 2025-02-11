@@ -3,7 +3,5 @@ module "node-problem-detector" {
 
   count = var.enable_node_problem_detector ? 1 : 0
 
-  depends_on = [
-    module.eks-cluster
-  ]
+  depends_on = [module.eks-cluster]
 }

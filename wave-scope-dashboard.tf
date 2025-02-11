@@ -10,4 +10,5 @@ module "weave-scope" {
   annotations      = var.weave_scope_config.annotations
   service_type     = var.weave_scope_config.service_type
 
+  depends_on = [module.eks-cluster]
 }
