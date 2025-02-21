@@ -1,16 +1,16 @@
-resource "helm_release" "flagger_metric_template" {
-  count = var.enable_metric_template ? 1 : 0
+resource "helm_release" "flagger_metrics_and_alerts" {
+  count = var.metrics_and_alerts_configs != {} ? 1 : 0
 
-  name             = "flagger-metric-template"
+  name             = "flagger-metrics-and-alerts"
   repository       = "https://dasmeta.github.io/helm"
-  chart            = "flagger-metric-template"
+  chart            = "flagger-metrics-and-alerts"
   namespace        = var.namespace
   version          = var.metric_template_chart_version
   create_namespace = false
   atomic           = var.atomic
   wait             = var.wait
 
-  values = [jsonencode(var.metric_template_configs)]
+  values = [jsonencode(var.metrics_and_alerts_configs)]
 
   depends_on = [helm_release.this]
 }

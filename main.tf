@@ -476,12 +476,11 @@ module "external-dns" {
 module "flagger" {
   count = var.create && var.flagger.enabled ? 1 : 0
 
-  source                  = "./modules/flagger"
-  namespace               = var.flagger.namespace
-  configs                 = var.flagger.configs
-  metric_template_configs = var.flagger.metric_template_configs
-  enable_metric_template  = var.flagger.enable_metric_template
-  enable_loadtester       = var.flagger.enable_loadtester
+  source                     = "./modules/flagger"
+  namespace                  = var.flagger.namespace
+  configs                    = var.flagger.configs
+  metrics_and_alerts_configs = var.flagger.metrics_and_alerts_configs
+  enable_loadtester          = var.flagger.enable_loadtester
 
   depends_on = [module.eks-cluster]
 }
