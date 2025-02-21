@@ -9,7 +9,7 @@ variable "region" {
 }
 
 // s3 bucket configs for ALB
-data "aws_elb_service_account" "main" {}
+# data "aws_elb_service_account" "main" {} # TODO: this data related resources are commented, check if we need this
 
 variable "cluster_name" {
   type        = string
@@ -27,6 +27,12 @@ variable "create_namespace" {
   type        = bool
   default     = false
   description = "wether or no to create namespace"
+}
+
+variable "service_account_name" {
+  type        = string
+  default     = "aws-load-balancer-controller"
+  description = "The service account name to attach balancer deployment"
 }
 
 variable "eks_oidc_root_ca_thumbprint" {
@@ -72,4 +78,16 @@ variable "enable_waf" {
   type        = bool
   description = "Enables WAF and WAF V2 addons for ALB"
   default     = false
+}
+
+variable "chart_version" {
+  type        = string
+  default     = "1.11.0"
+  description = "The app chart version"
+}
+
+variable "configs" {
+  type        = any
+  default     = {}
+  description = "Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller/1.11.0"
 }

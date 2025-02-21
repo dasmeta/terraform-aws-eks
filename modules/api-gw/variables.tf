@@ -11,7 +11,7 @@ variable "cluster_name" {
 variable "chart_version" {
   description = "Chart version of api-gw"
   type        = string
-  default     = "0.0.17"
+  default     = "1.0.17"
 }
 
 variable "deploy_region" {

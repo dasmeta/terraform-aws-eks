@@ -9,7 +9,7 @@ output "eks_oidc_root_ca_thumbprint" {
 }
 
 output "cluster_id" {
-  value = try(module.eks-cluster[0].cluster_id, null)
+  value = try(module.eks-cluster[0].cluster_name, null)
 }
 
 output "cluster_iam_role_name" {

@@ -35,4 +35,15 @@ locals {
     "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
   ], var.adot_collector_policy_arns)
 
+  addon_name           = "adot"
+  service_account_name = "adot-collector"
+  oidc_provider        = regex("^arn:aws:iam::[0-9]+:oidc-provider/(.*)$", var.oidc_provider_arn)[0]
+  region               = coalesce(var.region, try(data.aws_region.current[0].name, null))
+
+
+  logging = var.adot_config.logging_enable ? {
+    "log_group_name"  = "${var.adot_config.log_group_name}"
+    "log_stream_name" = "adot-metrics"
+    "log_retention"   = "${var.adot_config.log_retention}"
+  } : {}
 }

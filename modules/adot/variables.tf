@@ -3,6 +3,18 @@ variable "cluster_name" {
   type        = string
 }
 
+variable "cluster_version" {
+  type        = string
+  default     = "1.29"
+  description = "Version of eks cluster"
+}
+
+variable "most_recent" {
+  type        = bool
+  default     = null
+  description = "Whether to use addon latest compatible version"
+}
+
 variable "eks_oidc_root_ca_thumbprint" {
   description = "EKS oidc root ca thumbprint."
   type        = string
@@ -14,9 +26,9 @@ variable "oidc_provider_arn" {
 }
 
 variable "adot_version" {
-  description = "The version of the AWS Distro for OpenTelemetry addon to use."
+  description = "The version of the AWS Distro for OpenTelemetry addon to use. If not passed it will get compatible version based on cluster_version and most_recent"
   type        = string
-  default     = "v0.78.0-eksbuild.1"
+  default     = null
 }
 
 variable "namespace" {
@@ -29,6 +41,12 @@ variable "create_namespace" {
   type        = bool
   default     = false
   description = "Create namespace if requested"
+}
+
+variable "chart_version" {
+  type        = string
+  default     = "0.15.5"
+  description = "The app chart version"
 }
 
 variable "adot_collector_policy_arns" {

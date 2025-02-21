@@ -38,14 +38,6 @@ variable "node_groups" {
 variable "node_security_group_additional_rules" {
   type = any
   default = {
-    ingress_cluster_8443 = {
-      description                   = "Metric server to node groups"
-      protocol                      = "tcp"
-      from_port                     = 8443
-      to_port                       = 8443
-      type                          = "ingress"
-      source_cluster_security_group = true
-    },
     ingress_cluster_10250 = {
       description = "Metric server to node groups"
       protocol    = "tcp"
@@ -86,26 +78,17 @@ variable "users" {
 }
 
 # ALB-INGRESS-CONTROLLER
-variable "alb_log_bucket_path" {
-  type    = string
-  default = ""
-}
-
-variable "send_alb_logs_to_cloudwatch" {
-  type        = bool
-  default     = true
-  description = "Whether send alb logs to CloudWatch or not."
-}
-
-variable "enable_alb_ingress_controller" {
-  type        = bool
-  default     = true
-  description = "Whether alb ingress controller enabled."
-}
-
-variable "alb_log_bucket_name" {
-  type    = string
-  default = ""
+variable "alb_load_balancer_controller" {
+  type = object({
+    enabled                     = optional(bool, true)  # Whether alb ingress/load-balancer controller enabled, note that alb load balancer will be created also when nginx_ingress_controller_config.enabled=true as nginx loadbalancer service needs it
+    enable_waf_for_alb          = optional(bool, false) # Enables WAF and WAF V2 addons for ALB
+    configs                     = optional(any, {})     # allows to pass additional helm chart configs
+    alb_log_bucket_name         = optional(string, "")  # The s3 bucket where alb logs will be placed, TODO: option and its related ability disable, check if we need this ability
+    alb_log_bucket_path         = optional(string, "")  # The s3 bucket path/folder where alb logs will be placed, TODO: option and its related ability disable, check if we need this ability
+    send_alb_logs_to_cloudwatch = optional(bool, true)  # Whether logs will be pushed to cloudwatch also, TODO: option and its related ability disable, check if we need this ability
+  })
+  default     = {}
+  description = "Aws alb ingress/load-balancer controller configs."
 }
 
 # FLUENT-BIT
@@ -213,7 +196,13 @@ variable "cluster_enabled_log_types" {
 variable "cluster_version" {
   description = "Allows to set/change kubernetes cluster version, kubernetes version needs to be updated at leas once a year. Please check here for available versions https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html"
   type        = string
-  default     = "1.27"
+  default     = "1.29"
+}
+
+variable "cluster_addons" {
+  description = "Cluster addon configurations to enable."
+  type        = any
+  default     = {}
 }
 
 variable "map_roles" {
@@ -336,6 +325,7 @@ variable "nginx_ingress_controller_config" {
     namespace        = optional(string, "ingress-nginx")
     replicacount     = optional(number, 3)
     metrics_enabled  = optional(bool, true)
+    configs          = optional(any, {}) # Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx/4.12.0?modal=values
   })
 
   default = {
@@ -400,9 +390,9 @@ variable "adot_config" {
 }
 
 variable "adot_version" {
-  description = "The version of the AWS Distro for OpenTelemetry addon to use."
+  description = "The version of the AWS Distro for OpenTelemetry addon to use. If not passed it will get compatible version based on cluster_version"
   type        = string
-  default     = "v0.78.0-eksbuild.1"
+  default     = null
 }
 
 variable "enable_kube_state_metrics" {
@@ -411,12 +401,23 @@ variable "enable_kube_state_metrics" {
   description = "Enable kube-state-metrics"
 }
 
+variable "kube_state_metrics_chart_version" {
+  type        = string
+  default     = "5.27.0"
+  description = "The kube-state-metrics chart version"
+}
+
 // Cert manager
 // If you want enable ADOT you should enable cert_manager
 variable "create_cert_manager" {
   description = "If enabled it always gets deployed to the cert-manager namespace."
   type        = bool
   default     = false
+}
+variable "cert_manager_chart_version" {
+  description = "The cert-manager helm chart version."
+  type        = string
+  default     = "1.16.2"
 }
 
 variable "enable_efs_driver" {
@@ -445,7 +446,7 @@ variable "efs_id" {
 }
 
 variable "autoscaling" {
-  description = "Weather enable autoscaling or not in EKS"
+  description = "Weather enable cluster autoscaler for EKS, in case if karpenter enabled this config will be ignored and the cluster autoscaler will be considered as disabled"
   type        = bool
   default     = true
 }
@@ -469,9 +470,9 @@ variable "enable_ebs_driver" {
 }
 
 variable "ebs_csi_version" {
-  description = "EBS CSI driver addon version"
+  description = "EBS CSI driver addon version, by default it will pick right version for this driver based on cluster_version"
   type        = string
-  default     = "v1.15.0-eksbuild.1"
+  default     = null
 }
 
 variable "autoscaler_limits" {
@@ -563,12 +564,6 @@ variable "portainer_config" {
   default = {}
 }
 
-variable "enable_waf_for_alb" {
-  type        = bool
-  description = "Enables WAF and WAF V2 addons for ALB"
-  default     = false
-}
-
 variable "alarms" {
   type = object({
     enabled       = optional(bool, true)
@@ -610,4 +605,23 @@ variable "flagger" {
     enabled = false
   }
   description = "Allows to create/deploy flagger operator to have custom rollout strategies like canary/blue-green and also it allows to create custom flagger metric templates"
+}
+
+variable "karpenter" {
+  type = object({
+    enabled                   = optional(bool, false)
+    configs                   = optional(any, {}) # karpenter chart configs, the underlying module sets some general/default ones, available option can be found here: https://github.com/aws/karpenter-provider-aws/blob/v1.0.8/charts/karpenter/values.yaml
+    resource_configs          = optional(any, {}) # karpenter resources creation configs, available options can be fount here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources
+    resource_configs_defaults = optional(any, {}) # the default used for karpenter node pool creation, the available values to override/set can be found in karpenter submodule corresponding variable modules/karpenter/values.tf
+  })
+  default = {
+    enabled = false
+  }
+  description = "Allows to create/deploy/configure karpenter operator and its resources to have custom node auto-calling"
+}
+
+variable "tags" {
+  description = "Extra tags to attach to eks cluster."
+  type        = any
+  default     = {}
 }

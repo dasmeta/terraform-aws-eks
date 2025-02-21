@@ -47,7 +47,8 @@ module "cluster_min" {
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_eks-cluster"></a> [eks-cluster](#module\_eks-cluster) | terraform-aws-modules/eks/aws | 18.31.2 |
+| <a name="module_aws_auth_config_map"></a> [aws\_auth\_config\_map](#module\_aws\_auth\_config\_map) | terraform-aws-modules/eks/aws//modules/aws-auth | 20.29.0 |
+| <a name="module_eks-cluster"></a> [eks-cluster](#module\_eks-cluster) | terraform-aws-modules/eks/aws | 20.33.1 |
 
 ## Resources
 
@@ -61,6 +62,7 @@ module "cluster_min" {
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_cluster_addons"></a> [cluster\_addons](#input\_cluster\_addons) | Cluster addon configurations to enable. | `any` | `{}` | no |
 | <a name="input_cluster_enabled_log_types"></a> [cluster\_enabled\_log\_types](#input\_cluster\_enabled\_log\_types) | A list of the desired control plane logs to enable. For more information, see Amazon EKS Control Plane Logging documentation (https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html) | `list(string)` | <pre>[<br>  "audit"<br>]</pre> | no |
 | <a name="input_cluster_endpoint_public_access"></a> [cluster\_endpoint\_public\_access](#input\_cluster\_endpoint\_public\_access) | When you create EKS, API server endpoint access default is public. When you use private this variable value should be equal false | `bool` | `true` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | Creating cluster name. | `string` | n/a | yes |
@@ -72,6 +74,7 @@ module "cluster_min" {
 | <a name="input_node_security_group_additional_rules"></a> [node\_security\_group\_additional\_rules](#input\_node\_security\_group\_additional\_rules) | n/a | `any` | `{}` | no |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region name. | `string` | n/a | yes |
 | <a name="input_subnets"></a> [subnets](#input\_subnets) | VPC subnets. Most probably those are the private ones. | `list(string)` | n/a | yes |
+| <a name="input_tags"></a> [tags](#input\_tags) | Tags to attach to eks cluster. | `any` | `{}` | no |
 | <a name="input_users"></a> [users](#input\_users) | List of users to open eks cluster api access | `list(any)` | `[]` | no |
 | <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | VPC id where to spin up the cluster. | `string` | n/a | yes |
 | <a name="input_worker_groups"></a> [worker\_groups](#input\_worker\_groups) | self\_managed\_node\_group\_defaults. | `any` | `{}` | no |
@@ -81,9 +84,11 @@ module "cluster_min" {
 
 | Name | Description |
 |------|-------------|
+| <a name="output_aws_auth_module"></a> [aws\_auth\_module](#output\_aws\_auth\_module) | n/a |
 | <a name="output_certificate"></a> [certificate](#output\_certificate) | n/a |
 | <a name="output_cluster_iam_role_name"></a> [cluster\_iam\_role\_name](#output\_cluster\_iam\_role\_name) | n/a |
-| <a name="output_cluster_id"></a> [cluster\_id](#output\_cluster\_id) | n/a |
+| <a name="output_cluster_id"></a> [cluster\_id](#output\_cluster\_id) | The cluster\_id has been deprecated and replaced with cluster\_name starting from module version v19.x |
+| <a name="output_cluster_name"></a> [cluster\_name](#output\_cluster\_name) | n/a |
 | <a name="output_cluster_primary_security_group_id"></a> [cluster\_primary\_security\_group\_id](#output\_cluster\_primary\_security\_group\_id) | n/a |
 | <a name="output_cluster_security_group_id"></a> [cluster\_security\_group\_id](#output\_cluster\_security\_group\_id) | n/a |
 | <a name="output_eks_module"></a> [eks\_module](#output\_eks\_module) | n/a |
@@ -91,5 +96,6 @@ module "cluster_min" {
 | <a name="output_host"></a> [host](#output\_host) | n/a |
 | <a name="output_map_users_data"></a> [map\_users\_data](#output\_map\_users\_data) | n/a |
 | <a name="output_oidc_provider_arn"></a> [oidc\_provider\_arn](#output\_oidc\_provider\_arn) | n/a |
+| <a name="output_subnet_ids"></a> [subnet\_ids](#output\_subnet\_ids) | VPC subnet ids used for eks |
 | <a name="output_token"></a> [token](#output\_token) | n/a |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

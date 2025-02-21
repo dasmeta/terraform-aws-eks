@@ -24,18 +24,15 @@ locals {
 }
 
 module "cluster_min" {
-  source  = "dasmeta/eks/aws"
-  version = "2.1.0"
+  source = "../.."
 
-  enable_ebs_driver           = true
-  cluster_name                = local.cluster_name
-  send_alb_logs_to_cloudwatch = false
-  alb_log_bucket_name         = "dev-ben-ingress-controller-log-bucket"
-  cluster_version             = "1.23"
-  users                       = local.users
-  map_roles                   = local.map_roles
-  node_groups_default         = local.node_groups_default
-  node_groups                 = local.node_groups
+  enable_ebs_driver   = true
+  cluster_name        = local.cluster_name
+  cluster_version     = "1.29"
+  users               = local.users
+  map_roles           = local.map_roles
+  node_groups_default = local.node_groups_default
+  node_groups         = local.node_groups
 
   vpc = {
     link = {
@@ -43,4 +40,6 @@ module "cluster_min" {
       private_subnet_ids = ["subent-1", "subnet-2"]
     }
   }
+
+  alarms = { enabled = false }
 }

@@ -32,7 +32,7 @@ module "this" {
     "capacity_type" : "SPOT",
     "instance_types" : ["t3.medium"]
   }
-  send_alb_logs_to_cloudwatch = false
+
   vpc = {
     link = {
       id                 = data.aws_vpcs.ids.ids[0]

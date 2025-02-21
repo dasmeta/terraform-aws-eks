@@ -1,5 +1,10 @@
 output "cluster_id" {
-  value = module.eks-cluster.cluster_id
+  value       = module.eks-cluster.cluster_name
+  description = "The cluster_id has been deprecated and replaced with cluster_name starting from module version v19.x"
+}
+
+output "cluster_name" {
+  value = module.eks-cluster.cluster_name
 }
 
 output "cluster_iam_role_name" {
@@ -40,4 +45,13 @@ output "map_users_data" {
 
 output "eks_module" {
   value = try(module.eks-cluster, null)
+}
+
+output "aws_auth_module" {
+  value = try(module.aws_auth_config_map, null)
+}
+
+output "subnet_ids" {
+  value       = var.subnets
+  description = "VPC subnet ids used for eks"
 }
