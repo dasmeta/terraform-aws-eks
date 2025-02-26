@@ -33,8 +33,4 @@ module "cluster_min" {
     sns_topic = "Default"
   }
 
-  dockerhub_auth = {
-    username = "user"
-    password = "pass"
-  }
 }
