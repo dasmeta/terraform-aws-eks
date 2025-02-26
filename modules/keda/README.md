@@ -7,6 +7,7 @@
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 5.0 |
+| <a name="requirement_kubectl"></a> [kubectl](#requirement\_kubectl) | ~>1.14 |
 
 ## Providers
 
@@ -14,7 +15,7 @@
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 5.0 |
 | <a name="provider_helm"></a> [helm](#provider\_helm) | n/a |
-| <a name="provider_kubectl"></a> [kubectl](#provider\_kubectl) | n/a |
+| <a name="provider_kubectl"></a> [kubectl](#provider\_kubectl) | ~>1.14 |
 
 ## Modules
 
@@ -28,8 +29,8 @@ No modules.
 | [aws_iam_role.keda-role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role_policy_attachment.attach_keda_sqs_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [helm_release.keda](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
-| [kubectl_manifest.keda_trigger_authentication](https://registry.terraform.io/providers/hashicorp/kubectl/latest/docs/resources/manifest) | resource |
-| [kubectl_manifest.keda_trigger_authentication_additional](https://registry.terraform.io/providers/hashicorp/kubectl/latest/docs/resources/manifest) | resource |
+| [kubectl_manifest.keda_trigger_authentication](https://registry.terraform.io/providers/gavinbunney/kubectl/latest/docs/resources/manifest) | resource |
+| [kubectl_manifest.keda_trigger_authentication_additional](https://registry.terraform.io/providers/gavinbunney/kubectl/latest/docs/resources/manifest) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_eks_cluster.eks](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_cluster) | data source |
 | [aws_eks_cluster_auth.eks](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_cluster_auth) | data source |

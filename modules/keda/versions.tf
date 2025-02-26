@@ -6,5 +6,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0" # This ensures compatibility with AWS provider v5
     }
+
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = "~>1.14"
+    }
   }
 }
