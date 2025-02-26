@@ -47,7 +47,7 @@ resource "aws_iam_policy" "keda_sqs_policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "attach_keda_sqs_policy" {
-  count = var.scaling_type == "sqs" ? 1 : 0
+  count = var.attach_policies.sqs ? 1 : 0
 
   policy_arn = aws_iam_policy.keda_sqs_policy[0].arn
   role       = aws_iam_role.keda-role.name
