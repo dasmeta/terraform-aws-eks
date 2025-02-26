@@ -1,0 +1,17 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: worker-scaledobject
+spec:
+  scaleTargetRef:
+    name: worker  # Target deployment
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  triggers:
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: keda-trigger-auth-default
+      metadata:
+        queueURL: <queue-url> # AWS SQS queue url
+        queueLength: "5"  # Scale up if there are 5+ messages in the queue
+        awsRegion: "eu-central-1" # AWS region where AWS SQS located
