@@ -629,7 +629,7 @@ variable "keda" {
     keda_version     = optional(string, "2.16.1") # chart version
     attach_policies = optional(object({
       sqs = bool
-    }), { sqs = true })
+    }), { sqs = false })
   })
   default = {
     enabled          = false
