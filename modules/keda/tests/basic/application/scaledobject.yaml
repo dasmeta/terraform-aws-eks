@@ -10,7 +10,7 @@ spec:
   triggers:
     - type: aws-sqs-queue
       authenticationRef:
-        name: keda-trigger-auth-aws-credentials
+        name: keda-trigger-auth-default
       metadata:
         queueURL: <queue-url> # AWS SQS queue url
         queueLength: "5"  # Scale up if there are 5+ messages in the queue

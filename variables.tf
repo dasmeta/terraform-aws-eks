@@ -630,6 +630,7 @@ variable "keda" {
     attach_policies = optional(object({
       sqs = bool
     }), { sqs = false })
+    keda_trigger_auth_additional = optional(any, null)
   })
   default = {
     enabled          = false

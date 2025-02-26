@@ -39,7 +39,13 @@ variable "attach_policies" {
     sqs = bool
   })
   default = {
-    sqs = true
+    sqs = false
   }
   description = "The type of scaling mechanism (e.g., sqs, redis, custom)"
+}
+
+variable "keda_trigger_auth_additional" {
+  type        = any
+  default     = null
+  description = "This variable stores the YAML configuration for a KEDA `TriggerAuthentication` resource. It is used to define authentication settings for KEDA to interact with external cloud providers such as AWS. Module have default for aws you can use default(keda-trigger-auth-default)"
 }
