@@ -1,8 +1,0 @@
-apiVersion: keda.sh/v1alpha1
-kind: TriggerAuthentication
-metadata:
-  name: keda-trigger-auth-default
-  namespace: keda
-spec:
-  podIdentity:
-    provider: aws
