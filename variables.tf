@@ -620,6 +620,24 @@ variable "karpenter" {
   description = "Allows to create/deploy/configure karpenter operator and its resources to have custom node auto-calling"
 }
 
+variable "keda" {
+  type = object({
+    enabled          = optional(bool, false)
+    name             = optional(string, "keda")   # keda chart name,
+    namespace        = optional(string, "keda")   # keda chart namespace
+    create_namespace = optional(bool, true)       # create keda chart
+    keda_version     = optional(string, "2.16.1") # chart version
+  })
+  default = {
+    enabled          = false
+    name             = "keda"
+    namespace        = "keda"
+    create_namespace = true
+    keda_version     = "2.16.1"
+  }
+  description = "Allows to create/deploy/configure keda"
+}
+
 variable "tags" {
   description = "Extra tags to attach to eks cluster."
   type        = any

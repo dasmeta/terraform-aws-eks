@@ -32,4 +32,9 @@ module "cluster_min" {
   alarms = {
     sns_topic = "Default"
   }
+
+  dockerhub_auth = {
+    username = "user"
+    password = "pass"
+  }
 }
