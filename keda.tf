@@ -6,5 +6,6 @@ module "keda" {
   namespace        = var.keda.namespace
   create_namespace = var.keda.create_namespace
   keda_version     = var.keda.keda_version
+  scaling_type     = var.keda.scaling_type
   eks_cluster_name = module.eks-cluster[0].cluster_name
 }
