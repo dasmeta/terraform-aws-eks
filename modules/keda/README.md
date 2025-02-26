@@ -24,7 +24,7 @@ No modules.
 | Name | Type |
 |------|------|
 | [aws_iam_policy.keda_sqs_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
-| [aws_iam_role.keda_sqs_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role.keda-role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role_policy_attachment.attach_keda_sqs_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [helm_release.keda](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
@@ -43,6 +43,7 @@ No modules.
 | <a name="input_keda_version"></a> [keda\_version](#input\_keda\_version) | Version of the KEDA Helm chart | `string` | `"2.16.1"` | no |
 | <a name="input_name"></a> [name](#input\_name) | Name to deploy KEDA | `string` | `"keda"` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | Namespace to deploy KEDA | `string` | `"keda"` | no |
+| <a name="input_scaling_type"></a> [scaling\_type](#input\_scaling\_type) | The type of scaling mechanism (e.g., sqs, redis, custom) | `string` | n/a | yes |
 
 ## Outputs
 

@@ -272,7 +272,6 @@ module "eks" {
 | <a name="module_autoscaler"></a> [autoscaler](#module\_autoscaler) | ./modules/autoscaler | n/a |
 | <a name="module_cloudwatch-metrics"></a> [cloudwatch-metrics](#module\_cloudwatch-metrics) | ./modules/cloudwatch-metrics | n/a |
 | <a name="module_cw_alerts"></a> [cw\_alerts](#module\_cw\_alerts) | dasmeta/monitoring/aws//modules/alerts | 1.3.5 |
-| <a name="module_dockerhub_auth"></a> [dockerhub\_auth](#module\_dockerhub\_auth) | ./modules/dockerhub-auth/ | n/a |
 | <a name="module_ebs-csi"></a> [ebs-csi](#module\_ebs-csi) | ./modules/ebs-csi | n/a |
 | <a name="module_efs-csi-driver"></a> [efs-csi-driver](#module\_efs-csi-driver) | ./modules/efs-csi | n/a |
 | <a name="module_eks-cluster"></a> [eks-cluster](#module\_eks-cluster) | ./modules/eks | n/a |

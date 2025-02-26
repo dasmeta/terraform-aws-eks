@@ -1,4 +1,4 @@
-resource "aws_iam_role" "keda_sqs_role" {
+resource "aws_iam_role" "keda-role" {
   name = "${var.name}-role"
 
   assume_role_policy = jsonencode({
@@ -23,7 +23,9 @@ resource "aws_iam_role" "keda_sqs_role" {
 }
 
 resource "aws_iam_policy" "keda_sqs_policy" {
-  name        = "${var.name}-role-policy"
+  count = var.scaling_type == "sqs" ? 1 : 0
+
+  name        = "${var.name}-role-policy-sqs"
   description = "IAM policy for KEDA to read SQS messages"
 
   policy = jsonencode({
@@ -45,6 +47,8 @@ resource "aws_iam_policy" "keda_sqs_policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "attach_keda_sqs_policy" {
+  count = var.scaling_type == "sqs" ? 1 : 0
+
   policy_arn = aws_iam_policy.keda_sqs_policy.arn
   role       = aws_iam_role.keda_sqs_role.name
 }

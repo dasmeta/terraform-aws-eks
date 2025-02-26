@@ -8,7 +8,7 @@ resource "helm_release" "keda" {
   version    = var.keda_version
 
   values = [templatefile("${path.module}/values.yaml.tpl", {
-    role_arn = aws_iam_role.keda_sqs_role.arn
+    role_arn = aws_iam_role.keda-role.arn
     })
   ]
 

@@ -33,3 +33,8 @@ variable "eks_cluster_name" {
   type        = string
   description = "Cluster name"
 }
+
+variable "scaling_type" {
+  type        = string
+  description = "The type of scaling mechanism (e.g., sqs, redis, custom)"
+}
