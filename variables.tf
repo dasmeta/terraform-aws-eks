@@ -627,7 +627,9 @@ variable "keda" {
     namespace        = optional(string, "keda")   # keda chart namespace
     create_namespace = optional(bool, true)       # create keda chart
     keda_version     = optional(string, "2.16.1") # chart version
-    scaling_type     = optional(string, "sqs")
+    attach_policies = optional(object({
+      sqs = bool
+    }), { sqs = true })
   })
   default = {
     enabled          = false
@@ -635,7 +637,6 @@ variable "keda" {
     namespace        = "keda"
     create_namespace = true
     keda_version     = "2.16.1"
-    scaling_type     = "sqs"
   }
   description = "Allows to create/deploy/configure keda"
 }

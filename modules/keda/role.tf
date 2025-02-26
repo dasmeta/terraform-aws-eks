@@ -23,7 +23,7 @@ resource "aws_iam_role" "keda-role" {
 }
 
 resource "aws_iam_policy" "keda_sqs_policy" {
-  count = var.scaling_type == "sqs" ? 1 : 0
+  count = var.attach_policies.sqs ? 1 : 0
 
   name        = "${var.name}-role-policy-sqs"
   description = "IAM policy for KEDA to read SQS messages"

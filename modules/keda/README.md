@@ -37,13 +37,13 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_attach_policies"></a> [attach\_policies](#input\_attach\_policies) | The type of scaling mechanism (e.g., sqs, redis, custom) | <pre>object({<br>    sqs = bool<br>  })</pre> | <pre>{<br>  "sqs": true<br>}</pre> | no |
 | <a name="input_chart_name"></a> [chart\_name](#input\_chart\_name) | Chart name | `string` | `"keda"` | no |
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | Create Namespace to deploy KEDA | `bool` | `true` | no |
 | <a name="input_eks_cluster_name"></a> [eks\_cluster\_name](#input\_eks\_cluster\_name) | Cluster name | `string` | n/a | yes |
 | <a name="input_keda_version"></a> [keda\_version](#input\_keda\_version) | Version of the KEDA Helm chart | `string` | `"2.16.1"` | no |
 | <a name="input_name"></a> [name](#input\_name) | Name to deploy KEDA | `string` | `"keda"` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | Namespace to deploy KEDA | `string` | `"keda"` | no |
-| <a name="input_scaling_type"></a> [scaling\_type](#input\_scaling\_type) | The type of scaling mechanism (e.g., sqs, redis, custom) | `string` | n/a | yes |
 
 ## Outputs
 

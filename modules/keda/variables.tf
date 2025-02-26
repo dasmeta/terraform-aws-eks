@@ -34,7 +34,12 @@ variable "eks_cluster_name" {
   description = "Cluster name"
 }
 
-variable "scaling_type" {
-  type        = string
+variable "attach_policies" {
+  type = object({
+    sqs = bool
+  })
+  default = {
+    sqs = true
+  }
   description = "The type of scaling mechanism (e.g., sqs, redis, custom)"
 }
