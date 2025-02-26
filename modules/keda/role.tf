@@ -1,5 +1,5 @@
 resource "aws_iam_role" "keda_sqs_role" {
-  name = "keda-sqs-role"
+  name = "${var.name}-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -23,7 +23,7 @@ resource "aws_iam_role" "keda_sqs_role" {
 }
 
 resource "aws_iam_policy" "keda_sqs_policy" {
-  name        = "KEDA-SQS-Policy"
+  name        = "${var.name}-role-policy"
   description = "IAM policy for KEDA to read SQS messages"
 
   policy = jsonencode({
