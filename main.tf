@@ -41,6 +41,13 @@
  *      kubectl patch crd nodepools.karpenter.sh -p '{"metadata":{"labels":{"app.kubernetes.io/managed-by":"Helm"},"annotations":{"meta.helm.sh/release-name":"karpenter-crd","meta.helm.sh/release-namespace":"karpenter"}}}'
  *      ```
  *    - the alb ingress/load-balancer controller variables have been moved under one variable set `alb_load_balancer_controller` so you have to change old way passed config(if you have this variables manually passed), here is the moved ones: `enable_alb_ingress_controller`, `enable_waf_for_alb`, `alb_log_bucket_name`, `alb_log_bucket_path`, `send_alb_logs_to_cloudwatch`
+ *  - from <2.30.0 to >=2.30.0 version
+ *    - this version upgrade brings about all underlying main components updated to latest versions and eks default version 1.30. all core/important components compatibility have been tested with install from scratch and when applying the update over old version, but in any case possibility of issues in custom configured setups. so that make sure you apply the update in dev/stage environments at first and test that all works as expected and then apply for prod/live.
+ *    - in case if karpenter is enabled there is some tricky behavior while upgrade.
+ *      the karpenter managed spot instances got interrupted more often(this seems related karpenter drift ability and k8s version+ami version update so that, so that 2 separate waves of change arrive) so that at some upgrade point there even we can have case without any karpenter managed instance(still needs deeper investigation). So make sure to apply the upgrade at the time when no much traffic to website and if possible cool down critical service which have to not be restarted.
+ *      make sure to set PDB on workloads, which will allow to prevent all workload pods be unavailable at certain point.
+ *      also in case if you have pods with annotations `karpenter.sh/do-not-disrupt: "true"` you may be have need to manually disrupt this pods in order to get their karpenter managed nodes be disrupted as well
+ *    - the default addon coredns have explicitly set default configurations, and this configs available to configure via var.default_addons config. if you have manually set configs for coredns that differ from default ones here in the module then you may need to set/change the coredns configs in module use to not get your custom ones overridden and missing.
  *
  *
  * ## How to run
@@ -197,7 +204,7 @@
  *  workers_group_defaults = {
  *    launch_template_use_name_prefix = true
  *    launch_template_name            = "default"
- *    root_volume_type                = "gp2"
+ *    root_volume_type                = "gp3"
  *    root_volume_size                = 50
  *  }
  *
@@ -281,8 +288,8 @@ module "eks-cluster" {
   region = local.region
 
   cluster_name = var.cluster_name
-  vpc_id       = var.vpc.create.name != null ? module.vpc[0].id : var.vpc.link.id
-  subnets      = var.vpc.create.name != null ? module.vpc[0].private_subnets : var.vpc.link.private_subnet_ids
+  vpc_id       = local.vpc_id
+  subnets      = local.subnet_ids
 
   users                                = var.users
   node_groups                          = var.node_groups
@@ -294,7 +301,7 @@ module "eks-cluster" {
   cluster_version                      = var.cluster_version
   map_roles                            = var.map_roles
   node_security_group_additional_rules = var.node_security_group_additional_rules
-  cluster_addons                       = var.cluster_addons
+  cluster_addons                       = local.cluster_addons
   tags = merge(
     var.tags,
     local.cluster_autoscaler_enabled ? {
@@ -304,6 +311,23 @@ module "eks-cluster" {
     var.karpenter.enabled ? { "karpenter.sh/discovery" = "${var.cluster_name}" } : {}
   )
 }
+
+# we have this empty module here just for setting aws code components dependencies in one place to use in other dependant module/resource
+module "eks-core-components" {
+  source  = "dasmeta/empty/null"
+  version = "1.2.2"
+
+  depends_on = [module.eks-cluster[0].host, module.eks-cluster[0].oidc_provider_arn, module.eks-cluster[0].eks_managed_node_groups]
+}
+
+# for setting dependency in modules which have also dependency on load balancer
+module "eks-core-components-and-alb" {
+  source  = "dasmeta/empty/null"
+  version = "1.2.2"
+
+  depends_on = [module.eks-core-components, module.alb-ingress-controller]
+}
+
 
 module "cloudwatch-metrics" {
   source = "./modules/cloudwatch-metrics"
@@ -317,7 +341,7 @@ module "cloudwatch-metrics" {
   oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
   cluster_name                = module.eks-cluster[0].cluster_name
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components]
 }
 
 module "metrics-server" {
@@ -327,7 +351,7 @@ module "metrics-server" {
 
   name = var.metrics_server_name != "" ? var.metrics_server_name : "${module.eks-cluster[0].cluster_name}-metrics-server"
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components-and-alb]
 }
 
 module "external-secrets" {
@@ -337,7 +361,7 @@ module "external-secrets" {
 
   namespace = var.external_secrets_namespace
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components-and-alb]
 }
 
 module "sso-rbac" {
@@ -351,7 +375,7 @@ module "sso-rbac" {
   bindings   = var.bindings
   eks_module = module.eks-cluster[0].eks_module
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components]
 }
 
 module "efs-csi-driver" {
@@ -363,7 +387,7 @@ module "efs-csi-driver" {
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
   storage_classes  = var.efs_storage_classes
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components]
 }
 
 resource "helm_release" "cert-manager" {
@@ -382,7 +406,7 @@ resource "helm_release" "cert-manager" {
     value = "true"
   }
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components-and-alb]
 }
 
 resource "helm_release" "kube-state-metrics" {
@@ -404,7 +428,7 @@ resource "helm_release" "kube-state-metrics" {
     ])
   }
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components]
 }
 
 module "autoscaler" {
@@ -419,7 +443,7 @@ module "autoscaler" {
   requests                 = var.autoscaler_requests
   limits                   = var.autoscaler_limits
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components]
 }
 
 # TODO: The main eks module supports addons, the only thing it needs is iam role to pass, maybe we can create iam role here and pass to main module to create addon and attach the role there
@@ -432,7 +456,7 @@ module "ebs-csi" {
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
   addon_version    = var.ebs_csi_version
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components]
 }
 
 module "api-gw-controller" {
@@ -448,7 +472,7 @@ module "api-gw-controller" {
   vpc_id                = var.api_gateway_resources[0].vpc_links != null ? module.vpc[0].id : null
   subnet_ids            = var.api_gateway_resources[0].vpc_links != null ? (var.vpc.create.private_subnets != {} ? module.vpc[0].private_subnets : var.vpc.link.private_subnet_ids) : null
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components]
 }
 
 module "portainer" {
@@ -458,7 +482,7 @@ module "portainer" {
   host           = var.portainer_config.host
   enable_ingress = var.portainer_config.enable_ingress
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components]
 }
 
 module "external-dns" {
@@ -470,7 +494,7 @@ module "external-dns" {
   region            = local.region
   configs           = var.external_dns.configs
 
-  depends_on = [module.alb-ingress-controller]
+  depends_on = [module.eks-core-components-and-alb]
 }
 
 module "flagger" {
@@ -482,7 +506,7 @@ module "flagger" {
   metrics_and_alerts_configs = var.flagger.metrics_and_alerts_configs
   enable_loadtester          = var.flagger.enable_loadtester
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components-and-alb]
 }
 
 module "karpenter" {
@@ -492,10 +516,23 @@ module "karpenter" {
   cluster_name              = var.cluster_name
   cluster_endpoint          = module.eks-cluster[0].host
   oidc_provider_arn         = module.eks-cluster[0].oidc_provider_arn
-  subnet_ids                = module.eks-cluster[0].subnet_ids
+  subnet_ids                = local.subnet_ids
   configs                   = var.karpenter.configs
   resource_configs          = var.karpenter.resource_configs
   resource_configs_defaults = var.karpenter.resource_configs_defaults
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components]
+}
+
+module "namespaces_and_docker_auth" {
+  count = var.create && var.namespaces_and_docker_auth.enabled ? 1 : 0
+
+  source            = "./modules/namespaces-and-docker-auth"
+  cluster_name      = var.cluster_name
+  cluster_endpoint  = module.eks-cluster[0].host
+  oidc_provider_arn = module.eks-cluster[0].oidc_provider_arn
+  configs           = var.namespaces_and_docker_auth
+  region            = local.region
+
+  depends_on = [module.external-secrets, kubernetes_namespace.meta-system]
 }

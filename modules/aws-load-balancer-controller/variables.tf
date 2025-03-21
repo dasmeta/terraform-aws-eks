@@ -80,9 +80,15 @@ variable "enable_waf" {
   default     = false
 }
 
+variable "enableServiceMutatorWebhook" {
+  type        = string
+  default     = "false"
+  description = "If false, disable the Service Mutator webhook which makes all new services of type LoadBalancer reconciled by the lb controller"
+}
+
 variable "chart_version" {
   type        = string
-  default     = "1.11.0"
+  default     = "1.12.0"
   description = "The app chart version"
 }
 

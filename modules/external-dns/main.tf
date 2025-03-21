@@ -1,6 +1,6 @@
 resource "helm_release" "this" {
   name             = "external-dns"
-  repository       = "https://charts.bitnami.com/bitnami"
+  repository       = "oci://registry-1.docker.io/bitnamicharts"
   chart            = "external-dns"
   namespace        = var.namespace
   version          = var.chart_version

@@ -9,8 +9,8 @@ No requirements.
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | n/a |
-| <a name="provider_helm"></a> [helm](#provider\_helm) | n/a |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.92.0 |
+| <a name="provider_helm"></a> [helm](#provider\_helm) | 2.17.0 |
 
 ## Modules
 
@@ -24,7 +24,7 @@ No requirements.
 |------|------|
 | [helm_release.http_echo](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 | [aws_availability_zones.available](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) | data source |
-| [aws_subnet_ids.subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnet_ids) | data source |
+| [aws_subnets.subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnets) | data source |
 | [aws_vpcs.ids](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/vpcs) | data source |
 
 ## Inputs

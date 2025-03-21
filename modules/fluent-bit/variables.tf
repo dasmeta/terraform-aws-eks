@@ -21,7 +21,7 @@ variable "cluster_name" {
 
 variable "chart_version" {
   type        = string
-  default     = "0.48.1"
+  default     = "0.48.9"
   description = "Fluent-bit chart version to use."
 }
 

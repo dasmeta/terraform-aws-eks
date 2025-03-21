@@ -30,7 +30,7 @@ variable "node_groups" {
       max_size                     = 4
       desired_size                 = 2
       instance_types               = ["t3.large"]
-      iam_role_additional_policies = ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"]
+      iam_role_additional_policies = { CloudWatchAgentServerPolicy = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy" }
     }
   }
 }
@@ -55,7 +55,7 @@ variable "node_groups_default" {
   default = {
     disk_size                    = 50
     instance_types               = ["t3.large"]
-    iam_role_additional_policies = ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"]
+    iam_role_additional_policies = { CloudWatchAgentServerPolicy = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy" }
   }
 }
 
@@ -65,7 +65,7 @@ variable "workers_group_defaults" {
   default = {
     launch_template_use_name_prefix = true
     launch_template_name            = "default"
-    root_volume_type                = "gp2"
+    root_volume_type                = "gp3"
     root_volume_size                = 50
   }
   description = "Worker group defaults."
@@ -196,13 +196,58 @@ variable "cluster_enabled_log_types" {
 variable "cluster_version" {
   description = "Allows to set/change kubernetes cluster version, kubernetes version needs to be updated at leas once a year. Please check here for available versions https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html"
   type        = string
-  default     = "1.29"
+  default     = "1.30"
 }
 
 variable "cluster_addons" {
   description = "Cluster addon configurations to enable."
   type        = any
   default     = {}
+}
+
+variable "default_addons" {
+  description = "Allows to set/override default eks addons(like coredns, kube-proxy and aws-cni) configurations."
+  type        = any
+  default = {
+    coredns = {
+      most_recent = true
+      configuration_values = { # can be here we have defaults for replica count, resource request/limits and corefile config file, in case there are dns resolve issues on high load websites check to increase limits
+        replicaCount = 2
+        resources = {
+          limits = {
+            memory = "171Mi"
+          }
+          requests = {
+            cpu    = "100m"
+            memory = "70Mi"
+          }
+        }
+        # this is main coredns config file and in case you get domain name resolution errors check ttl and max_concurrent values, NOTE: that for example increasing max_concurrent value requires also increase to memory 2kb per connection, check docs here: https://coredns.io/plugins/forward/
+        corefile = <<EOT
+        .:53 {
+            errors
+            health {
+                lameduck 5s
+              }
+            ready
+            kubernetes cluster.local in-addr.arpa ip6.arpa {
+              pods insecure
+              fallthrough in-addr.arpa ip6.arpa
+              ttl 120
+            }
+            prometheus :9153
+            forward . /etc/resolv.conf {
+              max_concurrent 2000
+            }
+            cache 30
+            loop
+            reload
+            loadbalance
+        }
+        EOT
+      }
+    }
+  }
 }
 
 variable "map_roles" {
@@ -609,20 +654,20 @@ variable "flagger" {
 
 variable "karpenter" {
   type = object({
-    enabled                   = optional(bool, false)
-    configs                   = optional(any, {}) # karpenter chart configs, the underlying module sets some general/default ones, available option can be found here: https://github.com/aws/karpenter-provider-aws/blob/v1.0.8/charts/karpenter/values.yaml
-    resource_configs          = optional(any, {}) # karpenter resources creation configs, available options can be fount here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources
-    resource_configs_defaults = optional(any, {}) # the default used for karpenter node pool creation, the available values to override/set can be found in karpenter submodule corresponding variable modules/karpenter/values.tf
+    enabled                   = optional(bool, true)
+    configs                   = optional(any, {})                               # karpenter chart configs, the underlying module sets some general/default ones, available option can be found here: https://github.com/aws/karpenter-provider-aws/blob/v1.0.8/charts/karpenter/values.yaml
+    resource_configs          = optional(any, { nodePools = { general = {} } }) # karpenter resources creation configs, available options can be fount here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources
+    resource_configs_defaults = optional(any, {})                               # the default used for karpenter node pool creation, the available values to override/set can be found in karpenter submodule corresponding variable modules/karpenter/values.tf
   })
   default = {
-    enabled = false
+    enabled = true
   }
   description = "Allows to create/deploy/configure karpenter operator and its resources to have custom node auto-calling"
 }
 
 variable "keda" {
   type = object({
-    enabled          = optional(bool, false)
+    enabled          = optional(bool, true)
     name             = optional(string, "keda")   # keda chart name,
     namespace        = optional(string, "keda")   # keda chart namespace
     create_namespace = optional(bool, true)       # create keda chart
@@ -633,13 +678,47 @@ variable "keda" {
     keda_trigger_auth_additional = optional(any, null)
   })
   default = {
-    enabled          = false
+    enabled          = true
     name             = "keda"
     namespace        = "keda"
     create_namespace = true
     keda_version     = "2.16.1"
   }
   description = "Allows to create/deploy/configure keda"
+}
+
+variable "namespaces_and_docker_auth" {
+  type = object({
+    enabled = optional(bool, false)
+    list    = optional(list(string), []) # list of application namespaces to create/init with cluster creation
+    labels  = optional(any, {})          # map of key=>value strings to attach to namespaces
+    dockerAuth = optional(object({       # docker hub image registry configs, this based external secrets operator(operator should be enabled). which will allow to create 'kubernetes.io/dockerconfigjson' type secrets in app(and also all other) namespaces and configure app namespaces to use this
+      enabled                 = optional(bool, false)
+      refreshTime             = optional(string, "3m")                                         # frequency to check filtered namespaces and create ExternalSecrets (and k8s secret)
+      refreshInterval         = optional(string, "1h")                                         # frequency to pull/refresh data from aws secret
+      name                    = optional(string, "docker-registry-auth")                       # the name to use when creating k8s resources
+      secretManagerSecretName = optional(string, "account")                                    # aws secret manager secret name where dockerhub credentials placed, we use "account" default secret
+      namespaceSelector       = optional(any, { matchLabels : { "docker-auth" = "enabled" } }) # namespaces selector expression, the app namespaces created here will have this selectors by default, but for other namespaces you may need to set labels manually. this can be set to empty object {} to create secrets in all namespaces
+      registries = optional(list(object({                                                      # docker registry configs
+        url         = optional(string, "https://index.docker.io/v1/")                          # docker registry server url
+        usernameKey = optional(string, "DOCKER_HUB_USERNAME")                                  # the aws secret manager secret key where docker registry username placed
+        passwordKey = optional(string, "DOCKER_HUB_PASSWORD")                                  # the aws secret manager secret key where docker registry password placed, NOTE: for dockerhub under this key should be set personal access token instead of standard ui/profile password
+        authKey     = optional(string)                                                         # the aws secret manager secret key where docker registry auth placed
+      })), [{ url = "https://index.docker.io/v1/", usernameKey = "DOCKER_HUB_USERNAME", passwordKey = "DOCKER_HUB_PASSWORD", authKey = null }])
+    }), { enabled = false })
+  })
+  default     = {}
+  description = "Allows to create application namespaces, like 'prod' or 'dev' automatically. it can also set to use docker hub credential for image pull"
+}
+
+variable "linkerd" {
+  type = object({
+    enabled = optional(bool, true)
+  })
+  default = {
+    enabled = true
+  }
+  description = "Allows to create/configure linkerd in eks cluster"
 }
 
 variable "tags" {

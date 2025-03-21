@@ -50,4 +50,5 @@ data "aws_subnets" "subnets" {
 
 locals {
   cluster_name = "test-eks-with-karp-and-secret"
+  namespace    = "default"
 }

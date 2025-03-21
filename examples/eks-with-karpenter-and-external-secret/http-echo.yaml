@@ -13,9 +13,13 @@ service:
 
 autoscaling:
   enabled: true
-  minReplicas: 2
-  maxReplicas: 5
+  minReplicas: 30
+  maxReplicas: 40
   targetCPUUtilizationPercentage: 99
+
+pdb:
+  enabled: true
+  minAvailable: 5
 
 readinessProbe:
   initialDelaySeconds: 5
@@ -37,33 +41,24 @@ externalSecretsApiVersion: external-secrets.io/v1beta1 # IMPORTANT to upgrade ex
 secrets:
   - AN_TEST_SECRET_ENV
 
+setIngressClassByField: true
 ingress:
   enabled: true
   class: alb
   annotations:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
   hosts:
-    - host: http-echo.devops.dasmeta.com
+    - host: http-echo-karpenter-secret.devops.dasmeta.com
       paths:
         - path: "/ping"
           backend:
             serviceName: http-echo
             servicePort: 80
-# # affinity rule example on how explicitly ask k8s/karpenter to place this app pods on on-demand nodes
-# affinity:
-#   nodeAffinity:
-#     requiredDuringSchedulingIgnoredDuringExecution:
-#       nodeSelectorTerms:
-#         - matchExpressions:
-#             - key: karpenter.sh/nodepool
-#               operator: In
-#               values:
-#                 - general
-# # affinity rule example on how explicitly ask k8s/karpenter to place this app pods on karpenter managed nodes
-# affinity:
-#   nodeAffinity:
-#     requiredDuringSchedulingIgnoredDuringExecution:
-#       nodeSelectorTerms:
-#         - matchExpressions:
-#             - key: karpenter.sh/nodepool
-#               operator: Exists
+## uncomment the following configs to have application provisioned in on-demand nodes
+# nodeSelector:
+#   nodetype: "on-demand"
+# tolerations:
+#   - key: "nodegroup"
+#     operator: "Equal"
+#     value: "on-demand"
+#     effect: "NoSchedule"

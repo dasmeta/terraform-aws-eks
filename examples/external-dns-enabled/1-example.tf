@@ -1,8 +1,7 @@
 module "cluster_min" {
   source = "../../"
 
-  cluster_name    = "test-eks-spot-instances"
-  cluster_version = "1.28"
+  cluster_name = "test-eks-spot-instances"
 
   vpc = {
     create = {

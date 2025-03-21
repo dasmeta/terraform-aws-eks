@@ -12,6 +12,6 @@ variable "enable_ingress" {
 
 variable "chart_version" {
   type        = string
-  default     = "1.0.58"
+  default     = "1.0.62"
   description = "The app chart version"
 }

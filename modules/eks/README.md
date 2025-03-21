@@ -48,7 +48,7 @@ module "cluster_min" {
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_aws_auth_config_map"></a> [aws\_auth\_config\_map](#module\_aws\_auth\_config\_map) | terraform-aws-modules/eks/aws//modules/aws-auth | 20.29.0 |
-| <a name="module_eks-cluster"></a> [eks-cluster](#module\_eks-cluster) | terraform-aws-modules/eks/aws | 20.33.1 |
+| <a name="module_eks-cluster"></a> [eks-cluster](#module\_eks-cluster) | terraform-aws-modules/eks/aws | 20.34.0 |
 
 ## Resources
 
@@ -63,14 +63,14 @@ module "cluster_min" {
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_cluster_addons"></a> [cluster\_addons](#input\_cluster\_addons) | Cluster addon configurations to enable. | `any` | `{}` | no |
-| <a name="input_cluster_enabled_log_types"></a> [cluster\_enabled\_log\_types](#input\_cluster\_enabled\_log\_types) | A list of the desired control plane logs to enable. For more information, see Amazon EKS Control Plane Logging documentation (https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html) | `list(string)` | <pre>[<br>  "audit"<br>]</pre> | no |
+| <a name="input_cluster_enabled_log_types"></a> [cluster\_enabled\_log\_types](#input\_cluster\_enabled\_log\_types) | A list of the desired control plane logs to enable. For more information, see Amazon EKS Control Plane Logging documentation (https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html) | `list(string)` | <pre>[<br/>  "audit"<br/>]</pre> | no |
 | <a name="input_cluster_endpoint_public_access"></a> [cluster\_endpoint\_public\_access](#input\_cluster\_endpoint\_public\_access) | When you create EKS, API server endpoint access default is public. When you use private this variable value should be equal false | `bool` | `true` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | Creating cluster name. | `string` | n/a | yes |
 | <a name="input_cluster_version"></a> [cluster\_version](#input\_cluster\_version) | Cluster version. | `string` | `"1.22"` | no |
 | <a name="input_enable_irsa"></a> [enable\_irsa](#input\_enable\_irsa) | Whether or not to enable OpenID connect protocol. | `bool` | `true` | no |
-| <a name="input_map_roles"></a> [map\_roles](#input\_map\_roles) | Additional IAM roles to add to the aws-auth configmap. | <pre>list(object({<br>    rolearn  = string<br>    username = string<br>    groups   = list(string)<br>  }))</pre> | `[]` | no |
-| <a name="input_node_groups"></a> [node\_groups](#input\_node\_groups) | Map of EKS managed node group definitions to create | `any` | <pre>{<br>  "default": {<br>    "desired_size": 1,<br>    "instance_types": [<br>      "t3.medium"<br>    ],<br>    "max_size": 2,<br>    "min_size": 1<br>  }<br>}</pre> | no |
-| <a name="input_node_groups_default"></a> [node\_groups\_default](#input\_node\_groups\_default) | Map of EKS managed node group default configurations | `any` | <pre>{<br>  "disk_size": 50,<br>  "instance_types": [<br>    "t3.medium"<br>  ]<br>}</pre> | no |
+| <a name="input_map_roles"></a> [map\_roles](#input\_map\_roles) | Additional IAM roles to add to the aws-auth configmap. | <pre>list(object({<br/>    rolearn  = string<br/>    username = string<br/>    groups   = list(string)<br/>  }))</pre> | `[]` | no |
+| <a name="input_node_groups"></a> [node\_groups](#input\_node\_groups) | Map of EKS managed node group definitions to create | `any` | <pre>{<br/>  "default": {<br/>    "desired_size": 1,<br/>    "instance_types": [<br/>      "t3.medium"<br/>    ],<br/>    "max_size": 2,<br/>    "min_size": 1<br/>  }<br/>}</pre> | no |
+| <a name="input_node_groups_default"></a> [node\_groups\_default](#input\_node\_groups\_default) | Map of EKS managed node group default configurations | `any` | <pre>{<br/>  "disk_size": 50,<br/>  "instance_types": [<br/>    "t3.medium"<br/>  ]<br/>}</pre> | no |
 | <a name="input_node_security_group_additional_rules"></a> [node\_security\_group\_additional\_rules](#input\_node\_security\_group\_additional\_rules) | n/a | `any` | `{}` | no |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region name. | `string` | n/a | yes |
 | <a name="input_subnets"></a> [subnets](#input\_subnets) | VPC subnets. Most probably those are the private ones. | `list(string)` | n/a | yes |
@@ -91,6 +91,7 @@ module "cluster_min" {
 | <a name="output_cluster_name"></a> [cluster\_name](#output\_cluster\_name) | n/a |
 | <a name="output_cluster_primary_security_group_id"></a> [cluster\_primary\_security\_group\_id](#output\_cluster\_primary\_security\_group\_id) | n/a |
 | <a name="output_cluster_security_group_id"></a> [cluster\_security\_group\_id](#output\_cluster\_security\_group\_id) | n/a |
+| <a name="output_eks_managed_node_groups"></a> [eks\_managed\_node\_groups](#output\_eks\_managed\_node\_groups) | n/a |
 | <a name="output_eks_module"></a> [eks\_module](#output\_eks\_module) | n/a |
 | <a name="output_eks_oidc_root_ca_thumbprint"></a> [eks\_oidc\_root\_ca\_thumbprint](#output\_eks\_oidc\_root\_ca\_thumbprint) | Grab eks\_oidc\_root\_ca\_thumbprint from oidc\_provider\_arn. |
 | <a name="output_host"></a> [host](#output\_host) | n/a |

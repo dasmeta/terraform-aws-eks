@@ -1,6 +1,6 @@
 variable "chart_version" {
   type        = string
-  default     = "1.38.0"
+  default     = "1.40.0"
   description = "The app chart version"
 }
 
@@ -8,6 +8,12 @@ variable "metric_template_chart_version" {
   type        = string
   default     = "0.1.0"
   description = "The metric template chart version"
+}
+
+variable "load_tester_chart_version" {
+  type        = string
+  default     = "0.34.0"
+  description = "The flagger loadtester chart version"
 }
 
 variable "namespace" {

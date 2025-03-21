@@ -1,3 +1,4 @@
+# TODO: check if we really need to install this chart, its looks like all the abilities of adot can be configured by just using eks adot addon, check docs: https://aws-otel.github.io/docs/getting-started/adot-eks-add-on and https://github.com/aws-observability/aws-otel-helm-charts?tab=readme-ov-file
 resource "helm_release" "adot-collector" {
   name             = "adot-collector"
   repository       = "https://dasmeta.github.io/aws-otel-helm-charts"

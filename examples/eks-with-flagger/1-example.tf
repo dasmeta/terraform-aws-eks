@@ -6,7 +6,7 @@ module "this" {
   vpc = {
     link = {
       id                 = data.aws_vpcs.ids.ids[0]
-      private_subnet_ids = data.aws_subnet_ids.subnets.ids
+      private_subnet_ids = data.aws_subnets.subnets.ids
     }
   }
 

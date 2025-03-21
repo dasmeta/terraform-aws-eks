@@ -44,7 +44,7 @@
 # creates aws eks karpenter needed policy/role/queue/event-subscriber resources to use in karpenter helm
 module "this" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
-  version = "20.33.1"
+  version = "20.34.0"
 
   node_iam_role_name                = "Karpenter-${substr(var.cluster_name, 0, 25)}-"
   cluster_name                      = var.cluster_name

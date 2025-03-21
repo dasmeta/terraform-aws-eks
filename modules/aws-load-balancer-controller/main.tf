@@ -79,6 +79,7 @@ module "custom_default_configs_merged" {
       }
       enableWaf   = var.enable_waf
       enableWafv2 = var.enable_waf
+      # enableServiceMutatorWebhook = var.enableServiceMutatorWebhook # TODO: investigate this options setting to false by default, as the new version of alb controller fails sometime because of this new feature
     },
     var.configs
   ]

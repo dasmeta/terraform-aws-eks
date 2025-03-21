@@ -28,6 +28,6 @@ variable "storage_classes" {
 
 variable "chart_version" {
   type        = string
-  default     = "3.0.8"
+  default     = "3.1.8"
   description = "The app chart version"
 }

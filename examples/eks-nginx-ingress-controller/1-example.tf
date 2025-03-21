@@ -5,8 +5,11 @@ data "aws_vpcs" "ids" {
     Name = "default"
   }
 }
-data "aws_subnet_ids" "subnets" {
-  vpc_id = data.aws_vpcs.ids.ids[0]
+data "aws_subnets" "subnets" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpcs.ids.ids[0]]
+  }
 }
 
 # test
@@ -18,7 +21,7 @@ module "basic" {
   vpc = {
     link = {
       id                 = data.aws_vpcs.ids.ids[0]
-      private_subnet_ids = data.aws_subnet_ids.subnets.ids
+      private_subnet_ids = data.aws_subnets.subnets.ids
     }
   }
 

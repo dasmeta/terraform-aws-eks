@@ -27,7 +27,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The app chart version | `string` | `"7.2.16"` | no |
+| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The app chart version | `string` | `"7.4.1"` | no |
 | <a name="input_name"></a> [name](#input\_name) | Metrics server name. | `string` | `"metrics-server"` | no |
 
 ## Outputs

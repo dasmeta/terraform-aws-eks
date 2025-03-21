@@ -1,0 +1,68 @@
+env: test
+product: app
+
+image:
+  repository: tigrandasmeta/http-https-echo # the private registry endpoint, change to one that you have accesses and had set DOCKER_HUB_USERNAME/DOCKER_HUB_PASSWORD tf variables for it
+  tag: latest
+  pullPolicy: Always
+
+imagePullSecrets:
+  - name: docker-registry-auth
+
+containerPort: 8080
+
+service:
+  enabled: true
+  # type: ClusterIP
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 99
+
+pdb:
+  enabled: true
+  minAvailable: 2
+
+readinessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 1
+  httpGet:
+    path: /health
+    port: http
+livenessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 3
+  httpGet:
+    path: /health
+    port: http
+resources:
+  requests:
+    cpu: 15m
+
+externalSecretsApiVersion: external-secrets.io/v1beta1 # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
+secrets:
+  - AN_TEST_SECRET_ENV
+
+setIngressClassByField: true
+ingress:
+  enabled: true
+  class: alb
+  annotations:
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+  hosts:
+    - host: http-echo-namespace-docker-registry-auth.devops.dasmeta.com
+      paths:
+        - path: "/ping"
+          backend:
+            serviceName: http-echo
+            servicePort: 80
+## uncomment the following configs to have application provisioned in on-demand nodes
+# nodeSelector:
+#   nodetype: "on-demand"
+# tolerations:
+#   - key: "nodegroup"
+#     operator: "Equal"
+#     value: "on-demand"
+#     effect: "NoSchedule"

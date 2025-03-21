@@ -5,8 +5,11 @@ data "aws_vpcs" "ids" {
     Name = "default"
   }
 }
-data "aws_subnet_ids" "subnets" {
-  vpc_id = data.aws_vpcs.ids.ids[0]
+data "aws_subnets" "subnets" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpcs.ids.ids[0]]
+  }
 }
 
 module "this" {
@@ -18,7 +21,6 @@ module "this" {
     "log_group_name" : "adot-logs"
   }
   cluster_name     = "test-eks-fluent-bit"
-  cluster_version  = "1.27"
   metrics_exporter = "adot"
   node_groups = {
     "dev_nodes" : {
@@ -36,7 +38,7 @@ module "this" {
   vpc = {
     link = {
       id                 = data.aws_vpcs.ids.ids[0]
-      private_subnet_ids = data.aws_subnet_ids.subnets.ids
+      private_subnet_ids = data.aws_subnets.subnets.ids
     }
   }
 

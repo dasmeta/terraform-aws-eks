@@ -3,5 +3,5 @@ module "olm" {
 
   count = var.create && var.enable_olm ? 1 : 0
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components]
 }

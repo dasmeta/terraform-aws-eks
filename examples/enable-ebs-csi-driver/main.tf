@@ -20,7 +20,11 @@ locals {
 
   users = ["**USERS**"]
 
-  map_roles = ["**ROLES**"]
+  map_roles = [{
+    rolearn  = "<role-arn-here>"
+    username = "<username-here>"
+    groups   = []
+  }]
 }
 
 module "cluster_min" {
@@ -28,7 +32,6 @@ module "cluster_min" {
 
   enable_ebs_driver   = true
   cluster_name        = local.cluster_name
-  cluster_version     = "1.29"
   users               = local.users
   map_roles           = local.map_roles
   node_groups_default = local.node_groups_default

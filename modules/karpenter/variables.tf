@@ -44,7 +44,7 @@ variable "node_iam_role_additional_policies" {
 
 variable "chart_version" {
   type        = string
-  default     = "1.2.1"
+  default     = "1.3.3"
   description = "The app chart version"
 }
 
@@ -96,7 +96,7 @@ variable "resource_configs" {
 variable "resource_configs_defaults" {
   type = object({
     nodeClass = optional(any, {
-      amiFamily          = "AL2" # Amazon Linux 2
+      amiFamily          = "AL2023" # Amazon Linux 2023
       detailedMonitoring = true
       metadataOptions = {
         httpEndpoint            = "enabled"
@@ -132,9 +132,14 @@ variable "resource_configs_defaults" {
         values   = ["33000"] # <=32 Gb memory nodes
       },
       {
+        key      = "karpenter.k8s.aws/instance-cpu"
+        operator = "Gt"
+        values   = ["1"] # > core cpu nodes
+      },
+      {
         key      = "karpenter.k8s.aws/instance-memory"
         operator = "Gt"
-        values   = ["1000"] #  >1Gb Gb memory nodes
+        values   = ["2000"] #  >2Gb Gb memory nodes as k8s struggles to start small ones
       },
       {
         key      = "karpenter.k8s.aws/instance-generation"
@@ -154,7 +159,7 @@ variable "resource_configs_defaults" {
     ])
     disruption = optional(any, {
       consolidationPolicy = "WhenEmptyOrUnderutilized"
-      consolidateAfter    = "1m"
+      consolidateAfter    = "3m" # the frequency how often karpenter will check and colocate/disrupt nodes
     }),
     limits = optional(any, {
       cpu = 10

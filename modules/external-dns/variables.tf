@@ -12,7 +12,7 @@ variable "oidc_provider_arn" {
 
 variable "chart_version" {
   type        = string
-  default     = "8.5.1"
+  default     = "8.7.7"
   description = "The app chart version to use"
 }
 
