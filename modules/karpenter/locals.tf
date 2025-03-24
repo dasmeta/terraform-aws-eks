@@ -1,7 +1,13 @@
 locals {
+  # get ami family dynamically based on ami id
+  amiFamily = (
+    (strcontains(data.aws_ami.this.name, "al2023") || strcontains(data.aws_ami.this.description, "Amazon Linux 2023")) ? "AL2023" :
+    (strcontains(data.aws_ami.this.name, "amzn2") || strcontains(data.aws_ami.this.description, "AmazonLinux2")) ? "AL2" :
+    null
+  )
   # We create this aws ec2 node class as default for karpenter as this is something general and can be used as default for node-pools which have not nodeClassRef required field set explicitly
   defaultEc2NodeClass = {
-    amiFamily           = var.resource_configs_defaults.nodeClass.amiFamily
+    amiFamily           = coalesce(var.resource_configs_defaults.nodeClass.amiFamily, local.amiFamily) # ami family should be get automatically, but it can be also passed for node class
     role                = module.this.node_iam_role_name
     subnetSelectorTerms = [for id in var.subnet_ids : { id = id }]
     securityGroupSelectorTerms = [
@@ -18,7 +24,6 @@ locals {
   nodePoolDefaultNodeClassRef = var.resource_configs_defaults.nodeClassRef
   nodePoolDefaultRequirements = var.resource_configs_defaults.requirements
 
-  ec2NodeClasses = merge(try(var.resource_configs.ec2NodeClasses, {}), { default = local.defaultEc2NodeClass })
   nodePools = { for key, value in try(var.resource_configs.nodePools, {}) : key => merge(
     value,
     {

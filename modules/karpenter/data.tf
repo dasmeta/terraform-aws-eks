@@ -11,3 +11,11 @@ data "aws_instances" "ec2_from_eks_node_pools" {
 data "aws_instance" "ec2_from_eks_node_pool" {
   instance_id = data.aws_instances.ec2_from_eks_node_pools.ids[0]
 }
+
+data "aws_ami" "this" {
+  most_recent = true
+  filter {
+    name   = "image-id"
+    values = [data.aws_instance.ec2_from_eks_node_pool.ami]
+  }
+}

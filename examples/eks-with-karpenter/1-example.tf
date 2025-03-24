@@ -1,4 +1,8 @@
 module "this" {
+  ## the commented tf cloud source and exact version set have been used for testing upgrade from 1.29=>1.30 version, we keep this code for future testings
+  # source          = "dasmeta/eks/aws"
+  # version         = "2.20.3"
+  # cluster_version = "1.29"
   source = "../.."
 
   cluster_name = local.cluster_name

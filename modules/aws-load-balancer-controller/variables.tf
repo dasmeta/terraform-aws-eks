@@ -80,12 +80,6 @@ variable "enable_waf" {
   default     = false
 }
 
-variable "enableServiceMutatorWebhook" {
-  type        = string
-  default     = "false"
-  description = "If false, disable the Service Mutator webhook which makes all new services of type LoadBalancer reconciled by the lb controller"
-}
-
 variable "chart_version" {
   type        = string
   default     = "1.12.0"
@@ -93,7 +87,9 @@ variable "chart_version" {
 }
 
 variable "configs" {
-  type        = any
-  default     = {}
+  type = any
+  default = {
+    enableServiceMutatorWebhook = "false" # If false, disable the Service Mutator webhook which makes all new services of type LoadBalancer reconciled by the lb controller, TODO: we set this option to false as it fails sometime to apply other helm release, investigate this options related issue and maybe remove this config setting
+  }
   description = "Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller/1.11.0"
 }

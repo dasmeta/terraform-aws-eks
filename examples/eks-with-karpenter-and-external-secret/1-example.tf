@@ -56,6 +56,7 @@ module "this" {
         cpu = 11 # the default is 10 and we can add limit restrictions on memory also
       }
     }
+
     resource_configs = {
       nodePools = {
         general = { weight = 1 } # by default it use linux amd64 cpu<=8, memory<=32Gi, >2 generation and  ["spot", "on-demand"] type nodes so that it tries to get spot at first and if no then on-demand

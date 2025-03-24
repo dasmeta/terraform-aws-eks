@@ -96,7 +96,7 @@ variable "resource_configs" {
 variable "resource_configs_defaults" {
   type = object({
     nodeClass = optional(any, {
-      amiFamily          = "AL2023" # Amazon Linux 2023
+      amiFamily          = null # if not specified the value will be identified based on eks managed nodes ami id, the valid values are for example "AL2", "AL2023"
       detailedMonitoring = true
       metadataOptions = {
         httpEndpoint            = "enabled"
@@ -160,6 +160,9 @@ variable "resource_configs_defaults" {
     disruption = optional(any, {
       consolidationPolicy = "WhenEmptyOrUnderutilized"
       consolidateAfter    = "3m" # the frequency how often karpenter will check and colocate/disrupt nodes
+      budgets = [
+        { nodes : "10%" } # allows karpenter to only deprovision/disrupt/recreate 10% of nodes at a time for consolidation/cost-optimization, to have more stable workloads
+      ]
     }),
     limits = optional(any, {
       cpu = 10

@@ -103,7 +103,7 @@ resource "helm_release" "karpenter_nodes" {
   values = [jsonencode(merge(
     var.resource_configs,
     {
-      ec2NodeClasses          = local.ec2NodeClasses
+      ec2NodeClasses          = module.ec2_node_classes_custom_default_configs.merged
       nodePools               = local.nodePools
       karpenterServiceAccount = module.this.service_account
       karpenterNamespace      = var.namespace
@@ -142,5 +142,15 @@ module "karpenter_custom_default_configs_merged" {
       }
     },
     var.configs
+  ]
+}
+
+module "ec2_node_classes_custom_default_configs" {
+  source  = "cloudposse/config/yaml//modules/deepmerge"
+  version = "1.0.2"
+
+  maps = [
+    { default = local.defaultEc2NodeClass },
+    try(var.resource_configs.ec2NodeClasses, {})
   ]
 }
