@@ -323,7 +323,7 @@ module "eks-core-components" {
   depends_on = [module.eks-cluster[0].host, module.eks-cluster[0].oidc_provider_arn, module.eks-cluster[0].eks_managed_node_groups]
 }
 
-# for setting dependency in modules which have also dependency on load balancer
+# for setting dependency in modules which have also dependency on load balancer, there is some ability related aws load balancer webhooks and option `enableServiceMutatorWebhook = "false"` so that sometime setups other helm setup in eks batch setup may fail waiting for alb controller webhooks be ready, TODO: in case of continues issues in future consider to set enable `enableServiceMutatorWebhook = "false"` option setting in alb controller
 module "eks-core-components-and-alb" {
   source  = "dasmeta/empty/null"
   version = "1.2.2"
