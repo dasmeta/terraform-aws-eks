@@ -55,3 +55,8 @@ output "subnet_ids" {
   value       = var.subnets
   description = "VPC subnet ids used for eks"
 }
+
+
+output "eks_managed_node_groups" {
+  value = try(module.eks-cluster.eks_managed_node_groups, null)
+}

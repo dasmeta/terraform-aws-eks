@@ -3,5 +3,5 @@ module "priority_class" {
 
   additional_priority_classes = var.additional_priority_classes
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components]
 }

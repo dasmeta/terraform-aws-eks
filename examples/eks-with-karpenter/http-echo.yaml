@@ -12,9 +12,13 @@ externalSecretsApiVersion: external-secrets.io/v1beta1 # IMPORTANT to upgrade ex
 
 autoscaling:
   enabled: true
-  minReplicas: 4
-  maxReplicas: 4
+  minReplicas: 20
+  maxReplicas: 30
   targetCPUUtilizationPercentage: 99
+
+pdb:
+  enabled: true
+  minAvailable: 1
 
 readinessProbe:
   initialDelaySeconds: 5
@@ -36,27 +40,9 @@ ingress:
   enabled: true
   class: nginx
   hosts:
-    - host: http-echo.devops.dasmeta.com
+    - host: http-echo-karpenter.devops.dasmeta.com
       paths:
         - path: "/ping"
           backend:
             serviceName: http-echo
             servicePort: 80
-# # affinity rule example on how explicitly ask k8s/karpenter to place this app pods on on-demand nodes
-# affinity:
-#   nodeAffinity:
-#     requiredDuringSchedulingIgnoredDuringExecution:
-#       nodeSelectorTerms:
-#         - matchExpressions:
-#             - key: karpenter.sh/nodepool
-#               operator: In
-#               values:
-#                 - general
-# # affinity rule example on how explicitly ask k8s/karpenter to place this app pods on karpenter managed nodes
-affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: karpenter.sh/nodepool
-              operator: Exists

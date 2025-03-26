@@ -82,12 +82,14 @@ variable "enable_waf" {
 
 variable "chart_version" {
   type        = string
-  default     = "1.11.0"
+  default     = "1.12.0"
   description = "The app chart version"
 }
 
 variable "configs" {
-  type        = any
-  default     = {}
+  type = any
+  default = {
+    # enableServiceMutatorWebhook = "false" # If "false" then it disable the Service Mutator webhook which makes all new services of type LoadBalancer reconciled by the lb controller, TODO: we may need to set this option to false as it fails sometime to apply other helm release in eks module batch
+  }
   description = "Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller/1.11.0"
 }

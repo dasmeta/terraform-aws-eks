@@ -11,5 +11,4 @@ resource "helm_release" "keda" {
     role_arn = aws_iam_role.keda-role.arn
     })
   ]
-
 }

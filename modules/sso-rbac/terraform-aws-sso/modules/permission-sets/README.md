@@ -95,7 +95,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_permission_sets"></a> [permission\_sets](#input\_permission\_sets) | n/a | <pre>list(object({<br>    name               = string<br>    description        = string<br>    relay_state        = string<br>    session_duration   = string<br>    tags               = map(string)<br>    inline_policy      = string<br>    policy_attachments = list(string)<br>    customer_managed_policy_attachments = list(object({<br>      name = string<br>      path = string<br>    }))<br>  }))</pre> | `[]` | no |
+| <a name="input_permission_sets"></a> [permission\_sets](#input\_permission\_sets) | n/a | <pre>list(object({<br/>    name               = string<br/>    description        = string<br/>    relay_state        = string<br/>    session_duration   = string<br/>    tags               = map(string)<br/>    inline_policy      = string<br/>    policy_attachments = list(string)<br/>    customer_managed_policy_attachments = list(object({<br/>      name = string<br/>      path = string<br/>    }))<br/>  }))</pre> | `[]` | no |
 
 ## Outputs
 

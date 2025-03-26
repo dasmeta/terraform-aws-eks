@@ -94,3 +94,19 @@ output "eks_auth_configmap" {
 output "eks_module" {
   value = try(module.eks-cluster[0].eks_module, null)
 }
+
+output "account_id" {
+  value = local.account_id
+}
+
+output "region" {
+  value = local.region
+}
+
+output "external_secret_deployment" {
+  value = try(module.external-secrets[0].deployment, null)
+}
+
+output "namespaces_and_docker_auth_helm_metadata" {
+  value = try(module.namespaces_and_docker_auth[0].helm_metadata, null)
+}

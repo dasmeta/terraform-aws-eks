@@ -17,6 +17,10 @@ data "aws_vpcs" "ids" {
     Name = "default"
   }
 }
-data "aws_subnet_ids" "subnets" {
-  vpc_id = data.aws_vpcs.ids.ids[0]
+
+data "aws_subnets" "subnets" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpcs.ids.ids[0]]
+  }
 }

@@ -12,7 +12,7 @@ module "adot" {
   prometheus_metrics          = var.prometheus_metrics
   region                      = local.region
   depends_on = [
-    module.eks-cluster,
+    module.eks-core-components,
     helm_release.cert-manager,
     kubernetes_namespace.meta-system
   ]

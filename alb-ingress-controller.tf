@@ -18,5 +18,5 @@ module "alb-ingress-controller" {
   # alb_log_bucket_name = var.alb_load_balancer_controller.alb_log_bucket_name != "" ? var.alb_load_balancer_controller.alb_log_bucket_name : "${module.eks-cluster[0].cluster_name}-ingress-controller-log-bucket"
   # alb_log_bucket_path = var.alb_load_balancer_controller.alb_log_bucket_path != "" ? var.alb_load_balancer_controller.alb_log_bucket_path : module.eks-cluster[0].cluster_name
 
-  depends_on = [module.eks-cluster]
+  depends_on = [module.eks-core-components]
 }

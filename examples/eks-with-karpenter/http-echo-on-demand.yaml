@@ -13,8 +13,17 @@ externalSecretsApiVersion: external-secrets.io/v1beta1 # IMPORTANT to upgrade ex
 autoscaling:
   enabled: true
   minReplicas: 4
-  maxReplicas: 4
+  maxReplicas: 10
   targetCPUUtilizationPercentage: 99
+
+# set this to inform karpenter to keep at least 2 pods of this setup to be running when rollout happens
+pdb:
+  enabled: true
+  minAvailable: 2
+
+#  set this to not allow karpenter decide when pod/node-for-it will be disrupted
+podAnnotations:
+  karpenter.sh/do-not-disrupt: "true"
 
 readinessProbe:
   initialDelaySeconds: 5
@@ -35,19 +44,18 @@ ingress:
   enabled: true
   class: nginx
   hosts:
-    - host: http-echo-on-demand.devops.dasmeta.com
+    - host: http-echo-on-demand-karpenter.devops.dasmeta.com
       paths:
         - path: "/ping"
           backend:
             serviceName: http-echo
             servicePort: 80
-# explicitly ask k8s/karpenter to place this app pods on on-demand nodes
-affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: karpenter.sh/nodepool
-              operator: In
-              values:
-                - on-demand
+
+nodeSelector:
+  nodetype: "on-demand"
+
+tolerations:
+  - key: "nodegroup"
+    operator: "Equal"
+    value: "on-demand"
+    effect: "NoSchedule"

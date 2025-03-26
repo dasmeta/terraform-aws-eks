@@ -3,7 +3,5 @@ resource "kubernetes_namespace" "meta-system" {
     name = "meta-system"
   }
 
-  depends_on = [
-    module.eks-cluster
-  ]
+  depends_on = [module.eks-core-components]
 }

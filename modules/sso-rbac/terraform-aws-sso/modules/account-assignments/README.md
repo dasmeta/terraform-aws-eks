@@ -73,7 +73,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_account_assignments"></a> [account\_assignments](#input\_account\_assignments) | n/a | <pre>list(object({<br>    account             = string<br>    permission_set_name = string<br>    permission_set_arn  = string<br>    principal_name      = string<br>    principal_type      = string<br>  }))</pre> | n/a | yes |
+| <a name="input_account_assignments"></a> [account\_assignments](#input\_account\_assignments) | n/a | <pre>list(object({<br/>    account             = string<br/>    permission_set_name = string<br/>    permission_set_arn  = string<br/>    principal_name      = string<br/>    principal_type      = string<br/>  }))</pre> | n/a | yes |
 
 ## Outputs
 

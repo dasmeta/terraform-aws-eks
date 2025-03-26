@@ -6,6 +6,6 @@ variable "name" {
 
 variable "chart_version" {
   type        = string
-  default     = "7.2.16"
+  default     = "7.4.1"
   description = "The app chart version"
 }

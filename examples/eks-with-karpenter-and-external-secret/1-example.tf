@@ -1,8 +1,9 @@
 module "this" {
-  source = "../.."
-
-  cluster_name    = local.cluster_name
-  cluster_version = "1.29"
+  # source          = "dasmeta/eks/aws"
+  # version         = "2.20.3"
+  # cluster_version = "1.29"
+  source       = "../.."
+  cluster_name = local.cluster_name
 
   vpc = {
     link = {
@@ -11,9 +12,12 @@ module "this" {
     }
   }
 
-  autoscaler_image_patch = 1
-  ebs_csi_version        = "v1.32.0-eksbuild.1"
-  adot_version           = "v0.94.1-eksbuild.1"
+  external_dns = {
+    enabled = true
+  }
+
+  enable_external_secrets = true # we have to have external secrets operator installed/configured, by default this is set to true, but we explicitly set this here to highlight this option
+
   users = [
     { username = "terraform" }
   ]
@@ -52,12 +56,18 @@ module "this" {
         cpu = 11 # the default is 10 and we can add limit restrictions on memory also
       }
     }
+
     resource_configs = {
       nodePools = {
         general = { weight = 1 } # by default it use linux amd64 cpu<=8, memory<=32Gi, >2 generation and  ["spot", "on-demand"] type nodes so that it tries to get spot at first and if no then on-demand
         on-demand = {
           # weight = 0 # by default the weight is 0 and this is lowest priority, we can schedule pod in this not
           template = {
+            metadata = {
+              labels = {
+                nodetype = "on-demand"
+              }
+            }
             spec = {
               requirements = [
                 {
@@ -67,6 +77,10 @@ module "this" {
                 }
               ]
             }
+          }
+          disruption = { # for on-demands nodes use this config to prevent karpenter to colocate/disrupt nodes
+            consolidationPolicy = "WhenEmpty"
+            consolidateAfter    = "10m"
           }
         }
       }
@@ -80,6 +94,7 @@ module "secret_store" {
 
   name                         = "app/test"                    # {{ .Values.product }}-{{ .Values.env }}
   external_secrets_api_version = "external-secrets.io/v1beta1" # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
+  namespace                    = local.namespace
 
   depends_on = [module.this]
 }
@@ -99,8 +114,8 @@ resource "helm_release" "http_echo" {
   name       = "http-echo"
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
-  version    = "0.2.10"
-  namespace  = "default"
+  version    = "0.3.4"
+  namespace  = local.namespace
   wait       = false
 
   values = [file("${path.module}/http-echo.yaml")]

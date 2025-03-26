@@ -1,8 +1,11 @@
 module "this" {
+  ## the commented tf cloud source and exact version set have been used for testing upgrade from 1.29=>1.30 version, we keep this code for future testings
+  # source          = "dasmeta/eks/aws"
+  # version         = "2.20.3"
+  # cluster_version = "1.29"
   source = "../.."
 
-  cluster_name    = local.cluster_name
-  cluster_version = "1.29"
+  cluster_name = local.cluster_name
 
   vpc = {
     link = {
@@ -79,6 +82,12 @@ module "this" {
         on-demand = {
           # weight = 0 # by default the weight is 0 and this is lowest priority, we can schedule pod in this not
           template = {
+            metadata = {
+              labels = {
+                nodetype = "on-demand"
+
+              }
+            }
             spec = {
               requirements = [
                 {
@@ -87,7 +96,18 @@ module "this" {
                   values   = ["on-demand"]
                 }
               ]
+              taints = [
+                {
+                  effect = "NoSchedule"
+                  key    = "nodegroup"
+                  value  = "on-demand"
+                }
+              ]
             }
+          }
+          disruption = {
+            consolidationPolicy = "WhenEmpty"
+            consolidateAfter    = "10m"
           }
         }
       }

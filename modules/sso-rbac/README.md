@@ -73,11 +73,11 @@ locals {
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | Account Id to apply changes into | `string` | n/a | yes |
-| <a name="input_bindings"></a> [bindings](#input\_bindings) | Bindings to bind namespace and roles and then pass to kubernetes objects | <pre>list(object({<br>    group     = string<br>    namespace = string<br>    roles     = list(string)<br><br>  }))</pre> | n/a | yes |
+| <a name="input_bindings"></a> [bindings](#input\_bindings) | Bindings to bind namespace and roles and then pass to kubernetes objects | <pre>list(object({<br/>    group     = string<br/>    namespace = string<br/>    roles     = list(string)<br/><br/>  }))</pre> | n/a | yes |
 | <a name="input_eks_module"></a> [eks\_module](#input\_eks\_module) | terraform-aws-eks module to used for aws-auth update | `any` | n/a | yes |
-| <a name="input_map_roles"></a> [map\_roles](#input\_map\_roles) | Additional IAM roles to add to the aws-auth configmap. | <pre>list(object({<br>    rolearn  = string<br>    username = string<br>    groups   = list(string)<br>  }))</pre> | `[]` | no |
-| <a name="input_map_users"></a> [map\_users](#input\_map\_users) | Additional IAM users to add to the aws-auth configmap. | <pre>list(object({<br>    userarn  = string<br>    username = string<br>    groups   = list(string)<br>  }))</pre> | `[]` | no |
-| <a name="input_roles"></a> [roles](#input\_roles) | Roles to provide kubernetes object | <pre>list(object({<br>    actions   = list(string)<br>    resources = list(string)<br>  }))</pre> | n/a | yes |
+| <a name="input_map_roles"></a> [map\_roles](#input\_map\_roles) | Additional IAM roles to add to the aws-auth configmap. | <pre>list(object({<br/>    rolearn  = string<br/>    username = string<br/>    groups   = list(string)<br/>  }))</pre> | `[]` | no |
+| <a name="input_map_users"></a> [map\_users](#input\_map\_users) | Additional IAM users to add to the aws-auth configmap. | <pre>list(object({<br/>    userarn  = string<br/>    username = string<br/>    groups   = list(string)<br/>  }))</pre> | `[]` | no |
+| <a name="input_roles"></a> [roles](#input\_roles) | Roles to provide kubernetes object | <pre>list(object({<br/>    actions   = list(string)<br/>    resources = list(string)<br/>  }))</pre> | n/a | yes |
 
 ## Outputs
 
