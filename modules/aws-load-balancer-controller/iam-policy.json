@@ -18,6 +18,7 @@
                 "ec2:GetCoipPoolUsage",
                 "ec2:DescribeCoipPools",
                 "elasticloadbalancing:DescribeLoadBalancers",
+                "elasticloadbalancing:ModifyListenerAttributes",
                 "elasticloadbalancing:SetRulePriorities",
                 "elasticloadbalancing:DescribeLoadBalancerAttributes",
                 "elasticloadbalancing:DescribeListeners",
