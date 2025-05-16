@@ -82,7 +82,7 @@ No modules.
 | <a name="input_autoscaler_image_patch"></a> [autoscaler\_image\_patch](#input\_autoscaler\_image\_patch) | The patch number of autoscaler image | `number` | `0` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | Cluster name to pass to role | `string` | n/a | yes |
 | <a name="input_cluster_oidc_arn"></a> [cluster\_oidc\_arn](#input\_cluster\_oidc\_arn) | Cluster OIDC arn to pass to policy | `string` | n/a | yes |
-| <a name="input_eks_version"></a> [eks\_version](#input\_eks\_version) | The version of eks cluster | `string` | n/a | yes |
+| <a name="input_eks_version"></a> [eks\_version](#input\_eks\_version) | The version of eks cluster | `string` | `"1.30"` | no |
 | <a name="input_limits"></a> [limits](#input\_limits) | n/a | <pre>object({<br/>    cpu    = string<br/>    memory = string<br/>  })</pre> | <pre>{<br/>  "cpu": "100m",<br/>  "memory": "600Mi"<br/>}</pre> | no |
 | <a name="input_requests"></a> [requests](#input\_requests) | n/a | <pre>object({<br/>    cpu    = string<br/>    memory = string<br/>  })</pre> | <pre>{<br/>  "cpu": "100m",<br/>  "memory": "600Mi"<br/>}</pre> | no |
 | <a name="input_scale_down_unneeded_time"></a> [scale\_down\_unneeded\_time](#input\_scale\_down\_unneeded\_time) | Scale down unneeded in minutes | `number` | `2` | no |

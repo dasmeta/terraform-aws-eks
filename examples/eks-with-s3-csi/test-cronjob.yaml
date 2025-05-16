@@ -1,0 +1,37 @@
+# helm diff upgrade --install -n default test-cronjob dasmeta/base-cronjob --version 0.1.22 -f ./test-cronjob.yaml
+
+jobs:
+  - name: test-cronjob
+    schedule: "* * * * *"
+    concurrencyPolicy: Forbid
+    startingDeadlineSeconds: 60
+    restartPolicy: Never
+    image:
+      repository: nginx
+      tag: latest
+    command:
+      - /bin/sh
+      - -c
+      - rm -rf /s3/test-cronjob-hi.txt && echo "hi" > /s3/test-cronjob-hi.txt && sleep 60
+
+    storage:
+      - persistentVolumeClaimName: test-cronjob
+        requestedSize: 1Gi
+        accessModes:
+          - ReadWriteMany
+        className: ""
+        enableDataSource: false
+        persistentVolume:
+          create: true
+          csi:
+            driver: s3.csi.aws.com
+            volumeHandle: s3-csi-driver-volume # Must be unique
+            volumeAttributes:
+              bucketName: test-eks-with-s3-csi-dasmeta-bucket
+          mountOptions:
+            - allow-delete
+    volumes:
+      - name: test-cronjob-volume
+        mountPath: /s3
+        persistentVolumeClaim:
+          claimName: test-cronjob

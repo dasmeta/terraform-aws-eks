@@ -1,0 +1,73 @@
+# helm diff upgrade --install -n default http-echo dasmeta/base --version 0.3.10 -f ./http-echo-eks-with-s3-csi.yaml
+
+image:
+  repository: mendhak/http-https-echo
+  tag: 34
+
+config:
+  TEST_CONFIG_FOR_ROLLOUT_TRIGGER: "1"
+
+containerPort: 8080
+
+service:
+  enabled: true
+  type: ClusterIP
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 99
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+readinessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 1
+  httpGet:
+    path: /health
+    port: http
+livenessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 3
+  httpGet:
+    path: /health
+    port: http
+resources:
+  requests:
+    cpu: 100m
+
+setIngressClassByField: true
+ingress:
+  enabled: true
+  class: nginx
+  hosts:
+    - host: http-echo-eks-with-s3-csi.devops.dasmeta.com
+      paths:
+        - path: "/"
+storage:
+  - persistentVolumeClaimName: http-echo-eks-with-s3-csi
+    requestedSize: 1Gi # required but ignored
+    accessModes: # required
+      - ReadWriteMany
+    className: "" # need to be set to ""
+    enableDataSource: false
+    persistentVolume:
+      create: true
+      csi:
+        driver: s3.csi.aws.com # required
+        volumeHandle: http-echo-eks-with-s3-csi-volume-handle # Must be unique
+        volumeAttributes:
+          bucketName: test-eks-with-s3-csi-dasmeta-bucket # the bucket name
+      mountOptions:
+        - allow-delete # to allow removal of files
+        - allow-other # to allow other than root group/user access to mounted files
+        - uid=1000 # to allow mount volume with with this user id
+        - gid=1000 # to allow mount volume with with this group id
+volumes:
+  - name: http-echo-eks-with-s3-csi-volume
+    mountPath: /s3
+    persistentVolumeClaim:
+      claimName: http-echo-eks-with-s3-csi

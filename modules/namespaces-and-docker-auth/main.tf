@@ -39,7 +39,7 @@ module "custom_default_configs_deep" {
     {
       dockerAuth = {
         serviceAccountRoleArn = try(module.dockerhub_auth_secret_iam_eks_role[0].iam_role_arn, null)
-        region                = var.region
+        region                = local.region
       }
     },
     var.configs

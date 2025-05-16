@@ -44,7 +44,7 @@ variable "node_iam_role_additional_policies" {
 
 variable "chart_version" {
   type        = string
-  default     = "1.3.3"
+  default     = "1.4.0"
   description = "The app chart version"
 }
 
@@ -81,7 +81,7 @@ variable "wait" {
 variable "configs" {
   type        = any
   default     = {}
-  description = "Configurations to pass and override default ones. Check the helm chart available configs here: https://github.com/aws/karpenter-provider-aws/blob/v1.0.8/charts/karpenter/values.yaml"
+  description = "Configurations to pass and override default ones. Check the helm chart available configs here: https://github.com/aws/karpenter-provider-aws/blob/v1.3.3/charts/karpenter/values.yaml"
 }
 
 variable "resource_configs" {

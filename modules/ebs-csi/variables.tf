@@ -5,7 +5,7 @@ variable "cluster_name" {
 
 variable "cluster_oidc_arn" {
   type        = string
-  description = "Cluster OIDC arn for policy configurtion"
+  description = "Cluster OIDC arn for policy configuration"
 }
 
 variable "addon_version" {
@@ -16,7 +16,7 @@ variable "addon_version" {
 
 variable "cluster_version" {
   type        = string
-  default     = "1.29"
+  default     = "1.30"
   description = "Version of eks cluster"
 }
 

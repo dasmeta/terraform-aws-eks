@@ -9,7 +9,12 @@
  * - fluentbit
  * - external secrets
  * - metrics to cloudwatch
- *
+ * - karpenter
+ * - keda
+ * - linkerd
+ * - flagger
+ * - external-dns
+ * - event-exporter
  *
  * ## Upgrading guide:
  *  - from <2.19.0 to >=2.19.0 version needs some manual actions as we upgraded underlying eks module from 18.x.x to 20.x.x,
@@ -462,6 +467,21 @@ module "ebs-csi" {
   depends_on = [module.eks-core-components]
 }
 
+module "s3-csi" {
+  source = "./modules/s3-csi"
+
+  count = var.s3_csi.enabled ? 1 : 0
+
+  cluster_name      = var.cluster_name
+  cluster_version   = var.cluster_version
+  oidc_provider_arn = module.eks-cluster[0].oidc_provider_arn
+  addon_version     = var.s3_csi.addon_version
+  s3_buckets        = var.s3_csi.buckets
+  region            = local.region
+
+  depends_on = [module.eks-core-components]
+}
+
 module "api-gw-controller" {
   source = "./modules/api-gw"
 
@@ -538,4 +558,25 @@ module "namespaces_and_docker_auth" {
   region            = local.region
 
   depends_on = [module.external-secrets, kubernetes_namespace.meta-system]
+}
+
+module "linkerd" {
+  count = var.create && var.linkerd.enabled ? 1 : 0
+
+  source      = "./modules/linkerd"
+  configs     = var.linkerd.configs
+  configs_viz = var.linkerd.configs_viz
+  crds_create = var.linkerd.crds_create
+  viz_create  = var.linkerd.viz_create
+
+  depends_on = [module.eks-core-components-and-alb]
+}
+
+module "event_exporter" {
+  count = var.create && var.event_exporter.enabled ? 1 : 0
+
+  source  = "./modules/event-exporter"
+  configs = var.event_exporter.configs
+
+  depends_on = [module.eks-core-components, kubernetes_namespace.meta-system]
 }
