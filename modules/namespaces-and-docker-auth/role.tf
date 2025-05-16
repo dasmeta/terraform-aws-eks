@@ -30,7 +30,7 @@ resource "aws_iam_policy" "this" {
 
 module "dockerhub_auth_secret_iam_eks_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "5.53.0"
+  version = "5.55.0"
 
   count = var.configs.dockerAuth.enabled ? 1 : 0
 

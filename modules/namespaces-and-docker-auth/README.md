@@ -36,7 +36,7 @@ module "this" {
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_custom_default_configs_deep"></a> [custom\_default\_configs\_deep](#module\_custom\_default\_configs\_deep) | cloudposse/config/yaml//modules/deepmerge | 1.0.2 |
-| <a name="module_dockerhub_auth_secret_iam_eks_role"></a> [dockerhub\_auth\_secret\_iam\_eks\_role](#module\_dockerhub\_auth\_secret\_iam\_eks\_role) | terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks | 5.53.0 |
+| <a name="module_dockerhub_auth_secret_iam_eks_role"></a> [dockerhub\_auth\_secret\_iam\_eks\_role](#module\_dockerhub\_auth\_secret\_iam\_eks\_role) | terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks | 5.55.0 |
 
 ## Resources
 
@@ -44,6 +44,7 @@ module "this" {
 |------|------|
 | [aws_iam_policy.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
 | [helm_release.this](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
+| [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
 | [aws_secretsmanager_secret.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/secretsmanager_secret) | data source |
 
 ## Inputs
@@ -59,7 +60,7 @@ module "this" {
 | <a name="input_name"></a> [name](#input\_name) | The helm release name | `string` | `"app-namespaces"` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | The namespace to install main helm. | `string` | `"meta-system"` | no |
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | EKC oidc provider arn in format 'arn:aws:iam::<account-id>:oidc-provider/oidc.eks.<region>.amazonaws.com/id/<oidc-id>'. | `string` | n/a | yes |
-| <a name="input_region"></a> [region](#input\_region) | The aws region | `string` | n/a | yes |
+| <a name="input_region"></a> [region](#input\_region) | The aws region | `string` | `null` | no |
 | <a name="input_wait"></a> [wait](#input\_wait) | Whether use helm deploy with --wait flag | `bool` | `true` | no |
 
 ## Outputs

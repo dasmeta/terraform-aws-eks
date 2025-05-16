@@ -9,6 +9,12 @@ Those include:
 - fluentbit
 - external secrets
 - metrics to cloudwatch
+- karpenter
+- keda
+- linkerd
+- flagger
+- external-dns
+- event-exporter
 
 ## Upgrading guide:
  - from <2.19.0 to >=2.19.0 version needs some manual actions as we upgraded underlying eks module from 18.x.x to 20.x.x,
@@ -287,12 +293,14 @@ module "eks" {
 | <a name="module_eks-cluster"></a> [eks-cluster](#module\_eks-cluster) | ./modules/eks | n/a |
 | <a name="module_eks-core-components"></a> [eks-core-components](#module\_eks-core-components) | dasmeta/empty/null | 1.2.2 |
 | <a name="module_eks-core-components-and-alb"></a> [eks-core-components-and-alb](#module\_eks-core-components-and-alb) | dasmeta/empty/null | 1.2.2 |
+| <a name="module_event_exporter"></a> [event\_exporter](#module\_event\_exporter) | ./modules/event-exporter | n/a |
 | <a name="module_external-dns"></a> [external-dns](#module\_external-dns) | ./modules/external-dns | n/a |
 | <a name="module_external-secrets"></a> [external-secrets](#module\_external-secrets) | ./modules/external-secrets | n/a |
 | <a name="module_flagger"></a> [flagger](#module\_flagger) | ./modules/flagger | n/a |
 | <a name="module_fluent-bit"></a> [fluent-bit](#module\_fluent-bit) | ./modules/fluent-bit | n/a |
 | <a name="module_karpenter"></a> [karpenter](#module\_karpenter) | ./modules/karpenter | n/a |
 | <a name="module_keda"></a> [keda](#module\_keda) | ./modules/keda | n/a |
+| <a name="module_linkerd"></a> [linkerd](#module\_linkerd) | ./modules/linkerd | n/a |
 | <a name="module_metrics-server"></a> [metrics-server](#module\_metrics-server) | ./modules/metrics-server | n/a |
 | <a name="module_namespaces_and_docker_auth"></a> [namespaces\_and\_docker\_auth](#module\_namespaces\_and\_docker\_auth) | ./modules/namespaces-and-docker-auth | n/a |
 | <a name="module_nginx-ingress-controller"></a> [nginx-ingress-controller](#module\_nginx-ingress-controller) | ./modules/nginx-ingress-controller/ | n/a |
@@ -300,6 +308,7 @@ module "eks" {
 | <a name="module_olm"></a> [olm](#module\_olm) | ./modules/olm | n/a |
 | <a name="module_portainer"></a> [portainer](#module\_portainer) | ./modules/portainer | n/a |
 | <a name="module_priority_class"></a> [priority\_class](#module\_priority\_class) | ./modules/priority-class/ | n/a |
+| <a name="module_s3-csi"></a> [s3-csi](#module\_s3-csi) | ./modules/s3-csi | n/a |
 | <a name="module_sso-rbac"></a> [sso-rbac](#module\_sso-rbac) | ./modules/sso-rbac | n/a |
 | <a name="module_vpc"></a> [vpc](#module\_vpc) | dasmeta/vpc/aws | 1.0.1 |
 | <a name="module_weave-scope"></a> [weave-scope](#module\_weave-scope) | ./modules/weave-scope | n/a |
@@ -353,6 +362,7 @@ module "eks" {
 | <a name="input_enable_olm"></a> [enable\_olm](#input\_enable\_olm) | To install OLM controller (experimental). | `bool` | `false` | no |
 | <a name="input_enable_portainer"></a> [enable\_portainer](#input\_enable\_portainer) | Enable Portainer provisioning or not | `bool` | `false` | no |
 | <a name="input_enable_sso_rbac"></a> [enable\_sso\_rbac](#input\_enable\_sso\_rbac) | Enable SSO RBAC integration or not | `bool` | `false` | no |
+| <a name="input_event_exporter"></a> [event\_exporter](#input\_event\_exporter) | Allows to create/configure event\_exporter in eks cluster. The configs option is object to pass corresponding to preferred helm values.yaml, for more details check: https://artifacthub.io/packages/helm/bitnami/kubernetes-event-exporter?modal=values | <pre>object({<br/>    enabled = optional(bool, false)<br/>    configs = optional(any, {})<br/>  })</pre> | <pre>{<br/>  "enabled": false<br/>}</pre> | no |
 | <a name="input_external_dns"></a> [external\_dns](#input\_external\_dns) | Allows to install external-dns helm chart and related roles, which allows to automatically create R53 records based on ingress/service domain/host configs | <pre>object({<br/>    enabled = optional(bool, false)<br/>    configs = optional(any, {})<br/>  })</pre> | <pre>{<br/>  "enabled": false<br/>}</pre> | no |
 | <a name="input_external_secrets_namespace"></a> [external\_secrets\_namespace](#input\_external\_secrets\_namespace) | The namespace of external-secret operator | `string` | `"kube-system"` | no |
 | <a name="input_flagger"></a> [flagger](#input\_flagger) | Allows to create/deploy flagger operator to have custom rollout strategies like canary/blue-green and also it allows to create custom flagger metric templates | <pre>object({<br/>    enabled                    = optional(bool, false)<br/>    namespace                  = optional(string, "ingress-nginx") # The flagger operator helm being installed on same namespace as mesh/ingress provider so this field need to be set based on which ingress/mesh we are going to use, more info in https://artifacthub.io/packages/helm/flagger/flagger<br/>    configs                    = optional(any, {})                 # Available options can be found in https://artifacthub.io/packages/helm/flagger/flagger<br/>    metrics_and_alerts_configs = optional(any, {})                 # Available options can be found in https://github.com/dasmeta/helm/tree/flagger-metrics-and-alerts-0.1.0/charts/flagger-metrics-and-alerts<br/>    enable_loadtester          = optional(bool, false)             # Whether to install flagger loadtester helm<br/>  })</pre> | <pre>{<br/>  "enabled": false<br/>}</pre> | no |
@@ -360,7 +370,7 @@ module "eks" {
 | <a name="input_karpenter"></a> [karpenter](#input\_karpenter) | Allows to create/deploy/configure karpenter operator and its resources to have custom node auto-calling | <pre>object({<br/>    enabled                   = optional(bool, true)<br/>    configs                   = optional(any, {})                               # karpenter chart configs, the underlying module sets some general/default ones, available option can be found here: https://github.com/aws/karpenter-provider-aws/blob/v1.0.8/charts/karpenter/values.yaml<br/>    resource_configs          = optional(any, { nodePools = { general = {} } }) # karpenter resources creation configs, available options can be fount here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources<br/>    resource_configs_defaults = optional(any, {})                               # the default used for karpenter node pool creation, the available values to override/set can be found in karpenter submodule corresponding variable modules/karpenter/values.tf<br/>  })</pre> | <pre>{<br/>  "enabled": true<br/>}</pre> | no |
 | <a name="input_keda"></a> [keda](#input\_keda) | Allows to create/deploy/configure keda | <pre>object({<br/>    enabled          = optional(bool, true)<br/>    name             = optional(string, "keda")   # keda chart name,<br/>    namespace        = optional(string, "keda")   # keda chart namespace<br/>    create_namespace = optional(bool, true)       # create keda chart<br/>    keda_version     = optional(string, "2.16.1") # chart version<br/>    attach_policies = optional(object({<br/>      sqs = bool<br/>    }), { sqs = false })<br/>    keda_trigger_auth_additional = optional(any, null)<br/>  })</pre> | <pre>{<br/>  "create_namespace": true,<br/>  "enabled": true,<br/>  "keda_version": "2.16.1",<br/>  "name": "keda",<br/>  "namespace": "keda"<br/>}</pre> | no |
 | <a name="input_kube_state_metrics_chart_version"></a> [kube\_state\_metrics\_chart\_version](#input\_kube\_state\_metrics\_chart\_version) | The kube-state-metrics chart version | `string` | `"5.27.0"` | no |
-| <a name="input_linkerd"></a> [linkerd](#input\_linkerd) | Allows to create/configure linkerd in eks cluster | <pre>object({<br/>    enabled = optional(bool, true)<br/>  })</pre> | <pre>{<br/>  "enabled": true<br/>}</pre> | no |
+| <a name="input_linkerd"></a> [linkerd](#input\_linkerd) | Allows to create/configure linkerd in eks cluster | <pre>object({<br/>    enabled     = optional(bool, true)<br/>    configs     = optional(any, {})    # allows to override default configs of linkerd main helm chart, check underlying sub-module module for more info<br/>    configs_viz = optional(any, {})    # allows to override default configs of linkerd viz helm chart, check underlying sub-module module for more info<br/>    crds_create = optional(bool, true) # whether to have linkerd crd installed<br/>    viz_create  = optional(bool, true) # whether to have linkerd monitoring/dashboard tooling installed<br/>  })</pre> | <pre>{<br/>  "enabled": true<br/>}</pre> | no |
 | <a name="input_manage_aws_auth"></a> [manage\_aws\_auth](#input\_manage\_aws\_auth) | n/a | `bool` | `true` | no |
 | <a name="input_map_roles"></a> [map\_roles](#input\_map\_roles) | Additional IAM roles to add to the aws-auth configmap. | <pre>list(object({<br/>    rolearn  = string<br/>    username = string<br/>    groups   = list(string)<br/>  }))</pre> | `[]` | no |
 | <a name="input_metrics_exporter"></a> [metrics\_exporter](#input\_metrics\_exporter) | Metrics Exporter, can use cloudwatch or adot | `string` | `"adot"` | no |
@@ -374,6 +384,7 @@ module "eks" {
 | <a name="input_prometheus_metrics"></a> [prometheus\_metrics](#input\_prometheus\_metrics) | Prometheus Metrics | `any` | `[]` | no |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region name. | `string` | `null` | no |
 | <a name="input_roles"></a> [roles](#input\_roles) | Variable describes which role will user have K8s | <pre>list(object({<br/>    actions   = list(string)<br/>    resources = list(string)<br/>  }))</pre> | `[]` | no |
+| <a name="input_s3_csi"></a> [s3\_csi](#input\_s3\_csi) | S3 CSI driver addon version, by default it will pick right version for this driver based on cluster\_version | <pre>object({<br/>    enabled       = optional(bool, false)<br/>    addon_version = optional(string, null)     # if not passed it will use latest compatible version<br/>    buckets       = optional(list(string), []) # the name of buckets to create policy to be able to mount them to containers, if not specified it uses all/*<br/>  })</pre> | `{}` | no |
 | <a name="input_scale_down_unneeded_time"></a> [scale\_down\_unneeded\_time](#input\_scale\_down\_unneeded\_time) | Scale down unneeded in minutes | `number` | `2` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Extra tags to attach to eks cluster. | `any` | `{}` | no |
 | <a name="input_users"></a> [users](#input\_users) | List of users to open eks cluster api access | `list(any)` | `[]` | no |

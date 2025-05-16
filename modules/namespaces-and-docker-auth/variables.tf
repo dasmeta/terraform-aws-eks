@@ -21,6 +21,7 @@ variable "cluster_endpoint" {
 
 variable "region" {
   type        = string
+  default     = null
   description = "The aws region"
 }
 

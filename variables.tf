@@ -520,6 +520,16 @@ variable "ebs_csi_version" {
   default     = null
 }
 
+variable "s3_csi" {
+  type = object({
+    enabled       = optional(bool, false)
+    addon_version = optional(string, null)     # if not passed it will use latest compatible version
+    buckets       = optional(list(string), []) # the name of buckets to create policy to be able to mount them to containers, if not specified it uses all/*
+  })
+  default     = {}
+  description = "S3 CSI driver addon version, by default it will pick right version for this driver based on cluster_version"
+}
+
 variable "autoscaler_limits" {
   type = object({
     cpu    = string
@@ -713,12 +723,47 @@ variable "namespaces_and_docker_auth" {
 
 variable "linkerd" {
   type = object({
-    enabled = optional(bool, true)
+    enabled     = optional(bool, true)
+    configs     = optional(any, {})    # allows to override default configs of linkerd main helm chart, check underlying sub-module module for more info
+    configs_viz = optional(any, {})    # allows to override default configs of linkerd viz helm chart, check underlying sub-module module for more info
+    crds_create = optional(bool, true) # whether to have linkerd crd installed
+    viz_create  = optional(bool, true) # whether to have linkerd monitoring/dashboard tooling installed
   })
   default = {
     enabled = true
   }
   description = "Allows to create/configure linkerd in eks cluster"
+}
+
+variable "event_exporter" {
+  type = object({
+    enabled = optional(bool, false)
+    configs = optional(any, {})
+  })
+  default = {
+    enabled = false
+    ## example of configs
+    # configs = {
+    #   config = {
+    #     receivers = [
+    #       {
+    #         name = "webhook-prod"
+    #         webhook = {
+    #           endpoint = "https://n8n.dasmeta.com/webhook/<n8n-webhook-trigger-id>?accountId=<accountId-in-cloudbrowser>" # not a real one
+    #         }
+    #       }
+    #     ]
+    #     route = {
+    #       routes = [
+    #         {
+    #           match = [{ receiver : "webhook-prod" }]
+    #         }
+    #       ]
+    #     }
+    #   }
+    # }
+  }
+  description = "Allows to create/configure event_exporter in eks cluster. The configs option is object to pass corresponding to preferred helm values.yaml, for more details check: https://artifacthub.io/packages/helm/bitnami/kubernetes-event-exporter?modal=values"
 }
 
 variable "tags" {

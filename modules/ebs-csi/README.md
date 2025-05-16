@@ -46,8 +46,8 @@ No modules.
 |------|-------------|------|---------|:--------:|
 | <a name="input_addon_version"></a> [addon\_version](#input\_addon\_version) | Version of EBS-CSI driver to use, if not passed the latest compatible version will be set based on cluster\_version and most\_recent | `string` | `null` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | EKS Cluster name for addon | `string` | n/a | yes |
-| <a name="input_cluster_oidc_arn"></a> [cluster\_oidc\_arn](#input\_cluster\_oidc\_arn) | Cluster OIDC arn for policy configurtion | `string` | n/a | yes |
-| <a name="input_cluster_version"></a> [cluster\_version](#input\_cluster\_version) | Version of eks cluster | `string` | `"1.29"` | no |
+| <a name="input_cluster_oidc_arn"></a> [cluster\_oidc\_arn](#input\_cluster\_oidc\_arn) | Cluster OIDC arn for policy configuration | `string` | n/a | yes |
+| <a name="input_cluster_version"></a> [cluster\_version](#input\_cluster\_version) | Version of eks cluster | `string` | `"1.30"` | no |
 | <a name="input_most_recent"></a> [most\_recent](#input\_most\_recent) | Whether to use addon latest compatible version | `bool` | `true` | no |
 
 ## Outputs
