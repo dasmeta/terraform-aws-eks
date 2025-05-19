@@ -1,7 +1,7 @@
 module "this" {
   source = "../.."
 
-  cluster_name = "test-cluster-with-linkerd" # "eks-with-s3-csi"
+  cluster_name = "eks-with-s3-csi"
 
   vpc = {
     link = {
@@ -40,17 +40,6 @@ module "this" {
   nginx_ingress_controller_config = {
     enabled      = true
     replicacount = 1
-    configs = {
-      controller = {
-        kind                    = "DaemonSet"
-        allowSnippetAnnotations = true
-        service = {
-          annotations = {
-            "service.beta.kubernetes.io/aws-load-balancer-name" : "prod-ingress-external"
-          }
-        }
-      }
-    }
   }
 
   external_dns = {

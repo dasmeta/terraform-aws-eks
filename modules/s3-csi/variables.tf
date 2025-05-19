@@ -49,3 +49,13 @@ variable "region" {
   default     = null
   description = "AWS Region, if not set the region will be fetched from provider/caller current context"
 }
+
+variable "configs" {
+  type = any
+  default = {
+    node : {
+      tolerateAllTaints : true
+    }
+  }
+  description = "Pass additional addon config and override default ones"
+}

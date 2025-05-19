@@ -23,4 +23,5 @@ resource "aws_eks_addon" "this" {
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
   service_account_role_arn    = module.iam_role_for_service_accounts_eks.iam_role_arn
+  configuration_values        = jsonencode(var.configs)
 }

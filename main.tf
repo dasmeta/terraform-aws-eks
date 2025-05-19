@@ -477,6 +477,7 @@ module "s3-csi" {
   oidc_provider_arn = module.eks-cluster[0].oidc_provider_arn
   addon_version     = var.s3_csi.addon_version
   s3_buckets        = var.s3_csi.buckets
+  configs           = var.s3_csi.configs
   region            = local.region
 
   depends_on = [module.eks-core-components]
