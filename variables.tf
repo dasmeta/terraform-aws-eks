@@ -525,6 +525,11 @@ variable "s3_csi" {
     enabled       = optional(bool, false)
     addon_version = optional(string, null)     # if not passed it will use latest compatible version
     buckets       = optional(list(string), []) # the name of buckets to create policy to be able to mount them to containers, if not specified it uses all/*
+    configs = optional(object({                # allows to pass additional addon configs to override default ones
+      node = optional(object({
+        tolerateAllTaints = optional(bool, true) # Whether mountpoint for S3 CSI Driver Pods will tolerate all taints and will be scheduled in all nodes
+      }), {})
+    }), {})
   })
   default     = {}
   description = "S3 CSI driver addon version, by default it will pick right version for this driver based on cluster_version"
