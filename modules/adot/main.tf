@@ -6,7 +6,7 @@ resource "helm_release" "adot-collector" {
   namespace        = var.namespace
   version          = var.chart_version
   create_namespace = false
-  atomic           = true
+  atomic           = false
   wait             = false
 
   values = [
