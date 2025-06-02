@@ -101,6 +101,7 @@ variable "fluent_bit_configs" {
     system_log_group_name = optional(string, "")
     log_retention_days    = optional(number, 90)
     values_yaml           = optional(string, "")
+    s3_permission         = optional(bool, false)
     configs = optional(object({
       inputs                     = optional(string, "")
       filters                    = optional(string, "")
@@ -121,6 +122,7 @@ variable "fluent_bit_configs" {
     log_retention_days    = 90
     values_yaml           = ""
     image_pull_secrets    = []
+    s3_permission         = false
     configs = {
       inputs                     = ""
       outputs                    = ""
