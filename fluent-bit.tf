@@ -15,6 +15,7 @@ module "fluent-bit" {
   system_log_group_name = try(var.fluent_bit_configs.system_log_group_name, "")
   log_retention_days    = try(var.fluent_bit_configs.log_retention_days, 90)
   image_pull_secrets    = try(var.fluent_bit_configs.image_pull_secrets, [])
+  s3_permission         = try(var.fluent_bit_configs.s3_permission, false)
 
   values_yaml = try(var.fluent_bit_configs.values_yaml, "")
 
