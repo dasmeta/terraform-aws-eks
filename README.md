@@ -46,7 +46,16 @@ Those include:
      kubectl patch crd nodepools.karpenter.sh -p '{"metadata":{"labels":{"app.kubernetes.io/managed-by":"Helm"},"annotations":{"meta.helm.sh/release-name":"karpenter-crd","meta.helm.sh/release-namespace":"karpenter"}}}'
      ```
    - the alb ingress/load-balancer controller variables have been moved under one variable set `alb_load_balancer_controller` so you have to change old way passed config(if you have this variables manually passed), here is the moved ones: `enable_alb_ingress_controller`, `enable_waf_for_alb`, `alb_log_bucket_name`, `alb_log_bucket_path`, `send_alb_logs_to_cloudwatch`
- - from <2.30.0 to >=2.30.0 version
+ - from <2.21.0 to >=2.21.0 version
+   - we have linkerd integration implemented, so that starting with this version linkerd will be enabled by default.
+   - if the linkerd had been deployed before using linkerd cli then you have to disable/uninstall linkerd via cli, here are command to apply
+     ```sh
+     linkerd viz uninstall | kubectl delete -f - # to uninstall linkerd viz
+     linkerd uninstall | kubectl delete -f - # to uninstall linkerd
+     ```
+     it is supposed no downtime will be there because of uninstalling/disabling linkerd but recommended to disable(set podAnnotation `linkerd.io/inject: disabled`) at first linkerd on all workloads where we have it enabled and then uninstall it, so that the new module version will bring it back and you can enable(via podAnnotation `linkerd.io/inject: enabled`) back linkerd
+   - we have also new ability to enable s3-csi driver and get s3 buckets mounted into k8s pod/containers as volume
+ - from <2.21.0 to >=2.21.0 version
    - this version upgrade brings about all underlying main components updated to latest versions and eks default version 1.30. all core/important components compatibility have been tested with install from scratch and when applying the update over old version, but in any case possibility of issues in custom configured setups. so that make sure you apply the update in dev/stage environments at first and test that all works as expected and then apply for prod/live.
    - in case if karpenter is enabled there is some tricky behavior while upgrade.
      the karpenter managed spot instances got interrupted more often(this seems related karpenter drift ability and k8s version+ami version update, so that 2 separate waves of change arrive) so that at some upgrade point there even we can have case without any karpenter managed instance(still needs deeper investigation). So make sure:
@@ -68,6 +77,7 @@ Those include:
           }
         }
      ```
+   - before disabling adot/fluentbit(what this module version brings) it is recommended to check and disable existing alerting/dashboard in cloudwatch that based on cloudwatch container insights metrics and logs and also inform dev/devops guys that logs/metric are/should-be now available in grafana
 
 ## How to run
 ```hcl
