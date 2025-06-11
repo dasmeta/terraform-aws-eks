@@ -47,6 +47,14 @@ Those include:
      ```
    - the alb ingress/load-balancer controller variables have been moved under one variable set `alb_load_balancer_controller` so you have to change old way passed config(if you have this variables manually passed), here is the moved ones: `enable_alb_ingress_controller`, `enable_waf_for_alb`, `alb_log_bucket_name`, `alb_log_bucket_path`, `send_alb_logs_to_cloudwatch`
  - from <2.21.0 to >=2.21.0 version
+   - this version upgrade brings about all underlying main components updated to latest versions and eks default version 1.30. all core/important components compatibility have been tested with install from scratch and when applying the update over old version, but in any case possibility of issues in custom configured setups. so that make sure you apply the update in dev/stage environments at first and test that all works as expected and then apply for prod/live.
+   - in case if karpenter is enabled there is some tricky behavior while upgrade.
+     the karpenter managed spot instances got interrupted more often(this seems related karpenter drift ability and k8s version+ami version update, so that 2 separate waves of change arrive) so that at some upgrade point there even we can have case without any karpenter managed instance(still needs deeper investigation). So make sure:
+       - to apply the upgrade at the time when no much traffic to website and if possible cool down critical service which have to not be restarted.
+       - make sure to set PDB on workloads, which will allow to prevent all workload pods be unavailable at certain point.
+       - also in case if you have pods with annotations `karpenter.sh/do-not-disrupt: "true"` you may be have need to manually disrupt this pods in order to get their karpenter managed nodes be disrupted/recreated as well to get the new eks version. you can use this annotation to also to prevent karpenter to disrupt nodes where we have such pods, this is handy to manually control when an node can be disrupted.
+   - the default addon coredns have explicitly set default configurations, and this configs available to configure via var.default\_addons config. if you have manually set configs for coredns that differ from default ones here in the module then you may need to set/change the coredns configs in module use to not get your custom ones overridden and missing.
+ - from <2.22.0 to >=2.22.0 version
    - we have linkerd integration implemented, so that starting with this version linkerd will be enabled by default.
    - if the linkerd had been deployed before using linkerd cli then you have to disable/uninstall linkerd via cli, here are command to apply
      ```sh
@@ -55,14 +63,6 @@ Those include:
      ```
      it is supposed no downtime will be there because of uninstalling/disabling linkerd but recommended to disable(set podAnnotation `linkerd.io/inject: disabled`) at first linkerd on all workloads where we have it enabled and then uninstall it, so that the new module version will bring it back and you can enable(via podAnnotation `linkerd.io/inject: enabled`) back linkerd
    - we have also new ability to enable s3-csi driver and get s3 buckets mounted into k8s pod/containers as volume
- - from <2.21.0 to >=2.21.0 version
-   - this version upgrade brings about all underlying main components updated to latest versions and eks default version 1.30. all core/important components compatibility have been tested with install from scratch and when applying the update over old version, but in any case possibility of issues in custom configured setups. so that make sure you apply the update in dev/stage environments at first and test that all works as expected and then apply for prod/live.
-   - in case if karpenter is enabled there is some tricky behavior while upgrade.
-     the karpenter managed spot instances got interrupted more often(this seems related karpenter drift ability and k8s version+ami version update, so that 2 separate waves of change arrive) so that at some upgrade point there even we can have case without any karpenter managed instance(still needs deeper investigation). So make sure:
-       - to apply the upgrade at the time when no much traffic to website and if possible cool down critical service which have to not be restarted.
-       - make sure to set PDB on workloads, which will allow to prevent all workload pods be unavailable at certain point.
-       - also in case if you have pods with annotations `karpenter.sh/do-not-disrupt: "true"` you may be have need to manually disrupt this pods in order to get their karpenter managed nodes be disrupted/recreated as well to get the new eks version. you can use this annotation to also to prevent karpenter to disrupt nodes where we have such pods, this is handy to manually control when an node can be disrupted.
-   - the default addon coredns have explicitly set default configurations, and this configs available to configure via var.default\_addons config. if you have manually set configs for coredns that differ from default ones here in the module then you may need to set/change the coredns configs in module use to not get your custom ones overridden and missing.
  - from <2.23.0 to >=2.23.0 version
    - we have fluentbit and adot disabled by default, so that grafana stack will be used as telemetry data collector and app metrics, check example `eks-with-all-telemetry-to-grafana-stack` for more info on how.
    - it still possible to enable fluentbit and adot and have monitoring data collection worked as before by just setting
