@@ -54,7 +54,20 @@
  *        - make sure to set PDB on workloads, which will allow to prevent all workload pods be unavailable at certain point.
  *        - also in case if you have pods with annotations `karpenter.sh/do-not-disrupt: "true"` you may be have need to manually disrupt this pods in order to get their karpenter managed nodes be disrupted/recreated as well to get the new eks version. you can use this annotation to also to prevent karpenter to disrupt nodes where we have such pods, this is handy to manually control when an node can be disrupted.
  *    - the default addon coredns have explicitly set default configurations, and this configs available to configure via var.default_addons config. if you have manually set configs for coredns that differ from default ones here in the module then you may need to set/change the coredns configs in module use to not get your custom ones overridden and missing.
- *
+ *  - from <2.23.0 to >=2.23.0 version
+ *    - we have fluentbit and adot disabled by default, so that grafana stack will be used as telemetry data collector and app metrics, check example `eks-with-all-telemetry-to-grafana-stack` for more info on how.
+ *    - it still possible to enable fluentbit and adot and have monitoring data collection worked as before by just setting
+ *      ```terraform
+ *         module "this" {
+ *           source  = "dasmeta/eks/aws"
+ *           version = ">= 2.23.0"
+ *           ....
+ *           metrics_exporter = "adot"
+ *           fluent_bit_configs = {
+ *             enabled = true
+ *           }
+ *         }
+ *      ```
  *
  * ## How to run
  * ```hcl
