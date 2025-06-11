@@ -95,7 +95,7 @@ variable "alb_load_balancer_controller" {
 
 variable "fluent_bit_configs" {
   type = object({
-    enabled               = optional(string, true)
+    enabled               = optional(string, false) # before default was `true`, we disable fluentbit by default as we are now using separate grafana stack setup module as k8s metric/log/trace collection tools
     fluent_bit_name       = optional(string, "")
     log_group_name        = optional(string, "")
     system_log_group_name = optional(string, "")
@@ -360,8 +360,8 @@ variable "vpc" {
 
 variable "metrics_exporter" {
   type        = string
-  default     = "adot"
-  description = "Metrics Exporter, can use cloudwatch or adot"
+  default     = "none" # before default was "adot", we disable by default `adot` as we are now using separate grafana stack setup module as k8s metric/log/trace collection tools
+  description = "Metrics Exporter, can use `cloudwatch` or `adot`"
 }
 
 variable "nginx_ingress_controller_config" {
