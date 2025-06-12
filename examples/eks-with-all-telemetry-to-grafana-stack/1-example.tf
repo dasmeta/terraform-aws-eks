@@ -2,8 +2,6 @@
 # So that logs and metrics being collected natively by prometheus and loki.promtail and tempo service endpoint(otel htt/grpc endpoints) can be used for traces
 module "this" {
   source = "../.."
-  # source  = "dasmeta/eks/aws"
-  # version = ">= 2.20.0"
 
   # commons resources configs
   cluster_name = local.cluster_name
@@ -28,10 +26,6 @@ module "this" {
   }
 
   # disabled resources for this test to have as minimal sized cluster as possible
-  alarms = {
-    enabled   = false
-    sns_topic = ""
-  }
   enable_external_secrets      = false
   create_cert_manager          = false
   enable_node_problem_detector = false

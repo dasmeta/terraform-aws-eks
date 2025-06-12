@@ -628,11 +628,12 @@ variable "portainer_config" {
 
 variable "alarms" {
   type = object({
-    enabled       = optional(bool, true)
-    sns_topic     = string
+    enabled       = optional(bool, false) # we need to have cloudwatch metrics based alarms disabled by default, as we disabled adot/cloudwatch metric exporters by default.
+    sns_topic     = optional(string, "")
     custom_values = optional(any, {})
   })
-  description = "Alarms enabled by default you need set sns topic name for send alarms for customize alarms threshold use custom_values"
+  default     = {}
+  description = "Creates cloudwatch alarms  on ContainerInsights `cluster_failed_node_count` metric. If one of adot/cloudwatch metrics_exporters is not enabled then we have to disable alarms as specified metric do not exist and creation may fail. You need set sns topic name if you enable alarms. For customize alarms threshold use custom_values"
 }
 
 variable "additional_priority_classes" {

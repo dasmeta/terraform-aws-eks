@@ -67,18 +67,36 @@
  *    - we have fluentbit and adot disabled by default, so that grafana stack will be used as telemetry data collector and app metrics, check example `eks-with-all-telemetry-to-grafana-stack` for more info on how.
  *    - it still possible to enable fluentbit and adot and have monitoring data collection worked as before by just setting
  *      ```terraform
- *         module "this" {
- *           source  = "dasmeta/eks/aws"
- *           version = ">= 2.23.0"
- *           ....
- *           metrics_exporter = "adot"
- *           fluent_bit_configs = {
- *             enabled = true
- *           }
- *         }
+ *      module "this" {
+ *        source  = "dasmeta/eks/aws"
+ *        version = ">= 2.23.0"
+ *        ....
+ *        metrics_exporter = "adot"
+ *        fluent_bit_configs = {
+ *          enabled = true
+ *        }
+ *      }
  *      ```
  *    - before disabling adot/fluentbit(what this module version brings) it is recommended to check and disable existing alerting/dashboard in cloudwatch that based on cloudwatch container insights metrics and logs and also inform dev/devops guys that logs/metric are/should-be now available in grafana
- *
+ *  - from <2.23.2 to >=2.23.2 version
+ *    - the `alarms` variable is not required anymore and the `alarms.sns_topic` also is not required and is by default ""
+ *    - the alarms(it is actually one single alarm on ContainerInsights `cluster_failed_node_count` metric) are disabled by default as we have disabled cloudwatch/adot metric exporter
+ *    - if you still want to keep alarms enabled with `adot/cloudwatch` exporter you can set the following
+ *      ```terraform
+ *      module "this" {
+ *        source  = "dasmeta/eks/aws"
+ *        version = ">= 2.23.2"
+ *        ....
+ *        metrics_exporter = "adot"
+ *        fluent_bit_configs = {
+ *          enabled = true
+ *        }
+ *        alarms = {
+ *          enabled = true
+ *          sns_topic = "default"
+ *        }
+ *      }
+ *      ```
  * ## How to run
  * ```hcl
  * data "aws_availability_zones" "available" {}
