@@ -67,18 +67,36 @@ Those include:
    - we have fluentbit and adot disabled by default, so that grafana stack will be used as telemetry data collector and app metrics, check example `eks-with-all-telemetry-to-grafana-stack` for more info on how.
    - it still possible to enable fluentbit and adot and have monitoring data collection worked as before by just setting
      ```terraform
-        module "this" {
-          source  = "dasmeta/eks/aws"
-          version = ">= 2.23.0"
-          ....
-          metrics_exporter = "adot"
-          fluent_bit_configs = {
-            enabled = true
-          }
-        }
+     module "this" {
+       source  = "dasmeta/eks/aws"
+       version = ">= 2.23.0"
+       ....
+       metrics_exporter = "adot"
+       fluent_bit_configs = {
+         enabled = true
+       }
+     }
      ```
    - before disabling adot/fluentbit(what this module version brings) it is recommended to check and disable existing alerting/dashboard in cloudwatch that based on cloudwatch container insights metrics and logs and also inform dev/devops guys that logs/metric are/should-be now available in grafana
-
+ - from <2.23.2 to >=2.23.2 version
+   - the `alarms` variable is not required anymore and the `alarms.sns_topic` also is not required and is by default ""
+   - the alarms(it is actually one single alarm on ContainerInsights `cluster_failed_node_count` metric) are disabled by default as we have disabled cloudwatch/adot metric exporter
+   - if you still want to keep alarms enabled with `adot/cloudwatch` exporter you can set the following
+     ```terraform
+     module "this" {
+       source  = "dasmeta/eks/aws"
+       version = ">= 2.23.2"
+       ....
+       metrics_exporter = "adot"
+       fluent_bit_configs = {
+         enabled = true
+       }
+       alarms = {
+         enabled = true
+         sns_topic = "default"
+       }
+     }
+     ```
 ## How to run
 ```hcl
 data "aws_availability_zones" "available" {}
@@ -355,7 +373,7 @@ module "eks" {
 | <a name="input_additional_priority_classes"></a> [additional\_priority\_classes](#input\_additional\_priority\_classes) | Defines Priority Classes in Kubernetes, used to assign different levels of priority to pods. By default, this module creates three Priority Classes: 'high'(1000000), 'medium'(500000) and 'low'(250000) . You can also provide a custom list of Priority Classes if needed. | <pre>list(object({<br/>    name  = string<br/>    value = string # number in string form<br/>  }))</pre> | `[]` | no |
 | <a name="input_adot_config"></a> [adot\_config](#input\_adot\_config) | accept\_namespace\_regex defines the list of namespaces from which metrics will be exported, and additional\_metrics defines additional metrics to export. | <pre>object({<br/>    accept_namespace_regex = optional(string, "(default|kube-system)")<br/>    additional_metrics     = optional(list(string), [])<br/>    log_group_name         = optional(string, "adot")<br/>    log_retention          = optional(number, 14)<br/>    helm_values            = optional(any, null)<br/>    logging_enable         = optional(bool, false)<br/>    resources = optional(object({<br/>      limit = object({<br/>        cpu    = optional(string, "200m")<br/>        memory = optional(string, "200Mi")<br/>      })<br/>      requests = object({<br/>        cpu    = optional(string, "200m")<br/>        memory = optional(string, "200Mi")<br/>      })<br/>      }), {<br/>      limit = {<br/>        cpu    = "200m"<br/>        memory = "200Mi"<br/>      }<br/>      requests = {<br/>        cpu    = "200m"<br/>        memory = "200Mi"<br/>      }<br/>    })<br/>  })</pre> | <pre>{<br/>  "accept_namespace_regex": "(default|kube-system)",<br/>  "additional_metrics": [],<br/>  "helm_values": null,<br/>  "log_group_name": "adot",<br/>  "log_retention": 14,<br/>  "logging_enable": false,<br/>  "resources": {<br/>    "limit": {<br/>      "cpu": "200m",<br/>      "memory": "200Mi"<br/>    },<br/>    "requests": {<br/>      "cpu": "200m",<br/>      "memory": "200Mi"<br/>    }<br/>  }<br/>}</pre> | no |
 | <a name="input_adot_version"></a> [adot\_version](#input\_adot\_version) | The version of the AWS Distro for OpenTelemetry addon to use. If not passed it will get compatible version based on cluster\_version | `string` | `null` | no |
-| <a name="input_alarms"></a> [alarms](#input\_alarms) | Alarms enabled by default you need set sns topic name for send alarms for customize alarms threshold use custom\_values | <pre>object({<br/>    enabled       = optional(bool, true)<br/>    sns_topic     = string<br/>    custom_values = optional(any, {})<br/>  })</pre> | n/a | yes |
+| <a name="input_alarms"></a> [alarms](#input\_alarms) | Creates cloudwatch alarms  on ContainerInsights `cluster_failed_node_count` metric. If one of adot/cloudwatch metrics\_exporters is not enabled then we have to disable alarms as specified metric do not exist and creation may fail. You need set sns topic name if you enable alarms. For customize alarms threshold use custom\_values | <pre>object({<br/>    enabled       = optional(bool, false) # we need to have cloudwatch metrics based alarms disabled by default, as we disabled adot/cloudwatch metric exporters by default.<br/>    sns_topic     = optional(string, "")<br/>    custom_values = optional(any, {})<br/>  })</pre> | `{}` | no |
 | <a name="input_alb_load_balancer_controller"></a> [alb\_load\_balancer\_controller](#input\_alb\_load\_balancer\_controller) | Aws alb ingress/load-balancer controller configs. | <pre>object({<br/>    enabled                     = optional(bool, true)  # Whether alb ingress/load-balancer controller enabled, note that alb load balancer will be created also when nginx_ingress_controller_config.enabled=true as nginx loadbalancer service needs it<br/>    enable_waf_for_alb          = optional(bool, false) # Enables WAF and WAF V2 addons for ALB<br/>    configs                     = optional(any, {})     # allows to pass additional helm chart configs<br/>    alb_log_bucket_name         = optional(string, "")  # The s3 bucket where alb logs will be placed, TODO: option and its related ability disable, check if we need this ability<br/>    alb_log_bucket_path         = optional(string, "")  # The s3 bucket path/folder where alb logs will be placed, TODO: option and its related ability disable, check if we need this ability<br/>    send_alb_logs_to_cloudwatch = optional(bool, true)  # Whether logs will be pushed to cloudwatch also, TODO: option and its related ability disable, check if we need this ability<br/>  })</pre> | `{}` | no |
 | <a name="input_api_gateway_resources"></a> [api\_gateway\_resources](#input\_api\_gateway\_resources) | Nested map containing API, Stage, and VPC Link resources | <pre>list(object({<br/>    namespace = string<br/>    api = object({<br/>      name         = string<br/>      protocolType = string<br/>    })<br/>    stages = optional(list(object({<br/>      name        = string<br/>      namespace   = string<br/>      apiRef_name = string<br/>      stageName   = string<br/>      autoDeploy  = bool<br/>      description = string<br/>    })))<br/>    vpc_links = optional(list(object({<br/>      name      = string<br/>      namespace = string<br/>    })))<br/>  }))</pre> | `[]` | no |
 | <a name="input_api_gw_deploy_region"></a> [api\_gw\_deploy\_region](#input\_api\_gw\_deploy\_region) | Region in which API gatewat will be configured | `string` | `""` | no |
