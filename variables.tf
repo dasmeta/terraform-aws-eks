@@ -115,7 +115,7 @@ variable "fluent_bit_configs" {
     image_pull_secrets     = optional(list(string), [])
   })
   default = {
-    enabled               = true
+    enabled               = false
     fluent_bit_name       = ""
     log_group_name        = ""
     system_log_group_name = ""
