@@ -43,6 +43,12 @@ variable "oidc_provider_arn" {
   type = string
 }
 
+variable "vpc_id" {
+  type        = string
+  default     = null
+  description = "The AWS VPC Id where EKS deployed. Issue https://github.com/kubernetes-sigs/aws-load-balancer-controller/issues/3695"
+}
+
 ## the load balancer access logs sync to s3=>lambda=>cloudwatch was disabled/commented-out so this params also need/can be commented,
 ## after then the fix be applied for enabling this functionality we can uncomment them
 

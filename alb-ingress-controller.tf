@@ -11,6 +11,7 @@ module "alb-ingress-controller" {
   oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
   enable_waf                  = var.alb_load_balancer_controller.enable_waf_for_alb
   configs                     = var.alb_load_balancer_controller.configs
+  vpc_id                      = local.vpc_id
 
   ## the load balancer access logs sync to s3=>lambda=>cloudwatch was disabled/commented-out so this params also need/can be commented,
   ## after then the fix be applied for enabling this functionality we can uncomment them

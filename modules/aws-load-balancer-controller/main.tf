@@ -79,6 +79,7 @@ module "custom_default_configs_merged" {
       }
       enableWaf   = var.enable_waf
       enableWafv2 = var.enable_waf
+      vpcId       = var.vpc_id
     },
     var.configs
   ]
