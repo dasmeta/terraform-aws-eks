@@ -54,6 +54,7 @@ https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/ingr
 | <a name="input_region"></a> [region](#input\_region) | AWS Region name. | `string` | n/a | yes |
 | <a name="input_service_account_name"></a> [service\_account\_name](#input\_service\_account\_name) | The service account name to attach balancer deployment | `string` | `"aws-load-balancer-controller"` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | A mapping of tags to assign to the object. | `any` | `null` | no |
+| <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | n/a | `string` | n/a | yes |
 
 ## Outputs
 
