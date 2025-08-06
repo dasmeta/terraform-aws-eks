@@ -1,4 +1,4 @@
-module "node-problem-detector" {
+module "this" {
   source  = "terraform-module/release/helm"
   version = "2.8.2"
 

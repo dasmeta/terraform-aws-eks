@@ -35,5 +35,7 @@ No resources.
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+|------|-------------|
+| <a name="output_helm_metadata"></a> [helm\_metadata](#output\_helm\_metadata) | Helm release metadata |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

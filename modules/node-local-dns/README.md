@@ -22,7 +22,7 @@ For details check: https://kubernetes.io/docs/tasks/administer-cluster/nodelocal
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_custom_default_configs"></a> [custom\_default\_configs](#module\_custom\_default\_configs) | cloudposse/config/yaml//modules/deepmerge | 1.0.2 |
-| <a name="module_node-problem-detector"></a> [node-problem-detector](#module\_node-problem-detector) | terraform-module/release/helm | 2.8.2 |
+| <a name="module_this"></a> [this](#module\_this) | terraform-module/release/helm | 2.8.2 |
 
 ## Resources
 
@@ -43,5 +43,7 @@ For details check: https://kubernetes.io/docs/tasks/administer-cluster/nodelocal
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+|------|-------------|
+| <a name="output_helm_metadata"></a> [helm\_metadata](#output\_helm\_metadata) | Helm release metadata |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
