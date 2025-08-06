@@ -14,9 +14,5 @@ module "node-problem-detector" {
     recreate_pods = false
     deploy        = 1
   }
-  values = [templatefile("${path.module}/values.yaml", {})]
-
-  set = []
-
-  set_sensitive = []
+  values = [jsonencode(var.configs)]
 }

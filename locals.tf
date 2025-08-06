@@ -12,4 +12,6 @@ locals {
     value,
     try(value.configuration_values, null) == null ? {} : { for key, value in(can(tostring(value.configuration_values)) ? { configuration_values = null } : { configuration_values = jsonencode(value.configuration_values) }) : key => value if value != null }
   ) }
+
+  meta_system_namespace = "meta-system"
 }

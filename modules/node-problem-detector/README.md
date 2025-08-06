@@ -9,7 +9,8 @@ https://artifacthub.io/packages/helm/deliveryhero/node-problem-detector
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.0.0 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.3 |
+| <a name="requirement_helm"></a> [helm](#requirement\_helm) | ~> 2.0 |
 
 ## Providers
 
@@ -30,6 +31,7 @@ No resources.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The app chart version to use | `string` | `"2.3.14"` | no |
+| <a name="input_configs"></a> [configs](#input\_configs) | Configurations to pass to underlying helm chart | `any` | <pre>{<br/>  "annotations": {<br/>    "prometheus.io/port": "20257",<br/>    "prometheus.io/scrape": "true"<br/>  },<br/>  "settings": {<br/>    "prometheus_port": 20257<br/>  }<br/>}</pre> | no |
 
 ## Outputs
 
