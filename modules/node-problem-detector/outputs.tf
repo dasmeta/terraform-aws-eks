@@ -1,4 +1,4 @@
 output "helm_metadata" {
-  value       = helm_release.node-problem-detector.metadata
+  value       = module.node-problem-detector
   description = "Helm release metadata"
 }
