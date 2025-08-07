@@ -774,6 +774,15 @@ variable "event_exporter" {
   description = "Allows to create/configure event_exporter in eks cluster. The configs option is object to pass corresponding to preferred helm values.yaml, for more details check: https://artifacthub.io/packages/helm/bitnami/kubernetes-event-exporter?modal=values"
 }
 
+variable "node_local_dns" {
+  type = object({
+    enabled = optional(bool, false) # TODO: in case having local-dns enabled is common case consider having it enabled by default, for now only high load having setups may need to enable local-dns caching
+    configs = optional(any, {})
+  })
+  default     = {}
+  description = "Allows to enable/install the NodeLocal DNSCache, to improves Cluster DNS performance"
+}
+
 variable "tags" {
   description = "Extra tags to attach to eks cluster."
   type        = any

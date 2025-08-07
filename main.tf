@@ -622,3 +622,12 @@ module "event_exporter" {
 
   depends_on = [module.eks-core-components, kubernetes_namespace.meta-system]
 }
+
+module "node_local_dns" {
+  count = var.create && var.node_local_dns.enabled ? 1 : 0
+
+  source  = "./modules/node-local-dns"
+  configs = var.node_local_dns.configs
+
+  depends_on = [module.eks-core-components]
+}

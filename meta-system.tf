@@ -1,6 +1,6 @@
 resource "kubernetes_namespace" "meta-system" {
   metadata {
-    name = "meta-system"
+    name = local.meta_system_namespace
   }
 
   depends_on = [module.eks-core-components]
