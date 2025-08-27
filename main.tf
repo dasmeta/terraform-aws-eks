@@ -631,3 +631,16 @@ module "node_local_dns" {
 
   depends_on = [module.eks-core-components]
 }
+
+module "kyverno" {
+  count = var.create && var.kyverno.enabled ? 1 : 0
+
+  source  = "dasmeta/shared/any//modules/kyverno"
+  version = "1.5.0"
+
+  policies        = var.kyverno.policies
+  custom_policies = var.kyverno.custom_policies
+  extra_configs   = var.kyverno.extra_configs
+
+  depends_on = [module.eks-core-components]
+}

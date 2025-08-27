@@ -11,6 +11,16 @@ resource "helm_release" "this" {
   values = [
     jsonencode(merge(
       {
+        # NOTE: we set/switch image repository related to change in bitnami to remove the original bitnami org/repository dockerhub repos and migrate all existing/old images to bitnamilegacy, for more info check https://github.com/bitnami/containers/issues/83267
+        # TODO: consider a change to use another image repository which is maintained
+        global = {
+          security = {
+            allowInsecureImages = true
+          }
+        }
+        image = {
+          repository = "bitnamilegacy/external-dns"
+        }
         aws = { region = local.region }
         serviceAccount = {
           create      = true
