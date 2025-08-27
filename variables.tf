@@ -783,6 +783,17 @@ variable "node_local_dns" {
   description = "Allows to enable/install the NodeLocal DNSCache, to improves Cluster DNS performance"
 }
 
+variable "kyverno" {
+  type = object({
+    enabled         = optional(bool, true)
+    policies        = optional(list(string), ["bitnami-to-bitnamilegacy"]) # Predefined kyverno rules to apply/enable. supported rule are "bitnami-to-bitnamilegacy"
+    custom_policies = optional(any, [])                                    # Custom kyverno rules to apply. The custom policies are list of objects. check for more details in terraform module "dasmeta/shared/any//modules/kyverno"
+    extra_configs   = optional(any, {})                                    # Configs to pass and override kyverno helm values.yaml defaults and var.default_configs if needed more fine control. for more info check https://artifacthub.io/packages/helm/kyverno/kyverno?modal=values
+  })
+  default     = {}
+  description = "Allows to enable/install the kyverno k8s policies management tool/operator, by default we have predefined \"bitnami-to-bitnamilegacy\" policy enabled"
+}
+
 variable "tags" {
   description = "Extra tags to attach to eks cluster."
   type        = any
