@@ -57,32 +57,33 @@ module "this" {
     enabled = true
   }
 
-  external_dns = {
-    enabled = true
-  }
+  ## here we have tests codes for external_dns and event_exporter using bitnamilegacy, we commented out this ones to have only common autoswitch enabled
+  # external_dns = {
+  #   enabled = true
+  # }
 
-  event_exporter = {
-    enabled = true
-    configs = {
-      config = {
-        receivers = [
-          {
-            name = "webhook-prod"
-            webhook = {
-              endpoint = "https://n8n.dasmeta.com/webhook/<n8n-webhook-trigger-id>?accountId=<accountId-in-cloudbrowser>" # not a real one
-            }
-          }
-        ]
-        route = {
-          routes = [
-            {
-              match = [{ receiver : "webhook-prod" }]
-            }
-          ]
-        }
-      }
-    }
-  }
+  # event_exporter = {
+  #   enabled = true
+  #   configs = {
+  #     config = {
+  #       receivers = [
+  #         {
+  #           name = "webhook-prod"
+  #           webhook = {
+  #             endpoint = "https://n8n.dasmeta.com/webhook/<n8n-webhook-trigger-id>?accountId=<accountId-in-cloudbrowser>" # not a real one
+  #           }
+  #         }
+  #       ]
+  #       route = {
+  #         routes = [
+  #           {
+  #             match = [{ receiver : "webhook-prod" }]
+  #           }
+  #         ]
+  #       }
+  #     }
+  #   }
+  # }
 
   kyverno = {
     enabled  = true # it enabled by default with "bitnami-to-bitnamilegacy" set, but we explicitly enable here for this example
