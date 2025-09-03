@@ -16,7 +16,9 @@ module "custom_default_configs_merged" {
   maps = [
     {
       controller = {
+        allowSnippetAnnotations = "true"
         config = {
+          annotations-risk-level        = "Critical"
           use-forwarded-headers         = "true"
           enable-underscores-in-headers = "true"
         }
