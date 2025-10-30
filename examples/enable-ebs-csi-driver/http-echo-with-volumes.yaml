@@ -1,0 +1,56 @@
+# helm diff upgrade --install -n default http-echo-with-volumes dasmeta/base --version 0.3.14 -f ./http-echo-with-volumes.yaml
+
+image:
+  repository: mendhak/http-https-echo
+  tag: 34
+
+config:
+  TEST_CONFIG_FOR_ROLLOUT_TRIGGER: "1"
+
+containerPort: 8080
+
+service:
+  enabled: true
+  type: ClusterIP
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 99
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+readinessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 1
+  httpGet:
+    path: /health
+    port: http
+livenessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 3
+  httpGet:
+    path: /health
+    port: http
+resources:
+  requests:
+    cpu: 100m
+
+# here we set the pod security context config to allow this app/container default node:node(with IDs 1000:1000) user:group be able to read/write file into mounted volume
+podSecurityContext: # kubelet mounts the volume so its owner = root (UID 0) and group = 1000 (GID 1000). It also ensures the volume is at least group-writable so members of GID 1000 can read/write.
+  fsGroup: 1000
+
+storage:
+  - persistentVolumeClaimName: http-echo-with-volumes
+    requestedSize: 1Gi
+    accessModes:
+      - ReadWriteOnce
+
+volumes:
+  - name: http-echo-with-volumes
+    mountPath: /gp3-default
+    persistentVolumeClaim:
+      claimName: http-echo-with-volumes
