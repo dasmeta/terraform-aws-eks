@@ -1,0 +1,49 @@
+# helm diff upgrade --install -n default nginx-with-volumes dasmeta/base --version 0.3.14 -f ./nginx-with-volumes.yaml
+
+image:
+  repository: nginx
+  tag: latest
+
+containerPort: 80
+
+service:
+  enabled: true
+  type: ClusterIP
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 99
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+readinessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 1
+  httpGet:
+    path: /
+    port: http
+livenessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 3
+  httpGet:
+    path: /
+    port: http
+resources:
+  requests:
+    cpu: 16m
+
+# storage/volume configuration, by default volumes are mounted with root:root user:group permissions and 0755 mode. in this example with nginx this is enough
+storage:
+  - persistentVolumeClaimName: nginx-with-volumes
+    requestedSize: 1Gi
+    accessModes:
+      - ReadWriteOnce
+volumes:
+  - name: nginx-with-volumes
+    mountPath: /gp3-default
+    persistentVolumeClaim:
+      claimName: nginx-with-volumes

@@ -97,6 +97,25 @@
  *        }
  *      }
  *      ```
+ *  - from <2.24.0 to >=2.24.0 version
+ *    - this version brings the following new ebs csi provisioner attached StorageClasses:
+ *
+ *        **ebs-gp3**    - new generation general purpose SSD, the default storage class with "gp3" volume types to use with baseline performance 3000 IOPS and 125 MiB/s throughput, gp3 supports up to 1000 MB/s and 16,000 IOPS but there will be need to create separate StorageClass to utilize this with considering that in this case volume size have to satisfy the rule IOPS ≤ 500 × size(GiB) and that extra iops will be charged in separate if exceeds baseline
+ *
+ *        **ebs-gp2**    - old generation general purpose SSD, this class we create as replacement of aws eks default created "gp2" StorageClass, baseline is 3 IOPS per GiB (3 × volume GiBs) of volume size with minimum 100 IOPS and up to 16,000 IOPS, throughput for ≤ 170 GiB is max ~128 MiB/s; can reaches 250 MiB/s only ≥ 334 GiB; and 170–334 GiB can burst to 250 MiB/s
+ *
+ *        **ebs-io2-3k, ebs-io2-5k, ebs-io2-8k, ebs-io2-16k, ebs-io2-32k, ebs-io2-64k**  - this ones are predefined set of the "io2" volume type StorageClasses with set/provisioned iops, this are SSDs with provisioned IOPS explicitly (good for latency-sensitive DBs), NOTE: you pay also for the IOPS you set in StorageClass for this volumes (even if you don’t use all of the iops), so make sure you know your ipos requirement when using this classes
+ *
+ *        **ebs-st1**     - the "st1" type, throughput-optimized HDD, designed for large, sequential I/O (big scans, ETL, log processing, data lakes)
+ *
+ *        **ebs-sc1**     - the "sc1" type, cold HDD, lowest cost per GiB, lowest baseline throughput; for infrequently accessed, large, sequential data (cold logs, archives)
+ *
+ *      NOTE: In order to not get default storage classes collision(as before 1.30 version on old created eks clusters we have gp2 storage class annotated as default and we bring new ebs-gp3 one as default) there is need to reset aws auto-created gp2 storage class default tag/annotation, by running the following kubectl script before applying the new change:
+ *      ```sh
+ *      kubectl annotate sc gp2 storageclass.kubernetes.io/is-default-class- --overwrite
+ *      ```
+ *      It is supposed tat this will not break already created volumes, even if gp2 StorageClass has not annotated as default the script will pass with no issues, we just have to make sure we do apply the new version change immediately to not have issue for new k8s PVCs which have not explicitly set storageClass and use default. checks show that no major issue if we have two defaults but docs propose to not have and we need to be safe by removing the default-class annotation from gp2 preexist StorageClass
+ *
  * ## How to run
  * ```hcl
  * data "aws_availability_zones" "available" {}
@@ -504,6 +523,7 @@ module "ebs-csi" {
   cluster_version  = var.cluster_version
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
   addon_version    = var.ebs_csi_version
+  storage_classes  = var.ebs_csi_storage_classes
 
   depends_on = [module.eks-core-components]
 }
