@@ -56,6 +56,7 @@ variable "node_groups" {
       max_size       = 2
       desired_size   = 1
       instance_types = ["t3.medium"]
+      ami_type       = "AL2023_x86_64_STANDARD"
     }
   }
 }
@@ -67,6 +68,7 @@ variable "node_groups_default" {
   default = {
     disk_size      = 50
     instance_types = ["t3.medium"]
+    ami_type       = "AL2023_x86_64_STANDARD"
   }
 }
 

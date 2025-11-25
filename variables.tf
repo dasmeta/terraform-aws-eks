@@ -30,6 +30,7 @@ variable "node_groups" {
       max_size                     = 4
       desired_size                 = 2
       instance_types               = ["t3.large"]
+      ami_type                     = "AL2023_x86_64_STANDARD"
       iam_role_additional_policies = { CloudWatchAgentServerPolicy = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy" }
     }
   }
@@ -56,6 +57,7 @@ variable "node_groups_default" {
     disk_size                    = 50
     instance_types               = ["t3.large"]
     iam_role_additional_policies = { CloudWatchAgentServerPolicy = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy" }
+    ami_type                     = "AL2023_x86_64_STANDARD"
   }
 }
 
