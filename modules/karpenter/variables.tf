@@ -95,78 +95,129 @@ variable "resource_configs" {
 
 variable "resource_configs_defaults" {
   type = object({
-    nodeClass = optional(any, {
-      amiFamily          = null # if not specified the value will be identified based on eks managed nodes ami id, the valid values are for example "AL2", "AL2023"
-      detailedMonitoring = true
-      metadataOptions = {
-        httpEndpoint            = "enabled"
-        httpProtocolIPv6        = "disabled"
-        httpPutResponseHopLimit = 2 # This is changed to disable IMDS access from containers not on the host network
-        httpTokens              = "required"
-      }
-      blockDeviceMappings = [
-        {
-          deviceName = "/dev/xvda"
-          ebs = {
-            volumeSize = "100Gi"
-            volumeType = "gp3"
-            encrypted  = true
-          }
+    default = {
+      nodeClass = optional(any, {
+        amiFamily          = null # if not specified the value will be identified based on eks managed nodes ami id, the valid values are for example "AL2", "AL2023"
+        detailedMonitoring = true
+        metadataOptions = {
+          httpEndpoint            = "enabled"
+          httpProtocolIPv6        = "disabled"
+          httpPutResponseHopLimit = 2 # This is changed to disable IMDS access from containers not on the host network
+          httpTokens              = "required"
         }
-      ]
-    })
-    nodeClassRef = optional(any, {
-      group = "karpenter.k8s.aws"
-      kind  = "EC2NodeClass"
-      name  = "default"
-    }),
-    requirements = optional(any, [
-      {
-        key      = "karpenter.k8s.aws/instance-cpu"
-        operator = "Lt"
-        values   = ["9"] # <=8 core cpu nodes
-      },
-      {
-        key      = "karpenter.k8s.aws/instance-memory"
-        operator = "Lt"
-        values   = ["33000"] # <=32 Gb memory nodes
-      },
-      {
-        key      = "karpenter.k8s.aws/instance-cpu"
-        operator = "Gt"
-        values   = ["1"] # > core cpu nodes
-      },
-      {
-        key      = "karpenter.k8s.aws/instance-memory"
-        operator = "Gt"
-        values   = ["2000"] #  >2Gb Gb memory nodes as k8s struggles to start small ones
-      },
-      {
-        key      = "karpenter.k8s.aws/instance-generation"
-        operator = "Gt"
-        values   = ["2"] # generation of ec2 instances >2 (like t3a.medium) are more performance and effectiveness
-      },
-      {
-        key      = "kubernetes.io/arch"
-        operator = "In"
-        values   = ["amd64"] # amd64 linux is main platform arch we will use
-      },
-      {
-        key      = "karpenter.sh/capacity-type"
-        operator = "In"
-        values   = ["spot", "on-demand"] # both spot and on-demand nodes, it will look at first available spot and if no then on-demand
-      }
-    ])
-    disruption = optional(any, {
-      consolidationPolicy = "WhenEmptyOrUnderutilized"
-      consolidateAfter    = "3m" # the frequency how often karpenter will check and colocate/disrupt nodes
-      budgets = [
-        { nodes : "10%" } # allows karpenter to only deprovision/disrupt/recreate 10% of nodes at a time for consolidation/cost-optimization, to have more stable workloads
-      ]
-    }),
-    limits = optional(any, {
-      cpu = 10
-    })
+        blockDeviceMappings = [
+          {
+            deviceName = "/dev/xvda"
+            ebs = {
+              volumeSize = "100Gi"
+              volumeType = "gp3"
+              encrypted  = true
+            }
+          }
+        ]
+      })
+      nodeClassRef = optional(any, {
+        group = "karpenter.k8s.aws"
+        kind  = "EC2NodeClass"
+        name  = "default"
+      }),
+      requirements = optional(any, [
+        {
+          key      = "karpenter.k8s.aws/instance-cpu"
+          operator = "Lt"
+          values   = ["9"] # <=8 core cpu nodes
+        },
+        {
+          key      = "karpenter.k8s.aws/instance-memory"
+          operator = "Lt"
+          values   = ["33000"] # <=32 Gb memory nodes
+        },
+        {
+          key      = "karpenter.k8s.aws/instance-cpu"
+          operator = "Gt"
+          values   = ["1"] # > core cpu nodes
+        },
+        {
+          key      = "karpenter.k8s.aws/instance-memory"
+          operator = "Gt"
+          values   = ["2000"] #  >2Gb Gb memory nodes as k8s struggles to start small ones
+        },
+        {
+          key      = "karpenter.k8s.aws/instance-generation"
+          operator = "Gt"
+          values   = ["2"] # generation of ec2 instances >2 (like t3a.medium) are more performance and effectiveness
+        },
+        {
+          key      = "kubernetes.io/arch"
+          operator = "In"
+          values   = ["amd64"] # amd64 linux is main platform arch we will use
+        },
+        {
+          key      = "karpenter.sh/capacity-type"
+          operator = "In"
+          values   = ["spot", "on-demand"] # both spot and on-demand nodes, it will look at first available spot and if no then on-demand
+        }
+      ])
+      disruption = optional(any, {
+        consolidationPolicy = "WhenEmptyOrUnderutilized"
+        consolidateAfter    = "3m" # the frequency how often karpenter will check and colocate/disrupt nodes
+        budgets = [
+          { nodes : "10%" } # allows karpenter to only deprovision/disrupt/recreate 10% of nodes at a time for consolidation/cost-optimization, to have more stable workloads
+        ]
+      }),
+      limits = optional(any, {
+        cpu = 10
+      })
+    }
+    gpu = {
+      nodeClass = optional(any, {
+        amiFamily          = null # if not specified the value will be identified based on eks managed nodes ami id, the valid values are for example "AL2", "AL2023"
+        detailedMonitoring = true
+        metadataOptions = {
+          httpEndpoint            = "enabled"
+          httpProtocolIPv6        = "disabled"
+          httpPutResponseHopLimit = 2 # This is changed to disable IMDS access from containers not on the host network
+          httpTokens              = "required"
+        }
+        blockDeviceMappings = [
+          {
+            deviceName = "/dev/xvda"
+            ebs = {
+              volumeSize = "100Gi"
+              volumeType = "gp3"
+              encrypted  = true
+            }
+          }
+        ]
+      })
+      nodeClassRef = optional(any, {
+        group = "karpenter.k8s.aws"
+        kind  = "EC2NodeClass"
+        name  = "gpu"
+      }),
+      requirements = optional(any, [
+        {
+          key      = "kubernetes.io/arch"
+          operator = "In"
+          values   = ["amd64"] # amd64 linux is main platform arch we will use
+        },
+        {
+          key      = "karpenter.sh/capacity-type"
+          operator = "In"
+          values   = ["spot", "on-demand"] # both spot and on-demand nodes, it will look at first available spot and if no then on-demand
+        }
+      ])
+      disruption = optional(any, {
+        consolidationPolicy = "WhenEmptyOrUnderutilized"
+        consolidateAfter    = "3m" # the frequency how often karpenter will check and colocate/disrupt nodes
+        budgets = [
+          { nodes : "10%" } # allows karpenter to only deprovision/disrupt/recreate 10% of nodes at a time for consolidation/cost-optimization, to have more stable workloads
+        ]
+      }),
+      limits = optional(any, {
+        cpu = 1000
+      })
+    }
   })
   default     = {}
   description = "Configurations to pass and override default ones for karpenter-nodes chart. Check the helm chart available configs here: https://github.com/dasmeta/helm/tree/karpenter-nodes-0.1.0/charts/karpenter-nodes"

@@ -382,6 +382,7 @@ module "eks" {
 |------|------|
 | [helm_release.cert-manager](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 | [helm_release.kube-state-metrics](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
+| [helm_release.nvidia_gpu_driver](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 | [kubernetes_namespace.meta-system](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/namespace) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
@@ -446,6 +447,7 @@ module "eks" {
 | <a name="input_node_groups_default"></a> [node\_groups\_default](#input\_node\_groups\_default) | Map of EKS managed node group default configurations | `any` | <pre>{<br/>  "ami_type": "AL2023_x86_64_STANDARD",<br/>  "disk_size": 50,<br/>  "iam_role_additional_policies": {<br/>    "CloudWatchAgentServerPolicy": "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"<br/>  },<br/>  "instance_types": [<br/>    "t3.large"<br/>  ]<br/>}</pre> | no |
 | <a name="input_node_local_dns"></a> [node\_local\_dns](#input\_node\_local\_dns) | Allows to enable/install the NodeLocal DNSCache, to improves Cluster DNS performance | <pre>object({<br/>    enabled = optional(bool, false) # TODO: in case having local-dns enabled is common case consider having it enabled by default, for now only high load having setups may need to enable local-dns caching<br/>    configs = optional(any, {})<br/>  })</pre> | `{}` | no |
 | <a name="input_node_security_group_additional_rules"></a> [node\_security\_group\_additional\_rules](#input\_node\_security\_group\_additional\_rules) | n/a | `any` | <pre>{<br/>  "ingress_cluster_10250": {<br/>    "description": "Metric server to node groups",<br/>    "from_port": 10250,<br/>    "protocol": "tcp",<br/>    "self": true,<br/>    "to_port": 10250,<br/>    "type": "ingress"<br/>  }<br/>}</pre> | no |
+| <a name="input_nvidia_gpu_driver"></a> [nvidia\_gpu\_driver](#input\_nvidia\_gpu\_driver) | Configuration block for enabling and customizing the NVIDIA GPU driver installation. | <pre>object({<br/>    enabled   = optional(bool, false)<br/>    namespace = optional(string, "kube-system")<br/>    configs   = optional(any, {})<br/>  })</pre> | `{}` | no |
 | <a name="input_portainer_config"></a> [portainer\_config](#input\_portainer\_config) | Portainer hostname and ingress config. | <pre>object({<br/>    host           = optional(string, "portainer.dasmeta.com")<br/>    enable_ingress = optional(bool, true)<br/>  })</pre> | `{}` | no |
 | <a name="input_prometheus_metrics"></a> [prometheus\_metrics](#input\_prometheus\_metrics) | Prometheus Metrics | `any` | `[]` | no |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region name. | `string` | `null` | no |
