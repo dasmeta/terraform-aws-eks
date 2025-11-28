@@ -151,6 +151,7 @@ module "ec2_node_classes_custom_default_configs" {
 
   maps = [
     { default = local.defaultEc2NodeClass },
+    { gpu = local.defaultEc2NodeClassGpu },
     try(var.resource_configs.ec2NodeClasses, {})
   ]
 }
