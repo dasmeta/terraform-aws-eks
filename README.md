@@ -17,6 +17,11 @@ Those include:
 - event-exporter
 
 ## Upgrading guide:
+ -  from version >= 2.25.0, some manual actions are required.
+    This version adds Karpenter support for GPU instance types.
+    If you are using resource_configs_defaults, you now need to move it under resource_configs_defaults.default.
+
+## Upgrading guide:
  - from <2.19.0 to >=2.19.0 version needs some manual actions as we upgraded underlying eks module from 18.x.x to 20.x.x,
    here you can find needed actions/changes docs and ready scripts which can be used:
    docs:
