@@ -10,6 +10,6 @@ resource "helm_release" "nvidia_gpu_driver" {
 
   # Optional configs from the variable (merged into values)
   values = [
-    var.nvidia_gpu_driver.configs
+    jsonencode(var.nvidia_gpu_driver.configs)
   ]
 }
