@@ -31,7 +31,7 @@ locals {
       { tags = { "karpenter.sh/discovery" = var.cluster_name, "Name" = "${var.cluster_name}-node" } }
     ]
     amiSelectorTerms = [
-      { id = "ami-067b858770e9bdf0d" } # amazon-eks-gpu-node-1.32-v20251120
+      { id = data.aws_ami.gpu.id }
     ]
     detailedMonitoring  = var.resource_configs_defaults["gpu"].nodeClass.detailedMonitoring
     metadataOptions     = var.resource_configs_defaults["gpu"].nodeClass.metadataOptions

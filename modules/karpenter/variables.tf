@@ -172,6 +172,7 @@ variable "resource_configs_defaults" {
     gpu = optional(object({
       nodeClass = optional(any, {
         amiFamily          = null # if not specified the value will be identified based on eks managed nodes ami id, the valid values are for example "AL2", "AL2023"
+        ami_name           = "amazon-eks-gpu-node-1.32-v20251120"
         detailedMonitoring = true
         metadataOptions = {
           httpEndpoint            = "enabled"

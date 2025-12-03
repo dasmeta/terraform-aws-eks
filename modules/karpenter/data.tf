@@ -19,3 +19,15 @@ data "aws_ami" "this" {
     values = [data.aws_instance.ec2_from_eks_node_pool.ami]
   }
 }
+
+data "aws_ami" "gpu" {
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = [try(var.resource_configs_defaults["gpu"].nodeClass.ami_name, "amazon-eks-gpu-node-1.32-v20251120")]
+  }
+
+  # Only EKS official AMIs are owned by AWS account 602401143452
+  owners = ["602401143452"]
+}
