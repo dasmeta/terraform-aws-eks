@@ -166,7 +166,7 @@ variable "resource_configs_defaults" {
         ]
       }),
       limits = optional(any, {
-        cpu = 10
+        cpu = 1000
       })
     }), {})
     gpu = optional(object({
@@ -209,8 +209,8 @@ variable "resource_configs_defaults" {
         }
       ])
       disruption = optional(any, {
-        consolidationPolicy = "WhenEmptyOrUnderutilized"
-        consolidateAfter    = "3m" # the frequency how often karpenter will check and colocate/disrupt nodes
+        consolidationPolicy = "WhenEmpty"
+        consolidateAfter    = "1m" # the frequency how often karpenter will check and colocate/disrupt nodes
         budgets = [
           { nodes : "10%" } # allows karpenter to only deprovision/disrupt/recreate 10% of nodes at a time for consolidation/cost-optimization, to have more stable workloads
         ]
