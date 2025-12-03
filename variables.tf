@@ -697,7 +697,7 @@ variable "flagger" {
 variable "nvidia_gpu_driver" {
   type = object({
     enabled   = optional(bool, false)
-    namespace = optional(string, "kube-system")
+    namespace = optional(string, "nvidia-device-plugin")
     configs   = optional(any, { "tolerations" : [{ "effect" : "NoSchedule", "key" : "nodetype", "operator" : "Equal", "value" : "gpu" }] })
   })
   default     = {}
