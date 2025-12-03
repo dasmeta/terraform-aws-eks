@@ -3,6 +3,11 @@ variable "cluster_name" {
   description = "The eks cluster name"
 }
 
+variable "cluster_version" {
+  type        = string
+  description = "The eks cluster version"
+}
+
 variable "oidc_provider_arn" {
   description = "EKC oidc provider arn in format 'arn:aws:iam::<account-id>:oidc-provider/oidc.eks.<region>.amazonaws.com/id/<oidc-id>'."
   type        = string

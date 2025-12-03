@@ -23,11 +23,14 @@ data "aws_ami" "this" {
 data "aws_ami" "gpu" {
   most_recent = true
 
+  # filter {
+  #   name   = "name"
+  #   values = [try(var.resource_configs_defaults["gpu"].nodeClass.ami_name, "amazon-eks-gpu-node-1.32-v20251120")]
+  # }
   filter {
     name   = "name"
-    values = [try(var.resource_configs_defaults["gpu"].nodeClass.ami_name, "amazon-eks-gpu-node-1.32-v20251120")]
+    values = ["amazon-eks-gpu-node-${var.cluster_version}-*"]
   }
-
   # Only EKS official AMIs are owned by AWS account 602401143452
   owners = ["602401143452"]
 }

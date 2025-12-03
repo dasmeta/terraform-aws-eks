@@ -599,6 +599,7 @@ module "karpenter" {
 
   source                    = "./modules/karpenter"
   cluster_name              = var.cluster_name
+  cluster_version           = var.cluster_version
   cluster_endpoint          = module.eks-cluster[0].host
   oidc_provider_arn         = module.eks-cluster[0].oidc_provider_arn
   subnet_ids                = local.subnet_ids
