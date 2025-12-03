@@ -17,6 +17,9 @@
  * - event-exporter
  *
  * ## Upgrading guide:
+ *  - from version >= 2.25.0, some manual actions are required.
+ *   This version adds Karpenter support for GPU instance types.
+ *   If you are using resource_configs_defaults, you now need to move it under resource_configs_defaults.default.
  *  - from <2.19.0 to >=2.19.0 version needs some manual actions as we upgraded underlying eks module from 18.x.x to 20.x.x,
  *    here you can find needed actions/changes docs and ready scripts which can be used:
  *    docs:
@@ -599,6 +602,7 @@ module "karpenter" {
 
   source                    = "./modules/karpenter"
   cluster_name              = var.cluster_name
+  cluster_version           = var.cluster_version
   cluster_endpoint          = module.eks-cluster[0].host
   oidc_provider_arn         = module.eks-cluster[0].oidc_provider_arn
   subnet_ids                = local.subnet_ids

@@ -1,0 +1,48 @@
+image:
+  repository: mendhak/http-https-echo
+  tag: 34
+
+containerPort: 8080
+
+service:
+  enabled: true
+  type: ClusterIP
+
+externalSecretsApiVersion: external-secrets.io/v1beta1 # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
+
+autoscaling:
+  enabled: true
+  minReplicas: 20
+  maxReplicas: 30
+  targetCPUUtilizationPercentage: 99
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+readinessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 1
+  httpGet:
+    path: /health
+    port: http
+livenessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 3
+  httpGet:
+    path: /health
+    port: http
+resources:
+  requests:
+    cpu: 15m
+
+ingress:
+  enabled: true
+  class: nginx
+  hosts:
+    - host: http-echo-karpenter.devops.dasmeta.com
+      paths:
+        - path: "/ping"
+          backend:
+            serviceName: http-echo
+            servicePort: 80

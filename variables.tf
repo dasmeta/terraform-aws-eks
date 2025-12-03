@@ -694,6 +694,16 @@ variable "flagger" {
   description = "Allows to create/deploy flagger operator to have custom rollout strategies like canary/blue-green and also it allows to create custom flagger metric templates"
 }
 
+variable "nvidia_gpu_driver" {
+  type = object({
+    enabled   = optional(bool, false)
+    namespace = optional(string, "nvidia-device-plugin")
+    configs   = optional(any, { "tolerations" : [{ "effect" : "NoSchedule", "key" : "nodetype", "operator" : "Equal", "value" : "gpu" }] })
+  })
+  default     = {}
+  description = "Configuration block for enabling and customizing the NVIDIA GPU driver installation."
+}
+
 variable "karpenter" {
   type = object({
     enabled                   = optional(bool, true)
