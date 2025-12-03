@@ -6,7 +6,7 @@ resource "helm_release" "nvidia_gpu_driver" {
   chart      = "nvidia-device-plugin"
   namespace  = var.nvidia_gpu_driver.namespace
 
-  create_namespace = true
+  create_namespace = false
 
   # Optional configs from the variable (merged into values)
   values = [
