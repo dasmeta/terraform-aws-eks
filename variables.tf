@@ -698,7 +698,7 @@ variable "nvidia_gpu_driver" {
   type = object({
     enabled          = optional(bool, false)
     namespace        = optional(string, "nvidia-device-plugin") # The chart we use has a hard-coded namespace name, so we set our namespace to match it.
-    create_namespace = optional(bool, false)
+    create_namespace = optional(bool, true)
     configs          = optional(any, { "tolerations" : [{ "effect" : "NoSchedule", "key" : "nodetype", "operator" : "Equal", "value" : "gpu" }] })
   })
   default     = {}
