@@ -8,6 +8,10 @@ resource "helm_release" "nvidia_gpu_driver" {
 
   create_namespace = false
 
+  set {
+    name  = "tolerations"
+    value = [{ "effect" : "NoSchedule", "key" : "gpu", "operator" : "Equal", "value" : "true" }]
+  }
   # Optional configs from the variable (merged into values)
   values = [
     jsonencode(var.nvidia_gpu_driver.configs)
