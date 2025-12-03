@@ -697,7 +697,7 @@ variable "flagger" {
 variable "nvidia_gpu_driver" {
   type = object({
     enabled          = optional(bool, false)
-    namespace        = optional(string, "kube-system") # The chart we use has a hard-coded namespace name, so we set our namespace to match it.
+    namespace        = optional(string, "kube-system")
     create_namespace = optional(bool, false)
     configs          = optional(any, { "tolerations" : [{ "effect" : "NoSchedule", "key" : "nodetype", "operator" : "Equal", "value" : "gpu" }] })
   })
