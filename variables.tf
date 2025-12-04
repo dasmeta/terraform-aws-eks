@@ -699,7 +699,22 @@ variable "nvidia_gpu_driver" {
     enabled          = optional(bool, false)
     namespace        = optional(string, "kube-system")
     create_namespace = optional(bool, false)
-    configs          = optional(any, { "tolerations" : [{ "effect" : "NoSchedule", "key" : "nodetype", "operator" : "Equal", "value" : "gpu" }] })
+    configs = optional(any, {
+      nodeSelector = {
+        nodetype = "gpu"
+      }
+
+      tolerations = [
+        {
+          effect   = "NoSchedule"
+          key      = "nodetype"
+          operator = "Equal"
+          value    = "gpu"
+        }
+      ]
+
+      affinity = {} # empty affinity
+    })
   })
   default     = {}
   description = "Configuration block for enabling and customizing the NVIDIA GPU driver installation."
