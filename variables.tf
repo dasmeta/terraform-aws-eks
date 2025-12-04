@@ -713,7 +713,7 @@ variable "nvidia_gpu_driver" {
         }
       ]
 
-      affinity = {} # empty affinity
+      affinity = null # empty affinity
     })
   })
   default     = {}
