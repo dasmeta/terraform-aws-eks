@@ -119,6 +119,11 @@
  *      ```
  *      It is supposed tat this will not break already created volumes, even if gp2 StorageClass has not annotated as default the script will pass with no issues, we just have to make sure we do apply the new version change immediately to not have issue for new k8s PVCs which have not explicitly set storageClass and use default. checks show that no major issue if we have two defaults but docs propose to not have and we need to be safe by removing the default-class annotation from gp2 preexist StorageClass
  *
+ *  - 2.24.7 version
+ *    - brings all 3 aws core/default components coredns, vpc-cni/eks-node, kube-proxy into terraform managed addons so that this components will get auto upgraded to newer versions compatible to eks version
+ *    - the default of most_recent has been changed from true to false to bring the aws defined default for the addons that we create so that no auto updates for same cluster version will be applied and no surprises, we just take the addon version for eks version we have that aws has marked as default
+ *    - got some cleanup of unnecessary tf codes
+ *
  * ## How to run
  * ```hcl
  * data "aws_availability_zones" "available" {}
