@@ -16,7 +16,6 @@ module "cluster_min" {
 
   node_groups = {
     example = {
-      max_capacity = 1
       min_size     = 1
       max_size     = 1
       desired_size = 1

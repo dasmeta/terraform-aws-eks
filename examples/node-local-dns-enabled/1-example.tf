@@ -13,7 +13,6 @@ module "this" {
   node_groups = {
     "default" : {
       "desired_size" : 1,
-      "max_capacity" : 1,
       "max_size" : 1,
       "min_size" : 1
     }

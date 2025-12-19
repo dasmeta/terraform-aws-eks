@@ -60,27 +60,21 @@ resource "helm_release" "aws-load-balancer-controller" {
   namespace        = var.namespace
   create_namespace = var.create_namespace
 
-  values = [jsonencode(module.custom_default_configs_merged.merged)]
-}
-
-
-module "custom_default_configs_merged" {
-  source  = "cloudposse/config/yaml//modules/deepmerge"
-  version = "1.0.2"
-
-  maps = [
-    {
-      clusterName = var.cluster_name
-      serviceAccount = {
-        name = var.service_account_name
-        annotations = {
-          "eks.amazonaws.com/role-arn" = "arn:aws:iam::${var.account_id}:role/${aws_iam_role.aws-load-balancer-role.name}"
+  values = [
+    jsonencode(
+      {
+        clusterName = var.cluster_name
+        serviceAccount = {
+          name = var.service_account_name
+          annotations = {
+            "eks.amazonaws.com/role-arn" = "arn:aws:iam::${var.account_id}:role/${aws_iam_role.aws-load-balancer-role.name}"
+          }
         }
+        enableWaf   = var.enable_waf
+        enableWafv2 = var.enable_waf
+        vpcId       = var.vpc_id
       }
-      enableWaf   = var.enable_waf
-      enableWafv2 = var.enable_waf
-      vpcId       = var.vpc_id
-    },
-    var.configs
+    ),
+    jsonencode(var.configs)
   ]
 }

@@ -249,7 +249,7 @@
  *      }
  *
  *      instance_type   = "t3.xlarge"
- *      max_capacity    = 1
+ *      max_size    = 1
  *      disk_size       = 50
  *      create_launch_template = false
  *      subnet = ["subnet_id"]
@@ -666,5 +666,5 @@ module "kyverno" {
   custom_policies = var.kyverno.custom_policies
   extra_configs   = var.kyverno.extra_configs
 
-  depends_on = [module.eks-core-components]
+  depends_on = [module.eks-core-components-and-alb]
 }
