@@ -45,7 +45,7 @@ No requirements.
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | EKS Cluster name for addon | `string` | n/a | yes |
 | <a name="input_cluster_version"></a> [cluster\_version](#input\_cluster\_version) | Version of eks cluster | `string` | `"1.32"` | no |
 | <a name="input_configs"></a> [configs](#input\_configs) | Pass additional addon config and override default ones | `any` | <pre>{<br/>  "node": {<br/>    "tolerateAllTaints": true<br/>  }<br/>}</pre> | no |
-| <a name="input_most_recent"></a> [most\_recent](#input\_most\_recent) | Whether to use addon latest compatible version | `bool` | `true` | no |
+| <a name="input_most_recent"></a> [most\_recent](#input\_most\_recent) | Whether to use addon latest compatible version | `bool` | `false` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | The namespace where addon pods getting placed. | `string` | `"kube-system"` | no |
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | Cluster OIDC arn for policy configuration in format 'arn:aws:iam::<account-id>:oidc-provider/oidc.eks.<region>.amazonaws.com/id/<oidc-id>' | `string` | n/a | yes |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region, if not set the region will be fetched from provider/caller current context | `string` | `null` | no |

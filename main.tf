@@ -123,6 +123,7 @@
  *    - brings all 3 aws core/default components coredns, vpc-cni/eks-node, kube-proxy into terraform managed addons so that this components will get auto upgraded to newer versions compatible to eks version
  *    - the default of most_recent has been changed from true to false to bring the aws defined default for the addons that we create so that no auto updates for same cluster version will be applied and no surprises, we just take the addon version for eks version we have that aws has marked as default
  *    - got some cleanup of unnecessary tf codes
+ *    - do not worry if you do upgrade of eks version and got change that decrease addon version as we have using now not mos recent but the aws default picked one
  *
  * ## How to run
  * ```hcl
