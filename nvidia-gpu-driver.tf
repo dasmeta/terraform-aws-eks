@@ -12,4 +12,6 @@ resource "helm_release" "nvidia_gpu_driver" {
   values = [
     jsonencode(var.nvidia_gpu_driver.configs)
   ]
+
+  depends_on = [module.eks-core-components-and-alb]
 }

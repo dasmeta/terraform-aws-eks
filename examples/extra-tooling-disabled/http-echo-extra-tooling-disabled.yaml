@@ -1,0 +1,49 @@
+# helm diff upgrade --install -n default http-echo dasmeta/base --version 0.3.15 -f ./http-echo-extra-tooling-disabled.yaml
+
+image:
+  repository: mendhak/http-https-echo
+  tag: 34
+
+containerPort: 8080
+
+service:
+  enabled: true
+  type: NodePort
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 99
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+readinessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 1
+  httpGet:
+    path: /health
+    port: http
+livenessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 3
+  httpGet:
+    path: /health
+    port: http
+resources:
+  requests:
+    cpu: 100m
+
+ingress:
+  enabled: true
+  class: alb
+  annotations:
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+  hosts:
+    - host: test-with-extra-tooling-disabled.devops.dasmeta.com
+      paths:
+        - path: "/"
+          pathType: Prefix
+  tls: []

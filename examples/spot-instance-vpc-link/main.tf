@@ -11,7 +11,7 @@ locals {
       # }
 
       instance_type          = "t3.medium"
-      max_capacity           = 1
+      max_size               = 1
       disk_size              = 50
       create_launch_template = false
       subnet                 = ["subnet_id"]

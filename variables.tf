@@ -210,12 +210,11 @@ variable "cluster_addons" {
 }
 
 variable "default_addons" {
-  description = "Allows to set/override default eks addons(like coredns, kube-proxy and aws-cni) configurations."
-  type        = any
-  default = {
-    coredns = {
-      most_recent = true
-      configuration_values = { # can be here we have defaults for replica count, resource request/limits and corefile config file, in case there are dns resolve issues on high load websites check to increase limits
+  description = "Allows to set/override default eks addons(like coredns, kube-proxy and vpc-cni) configurations. Ww have them here to have this core components be managed via addons instead of default managed component."
+  type = object({
+    coredns = optional(object({
+      most_recent = optional(bool, false)
+      configuration_values = optional(any, { # here we have defaults for replica count, resource request/limits and corefile config file, in case there are dns resolve issues on high load websites check to increase limits
         replicaCount = 2
         resources = {
           limits = {
@@ -249,9 +248,17 @@ variable "default_addons" {
             loadbalance
         }
         EOT
-      }
-    }
-  }
+    }) }), {})
+    vpc-cni = optional(object({
+      most_recent          = optional(bool, false)
+      configuration_values = optional(any, {})
+    }), {})
+    kube-proxy = optional(object({
+      most_recent          = optional(bool, false)
+      configuration_values = optional(any, {})
+    }), {})
+  })
+  default = {}
 }
 
 variable "map_roles" {

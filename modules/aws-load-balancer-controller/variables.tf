@@ -88,7 +88,7 @@ variable "enable_waf" {
 
 variable "chart_version" {
   type        = string
-  default     = "1.12.0"
+  default     = "1.16.0"
   description = "The app chart version"
 }
 

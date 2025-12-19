@@ -25,9 +25,7 @@ https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/ingr
 
 ## Modules
 
-| Name | Source | Version |
-|------|--------|---------|
-| <a name="module_custom_default_configs_merged"></a> [custom\_default\_configs\_merged](#module\_custom\_default\_configs\_merged) | cloudposse/config/yaml//modules/deepmerge | 1.0.2 |
+No modules.
 
 ## Resources
 
@@ -43,7 +41,7 @@ https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/ingr
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | AWS Account Id to apply changes into | `string` | n/a | yes |
-| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The app chart version | `string` | `"1.12.0"` | no |
+| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The app chart version | `string` | `"1.16.0"` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | eks cluster name | `string` | `""` | no |
 | <a name="input_configs"></a> [configs](#input\_configs) | Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller/1.11.0 | `any` | `{}` | no |
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | wether or no to create namespace | `bool` | `false` | no |

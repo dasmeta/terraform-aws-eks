@@ -22,7 +22,7 @@ variable "cluster_version" {
 
 variable "most_recent" {
   type        = bool
-  default     = true
+  default     = false
   description = "Whether to use addon latest compatible version"
 }
 
