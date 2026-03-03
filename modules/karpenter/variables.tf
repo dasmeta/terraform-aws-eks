@@ -49,7 +49,7 @@ variable "node_iam_role_additional_policies" {
 
 variable "chart_version" {
   type        = string
-  default     = "1.4.0"
+  default     = "1.9.0"
   description = "The app chart version"
 }
 

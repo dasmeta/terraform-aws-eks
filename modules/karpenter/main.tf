@@ -44,7 +44,7 @@
 # creates aws eks karpenter needed policy/role/queue/event-subscriber resources to use in karpenter helm
 module "this" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
-  version = "20.34.0"
+  version = "20.37.2"
 
   node_iam_role_name                = "Karpenter-${substr(var.cluster_name, 0, 25)}-"
   cluster_name                      = var.cluster_name
@@ -56,6 +56,16 @@ module "this" {
   enable_irsa                       = true
   create_instance_profile           = true
   create_node_iam_role              = true
+
+  # Required for Karpenter 1.9+ instance profile garbage collection (iam:ListInstanceProfiles cannot be resource-scoped)
+  # TODO: with module version >=v21.15.1 this policy being set automatically, so we can remove this after upgrading the module version
+  iam_policy_statements = [
+    {
+      sid       = "AllowUnscopedInstanceProfileListAction"
+      actions   = ["iam:ListInstanceProfiles"]
+      resources = ["*"]
+    }
+  ]
 }
 
 # installs karpenter operator crds helm package (we need this separate chart for crds, as the below main chart do not support crds upgrade, doc: https://karpenter.sh/docs/upgrading/upgrade-guide/#crd-upgrades)
@@ -84,41 +94,8 @@ resource "helm_release" "this" {
   wait             = var.wait
   skip_crds        = true
 
-  values = [jsonencode(module.karpenter_custom_default_configs_merged.merged)]
-
-  depends_on = [helm_release.this_crds]
-}
-
-# allows to create karpenter crd resources such as NodeClasses, NodePools
-resource "helm_release" "karpenter_nodes" {
-  name             = "karpenter-node-classes"
-  repository       = "https://dasmeta.github.io/helm"
-  chart            = "karpenter-nodes"
-  namespace        = var.namespace
-  version          = var.resource_chart_version
-  create_namespace = false
-  atomic           = var.atomic
-  wait             = var.wait
-
-  values = [jsonencode(merge(
-    var.resource_configs,
-    {
-      ec2NodeClasses          = module.ec2_node_classes_custom_default_configs.merged
-      nodePools               = local.nodePools
-      karpenterServiceAccount = module.this.service_account
-      karpenterNamespace      = var.namespace
-    }
-  ))]
-
-  depends_on = [helm_release.this]
-}
-
-module "karpenter_custom_default_configs_merged" {
-  source  = "cloudposse/config/yaml//modules/deepmerge"
-  version = "1.0.2"
-
-  maps = [
-    {
+  values = [
+    jsonencode({
       serviceAccount = {
         name = module.this.service_account
         annotations = {
@@ -140,18 +117,39 @@ module "karpenter_custom_default_configs_merged" {
           memory = "256Mi"
         }
       }
-    },
-    var.configs
+    }),
+    jsonencode(var.configs)
   ]
+
+  depends_on = [helm_release.this_crds]
 }
 
-module "ec2_node_classes_custom_default_configs" {
-  source  = "cloudposse/config/yaml//modules/deepmerge"
-  version = "1.0.2"
+# allows to create karpenter crd resources such as NodeClasses, NodePools
+resource "helm_release" "karpenter_nodes" {
+  name             = "karpenter-node-classes"
+  repository       = "https://dasmeta.github.io/helm"
+  chart            = "karpenter-nodes"
+  namespace        = var.namespace
+  version          = var.resource_chart_version
+  create_namespace = false
+  atomic           = var.atomic
+  wait             = var.wait
 
-  maps = [
-    { default = local.defaultEc2NodeClass },
-    { gpu = local.defaultEc2NodeClassGpu },
-    try(var.resource_configs.ec2NodeClasses, {})
+  values = [
+    jsonencode(merge( # TODO: check if this merge needed or we can have var.resource_configs with its own line in values
+      var.resource_configs,
+      {
+        ec2NodeClasses = {
+          default = local.defaultEc2NodeClass,
+          gpu     = local.defaultEc2NodeClassGpu
+        }
+        nodePools               = local.nodePools
+        karpenterServiceAccount = module.this.service_account
+        karpenterNamespace      = var.namespace
+      }
+    )),
+    jsonencode({ ec2NodeClasses = try(var.resource_configs.ec2NodeClasses, {}) })
   ]
+
+  depends_on = [helm_release.this]
 }

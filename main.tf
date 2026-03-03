@@ -468,21 +468,43 @@ module "efs-csi-driver" {
   depends_on = [module.eks-core-components]
 }
 
-resource "helm_release" "cert-manager" {
-  count = var.create_cert_manager ? 1 : var.metrics_exporter == "adot" ? 1 : 0
+# cert-manager module - combines Helm chart installation and resource creation
+module "cert-manager" {
+  count = var.create && (var.create_cert_manager || var.metrics_exporter == "adot") ? 1 : 0
 
-  namespace        = "cert-manager"
-  create_namespace = true
-  name             = "cert-manager"
-  chart            = "cert-manager"
-  repository       = "https://charts.jetstack.io"
-  atomic           = true
-  version          = var.cert_manager_chart_version
+  source = "./modules/cert-manager"
 
-  set {
-    name  = "installCRDs"
-    value = "true"
-  }
+  chart_version = var.cert_manager_chart_version
+  namespace     = var.cert_manager.namespace
+  atomic        = var.cert_manager.atomic
+  configs       = var.cert_manager.configs
+  extra_configs = var.cert_manager.extra_configs
+
+  cluster_name      = var.cluster_name
+  oidc_provider_arn = try(module.eks-cluster[0].oidc_provider_arn, "")
+
+  # Transform cluster_issuers list to add cluster_name and oidc_provider_arn to each issuer's dns01.iam_role
+  cluster_issuers = [
+    for issuer in try(var.cert_manager.resources.cluster_issuers, []) : merge(
+      issuer,
+      {
+        dns01 = try(issuer.dns01, null) != null ? merge(
+          issuer.dns01,
+          {
+            iam_role = try(issuer.dns01.iam_role, null) != null ? merge(
+              issuer.dns01.iam_role,
+              {
+                cluster_name      = var.cluster_name
+                oidc_provider_arn = try(module.eks-cluster[0].oidc_provider_arn, "")
+              }
+            ) : null
+          }
+        ) : null
+      }
+    )
+  ]
+
+  certificates = try(var.cert_manager.resources.certificates, [])
 
   depends_on = [module.eks-core-components-and-alb]
 }
@@ -641,6 +663,18 @@ module "linkerd" {
   configs_viz = var.linkerd.configs_viz
   crds_create = var.linkerd.crds_create
   viz_create  = var.linkerd.viz_create
+
+  depends_on = [module.eks-core-components-and-alb]
+}
+
+module "istio" {
+  source  = "dasmeta/shared/any//modules/istio"
+  version = "1.7.5"
+
+  count = var.create && var.istio.enabled ? 1 : 0
+
+
+  configs = var.istio.configs
 
   depends_on = [module.eks-core-components-and-alb]
 }

@@ -1,0 +1,47 @@
+# helm diff upgrade --install -n default http-echo dasmeta/base --version 0.3.18 -f ./http-echo.yaml
+image:
+  repository: mendhak/http-https-echo
+  tag: "34"
+
+containerPort: 8080
+
+service:
+  enabled: true
+  type: ClusterIP
+
+# Disable traditional Ingress and use Gateway API instead
+ingress:
+  enabled: false
+
+gatewayApi:
+  enabled: true
+  # HTTPRoute: Route traffic to the service with 403 for /admin path
+  httpRoutes:
+    - name: http-echo-route
+      parentRefs:
+        - name: main
+          sectionName: https-443
+        - name: main
+          sectionName: https-443-wildcard
+      hostnames:
+        - "${domain}"
+        - "*.${domain}"
+      rules:
+        # Rule 1: Return 403 for /admin and /forbidden paths (automatically creates AuthorizationPolicy)
+        - matches:
+            - path:
+                value: /admin
+                type: PathPrefix
+          directResponse:
+            status: 403
+        - matches:
+            - path:
+                value: /forbidden
+                type: PathPrefix
+          directResponse:
+            status: 403
+        # Rule 2: Route all other traffic to the service
+        - matches:
+            - path:
+                value: /
+                type: PathPrefix
