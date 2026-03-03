@@ -15,8 +15,7 @@
 module "this" {
   source = "../.."
 
-  cluster_name    = "test-with-istio"
-  cluster_version = "1.33"
+  cluster_name = "test-with-istio"
 
   vpc = {
     link = {
