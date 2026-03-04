@@ -9,7 +9,7 @@ locals {
   cluster_issuer_solvers = {
     for issuer in var.cluster_issuers : issuer.name => concat(
       try(issuer.dns01.enabled, false) && issuer.dns01 != null ? [{
-        dns01 = sensitive(issuer.dns01.configs)
+        dns01 = issuer.dns01.configs
       }] : [],
       try(issuer.http01.enabled, false) && issuer.http01 != null ? [{
         http01 = issuer.http01.gateway_http_route != null ? {
@@ -35,7 +35,7 @@ locals {
   certificate_specs = {
     for cert in var.certificates : "${cert.namespace}/${cert.name}" => merge(
       {
-        secretName = cert.secret_name
+        secretName = coalesce(cert.secret_name, cert.name)
         issuerRef = {
           name  = cert.issuer_ref.name
           kind  = cert.issuer_ref.kind
@@ -61,4 +61,15 @@ locals {
   all_hosted_zone_arns = distinct(flatten([
     for issuer in local.issuers_with_dns01_iam : length(try(issuer.dns01.iam_role.hosted_zone_arns, [])) > 0 ? issuer.dns01.iam_role.hosted_zone_arns : []
   ]))
+
+  # DNS01 secret metadata only (names, no sensitive data) - safe for for_each.
+  dns01_secret_meta = flatten([
+    for issuer in var.cluster_issuers : [
+      for ref in try(issuer.dns01.secret_refs, []) : {
+        key       = "${issuer.name}/${ref.name}"
+        name      = "${issuer.name}-${ref.name}"
+        namespace = var.namespace
+      }
+    ] if try(issuer.dns01.enabled, false) && issuer.dns01 != null && length(try(issuer.dns01.secret_refs, [])) > 0
+  ])
 }

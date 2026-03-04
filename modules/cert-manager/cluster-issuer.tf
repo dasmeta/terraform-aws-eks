@@ -21,6 +21,7 @@ resource "kubectl_manifest" "cluster_issuer" {
   })
 
   depends_on = [
-    helm_release.cert-manager
+    helm_release.cert-manager,
+    kubectl_manifest.dns01_solver_secret
   ]
 }

@@ -125,6 +125,10 @@
  *    - got some cleanup of unnecessary tf codes
  *    - have aws-load-balancer-controller helm chart upgraded to new minor compatible version
  *    - do not worry if you do upgrade of eks version and got change that decrease addon version as we have using now not mos recent but the aws default picked one
+ *  - from version >= 2.25.0, no manual actions are required. here are what this release brings:
+ *    - upgraded eks cluster to 1.33 version
+ *    - gateway-api(istio) support added (example how to use can be found in examples/eks-with-istio-gateway-api)
+ *    - improved cert-manager implementation by adding cluster-issuer and certificate resources creation and validation based on HTTP01 and DNS01 challenges(example how to used with cloudflare can be found in examples/eks-with-cert-manager)
  *
  * ## How to run
  * ```hcl
@@ -483,28 +487,9 @@ module "cert-manager" {
   cluster_name      = var.cluster_name
   oidc_provider_arn = try(module.eks-cluster[0].oidc_provider_arn, "")
 
-  # Transform cluster_issuers list to add cluster_name and oidc_provider_arn to each issuer's dns01.iam_role
-  cluster_issuers = [
-    for issuer in try(var.cert_manager.resources.cluster_issuers, []) : merge(
-      issuer,
-      {
-        dns01 = try(issuer.dns01, null) != null ? merge(
-          issuer.dns01,
-          {
-            iam_role = try(issuer.dns01.iam_role, null) != null ? merge(
-              issuer.dns01.iam_role,
-              {
-                cluster_name      = var.cluster_name
-                oidc_provider_arn = try(module.eks-cluster[0].oidc_provider_arn, "")
-              }
-            ) : null
-          }
-        ) : null
-      }
-    )
-  ]
-
-  certificates = try(var.cert_manager.resources.certificates, [])
+  cluster_issuers   = try(var.cert_manager.resources.cluster_issuers, [])
+  dns01_secret_data = try(var.cert_manager.resources.dns01_secret_data, {})
+  certificates      = try(var.cert_manager.resources.certificates, [])
 
   depends_on = [module.eks-core-components-and-alb]
 }
@@ -669,10 +654,9 @@ module "linkerd" {
 
 module "istio" {
   source  = "dasmeta/shared/any//modules/istio"
-  version = "1.7.5"
+  version = "1.7.6"
 
   count = var.create && var.istio.enabled ? 1 : 0
-
 
   configs = var.istio.configs
 

@@ -474,13 +474,13 @@ variable "create_cert_manager" {
 variable "cert_manager_chart_version" {
   description = "The cert-manager helm chart version."
   type        = string
-  default     = "1.16.2"
+  default     = "1.16.5"
 }
 
 variable "cert_manager" {
   type = object({
     # enabled       = optional(bool, false)      # Reserved: will replace create_cert_manager when migrated, check above TODO for this
-    # chart_version = optional(string, "1.16.2") # Reserved: will replace cert_manager_chart_version when migrated, check above TODO for this
+    # chart_version = optional(string, "1.16.5") # Reserved: will replace cert_manager_chart_version when migrated, check above TODO for this
     namespace = optional(string, "cert-manager") # Namespace where cert-manager is installed
     atomic    = optional(bool, true)             # Whether to auto rollback if helm install fails
     configs = optional(object({                  # default configuration (Helm values) passed to the cert-manager controller chart
@@ -488,14 +488,22 @@ variable "cert_manager" {
     }), {})
     extra_configs = optional(any, {}) # Extra configuration (Helm values) passed to the cert-manager controller chart
     resources = optional(object({     # Configuration for cert-manager resources (ClusterIssuers and Certificates)
+      # Map of DNS01 secret data keyed by "${issuer.name}/${secret_ref.name}" (e.g. "letsencrypt-prod/cloudflare-api"). Pass sensitive token/API data here so for_each is not sensitive.
+      dns01_secret_data = optional(map(map(string)), {})
       cluster_issuers = optional(list(object({
         name                    = optional(string, "letsencrypt-prod")                               # Name of the ClusterIssuer resource
         email                   = optional(string, "support@dasmeta.com")                            # Required - email for Let's Encrypt account registration
         server                  = optional(string, "https://acme-v02.api.letsencrypt.org/directory") # ACME server URL
         private_key_secret_name = optional(string, null)                                             # Optional: custom secret name for private key, defaults to cluster_issuer.name
+        # DNS01 challenge solver. For Route53 in the same AWS account we create the IAM role for the cert-manager controller automatically (see iam_role below).
+        # For other DNS providers (e.g. Cloudflare) or Route53 in another account: use secret_refs + dns01_secret_data to create API/token secrets here, or create them separately and reference in configs.
         dns01 = optional(object({
           enabled = optional(bool, false) # Enable DNS01 challenge solver
-          configs = optional(any, {})     # DNS01 solver configuration (e.g., route53 configs)
+          configs = optional(any, {})     # DNS01 solver configuration (e.g., route53 configs, or secretRef for Cloudflare/other providers)
+          # Optional: create Kubernetes secrets for the solver. List only names here; pass sensitive data via resources.dns01_secret_data so for_each is not sensitive. Created secret name = "${cluster_issuer.name}-${ref.name}".
+          secret_refs = optional(list(object({
+            name = string # Secret name (final name in cluster will be "${cluster_issuer.name}-${name}")
+          })), [])
           iam_role = optional(object({
             enabled          = optional(bool, true)       # Enable IAM role for DNS01 (IRSA) - uses cert-manager service account from Helm chart
             hosted_zone_arns = optional(list(string), []) # Optional: restrict to specific hosted zones, empty list = all zones
@@ -519,7 +527,7 @@ variable "cert_manager" {
       certificates = optional(list(object({
         name        = string                      # Certificate resource name
         namespace   = optional(string, "default") # Namespace for the certificate
-        secret_name = string                      # Secret name where certificate will be stored
+        secret_name = optional(string, null)      # Optional: secret name for the issued cert; default is certificate name
         issuer_ref = object({
           name  = string                              # ClusterIssuer name to use
           kind  = optional(string, "ClusterIssuer")   # Issuer kind
@@ -866,15 +874,8 @@ variable "istio" {
   type = object({
     enabled = optional(bool, false)
     configs = optional(any, {}) # Istio configuration, see terraform-any-shared/modules/istio for available options
-    gateway_iam_role = optional(object({
-      enabled              = optional(bool, false)                    # IAM role is typically NOT needed - AWS Load Balancer Controller handles LoadBalancer creation
-      service_account_name = optional(string, "istio-ingressgateway") # Service account name for istio-gateway Helm chart (default: istio-ingressgateway)
-      namespace            = optional(string, "istio-system")         # Namespace where istio-gateway service account exists
-    }), {})
   })
-  default = {
-    enabled = false
-  }
+  default     = {}
   description = "Allows to create/configure Istio with Gateway API in eks cluster. NOTE: IAM role is typically NOT needed - AWS Load Balancer Controller (which has its own IAM role) handles LoadBalancer creation for all LoadBalancer services, including those created by istio-gateway Helm chart and Gateway API Gateways."
 }
 

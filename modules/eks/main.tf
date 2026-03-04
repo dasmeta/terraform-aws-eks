@@ -28,11 +28,13 @@ module "eks-cluster" {
 
   self_managed_node_groups         = var.worker_groups
   self_managed_node_group_defaults = var.workers_group_defaults
-  eks_managed_node_group_defaults  = var.node_groups_default
-  eks_managed_node_groups          = var.node_groups
-  cluster_addons                   = var.cluster_addons
-
-  tags = var.tags
+  eks_managed_node_group_defaults = merge(
+    var.node_groups_default,
+    { ami_type = try(var.node_groups_default.ami_type, null) != null ? var.node_groups_default.ami_type : "AL2023_x86_64_STANDARD" } # set default ami type if not set as with 1.33 eks version AL2 support removed, but underlying module still uses AL2 as default, TODO: the newer versions of the module already have AL2023_x86_64_STANDARD as default so consider to remove this after upgrade
+  )
+  eks_managed_node_groups = var.node_groups
+  cluster_addons          = var.cluster_addons
+  tags                    = var.tags
 }
 
 resource "null_resource" "enable_cloudwatch_metrics_autoscaling" {

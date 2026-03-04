@@ -99,6 +99,38 @@ locals {
   parent_zone  = join(".", slice(local.domain_parts, 1, length(local.domain_parts)))
 }
 
+## Security group for the external NLB - restricts access to the load balancer from allowed IP only
+## NOTE: this can be enabled to restrict access to the external NLB to allowed IP only, we just keep it here for reference example
+# resource "aws_security_group" "nlb_restricted" {
+#   name        = "istio-gateway-nlb-restricted"
+#   description = "Restricts access to Istio Gateway external NLB to allowed IP only"
+#   vpc_id      = data.aws_vpcs.ids.ids[0]
+
+#   ingress {
+#     description = "HTTPS from allowed IP"
+#     from_port   = 443
+#     to_port     = 443
+#     protocol    = "tcp"
+#     cidr_blocks = ["178.78.131.39/32"] # replace with your allowed IP which you want to whitelist for external NLB access
+#   }
+
+#   ingress {
+#     description = "HTTP from allowed IP"
+#     from_port   = 80
+#     to_port     = 80
+#     protocol    = "tcp"
+#     cidr_blocks = ["178.78.131.39/32"]
+#   }
+
+#   egress {
+#     description = "Allow all outbound for NLB to reach targets"
+#     from_port   = 0
+#     to_port     = 0
+#     protocol    = "-1"
+#     cidr_blocks = ["0.0.0.0/0"]
+#   }
+# }
+
 # NS delegation record in parent zone (devops.dasmeta.com)
 # Creates NS record for "istio" subdomain pointing to the public zone name servers
 module "dns_parent_delegation" {

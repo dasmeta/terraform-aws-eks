@@ -29,15 +29,11 @@ module "this" {
       desired_size = 1,
       max_size     = 1,
       min_size     = 1
-      # subnet_ids   = [data.aws_subnets.subnets.ids[0]]
-      # availability_zones = ["eu-central-1a"] # pin the test setup nodes to a specific zone
     }
   }
   node_groups_default = {
     capacity_type  = "SPOT",
-    instance_types = ["t3.medium"]
-    ami_type       = "AL2023_x86_64_STANDARD"
-    # availability_zones = ["eu-central-1a"] # pin the test setup nodes to a specific zone
+    instance_types = ["t3.medium", "t3a.medium", "t3.small", "t3a.small", "t3.xlarge", "t3a.xlarge", "t3.large", "t3a.large"]
   }
 
   alarms = {
@@ -154,232 +150,237 @@ module "this" {
   }
 
   # Enable Istio with Gateway API configuration
-  # NOTE: gateway_iam_role is typically NOT needed - AWS Load Balancer Controller handles LoadBalancer creation
-  # for all LoadBalancer services (including istio-gateway and Gateway API Gateways)
+  # NOTE: AWS Load Balancer Controller handles LoadBalancer creation for all LoadBalancer services
+  # (including istio-gateway and Gateway API Gateways)
   istio = {
     enabled = true
-    # gateway_iam_role is disabled by default (AWS Load Balancer Controller handles LoadBalancer creation)
     configs = {
       gateway = {
         # Enable Gateway API resources (native k8s Gateway objects)
-        resources = [
-          # External Gateway (internet-facing AWS NLB)
-          {
-            name             = "main"
-            gatewayClassName = "istio"
-            listeners = [
-              # HTTP listener on port 80
-              {
-                name     = "http-80"
-                hostname = "${var.domain}"
-                port     = 80
-                protocol = "HTTP"
-                allowedRoutes = {
-                  namespaces = {
-                    from = "All"
-                  }
-                }
-              },
-              # HTTPS listener on port 443 with TLS
-              {
-                name     = "https-443"
-                hostname = "${var.domain}"
-                port     = 443
-                protocol = "HTTPS"
-                allowedRoutes = {
-                  namespaces = {
-                    from = "All"
-                  }
-                }
-                tls = {
-                  mode = "Terminate"
-                  certificateRefs = [
-                    {
-                      name  = "wildcard-istio-devops-dasmeta-com-tls"
-                      kind  = "Secret"
-                      group = ""
+        api_resources = {
+          gateways = [
+            # External Gateway (internet-facing AWS NLB)
+            {
+              name             = "main"
+              gatewayClassName = "istio"
+              listeners = [
+                # HTTP listener on port 80
+                {
+                  name     = "http-80"
+                  hostname = "${var.domain}"
+                  port     = 80
+                  protocol = "HTTP"
+                  allowedRoutes = {
+                    namespaces = {
+                      from = "All"
                     }
-                  ]
-                }
-              },
-              # HTTP listener on port 80
-              {
-                name     = "http-80-wildcard"
-                hostname = "*.${var.domain}"
-                port     = 80
-                protocol = "HTTP"
-                allowedRoutes = {
-                  namespaces = {
-                    from = "All"
                   }
-                }
-              },
-              # HTTPS listener on port 443 with TLS
-              {
-                name     = "https-443-wildcard"
-                hostname = "*.${var.domain}"
-                port     = 443
-                protocol = "HTTPS"
-                allowedRoutes = {
-                  namespaces = {
-                    from = "All"
-                  }
-                }
-                tls = {
-                  mode = "Terminate"
-                  certificateRefs = [
-                    {
-                      name  = "wildcard-istio-devops-dasmeta-com-tls"
-                      kind  = "Secret"
-                      group = ""
+                },
+                # HTTPS listener on port 443 with TLS
+                {
+                  name     = "https-443"
+                  hostname = "${var.domain}"
+                  port     = 443
+                  protocol = "HTTPS"
+                  allowedRoutes = {
+                    namespaces = {
+                      from = "All"
                     }
-                  ]
+                  }
+                  tls = {
+                    mode = "Terminate"
+                    certificateRefs = [
+                      {
+                        name  = "wildcard-istio-devops-dasmeta-com-tls"
+                        kind  = "Secret"
+                        group = ""
+                      }
+                    ]
+                  }
+                },
+                # HTTP listener on port 80
+                {
+                  name     = "http-80-wildcard"
+                  hostname = "*.${var.domain}"
+                  port     = 80
+                  protocol = "HTTP"
+                  allowedRoutes = {
+                    namespaces = {
+                      from = "All"
+                    }
+                  }
+                },
+                # HTTPS listener on port 443 with TLS
+                {
+                  name     = "https-443-wildcard"
+                  hostname = "*.${var.domain}"
+                  port     = 443
+                  protocol = "HTTPS"
+                  allowedRoutes = {
+                    namespaces = {
+                      from = "All"
+                    }
+                  }
+                  tls = {
+                    mode = "Terminate"
+                    certificateRefs = [
+                      {
+                        name  = "wildcard-istio-devops-dasmeta-com-tls"
+                        kind  = "Secret"
+                        group = ""
+                      }
+                    ]
+                  }
+                }
+              ]
+              # AWS NLB infrastructure configuration for external LoadBalancer
+              infrastructure = {
+                annotations = {
+                  "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
+                  "service.beta.kubernetes.io/aws-load-balancer-type"            = "nlb"
+                  "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
+                  ## attaching custom security groups to the NLB for restricting access to the NLB
+                  ## NOTE: this can be enabled to restrict access to the external NLB to allowed IP only
+                  # "service.beta.kubernetes.io/aws-load-balancer-security-groups"                     = aws_security_group.nlb_restricted.id
+                  # "service.beta.kubernetes.io/aws-load-balancer-manage-backend-security-group-rules" = "true" # needed for load balancer to backend services access
                 }
               }
-            ]
-            # AWS NLB infrastructure configuration for external LoadBalancer
-            infrastructure = {
-              annotations = {
-                "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
-                "service.beta.kubernetes.io/aws-load-balancer-type"            = "nlb"
-                "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
+            },
+            # Internal Gateway (internal AWS NLB)
+            {
+              name             = "main-internal"
+              gatewayClassName = "istio"
+              listeners = [
+                # HTTP listener on port 80
+                {
+                  name     = "http-80"
+                  hostname = "${var.domain}"
+                  port     = 80
+                  protocol = "HTTP"
+                  allowedRoutes = {
+                    namespaces = {
+                      from = "All"
+                    }
+                  }
+                },
+                # HTTPS listener on port 443 with TLS
+                {
+                  name     = "https-443"
+                  hostname = "${var.domain}"
+                  port     = 443
+                  protocol = "HTTPS"
+                  allowedRoutes = {
+                    namespaces = {
+                      from = "All"
+                    }
+                  }
+                  tls = {
+                    mode = "Terminate"
+                    certificateRefs = [
+                      {
+                        name  = "wildcard-istio-devops-dasmeta-com-tls"
+                        kind  = "Secret"
+                        group = ""
+                      }
+                    ]
+                  }
+                },
+                # HTTP listener on port 80 wildcard
+                {
+                  name     = "http-80-wildcard"
+                  hostname = "*.${var.domain}"
+                  port     = 80
+                  protocol = "HTTP"
+                  allowedRoutes = {
+                    namespaces = {
+                      from = "All"
+                    }
+                  }
+                },
+                # HTTPS listener on port 443 with TLS wildcard
+                {
+                  name     = "https-443-wildcard"
+                  hostname = "*.${var.domain}"
+                  port     = 443
+                  protocol = "HTTPS"
+                  allowedRoutes = {
+                    namespaces = {
+                      from = "All"
+                    }
+                  }
+                  tls = {
+                    mode = "Terminate"
+                    certificateRefs = [
+                      {
+                        name  = "wildcard-istio-devops-dasmeta-com-tls"
+                        kind  = "Secret"
+                        group = ""
+                      }
+                    ]
+                  }
+                }
+              ]
+              # AWS NLB infrastructure configuration for internal LoadBalancer
+              infrastructure = {
+                annotations = {
+                  "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internal"
+                  "service.beta.kubernetes.io/aws-load-balancer-type"            = "nlb"
+                  "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
+                }
               }
             }
-          },
-          # Internal Gateway (internal AWS NLB)
-          {
-            name             = "main-internal"
-            gatewayClassName = "istio"
-            listeners = [
-              # HTTP listener on port 80
-              {
-                name     = "http-80"
-                hostname = "${var.domain}"
-                port     = 80
-                protocol = "HTTP"
-                allowedRoutes = {
-                  namespaces = {
-                    from = "All"
+          ]
+          # HTTP to HTTPS redirect for both Gateways
+          # This creates HTTPRoute resources that automatically redirect all HTTP traffic to HTTPS
+          httpRoutes = [
+            # HTTP to HTTPS redirect for external Gateway
+            {
+              name = "http-to-https-redirect-external"
+              parentRefs = [
+                {
+                  name        = "main"
+                  sectionName = "http-80"
+                },
+                {
+                  name        = "main"
+                  sectionName = "https-80-wildcard"
+                }
+              ]
+              hostnames = ["${var.domain}", "*.${var.domain}"]
+              rules = [
+                {
+                  redirect = {
+                    scheme     = "https"
+                    statusCode = 301
                   }
                 }
-              },
-              # HTTPS listener on port 443 with TLS
-              {
-                name     = "https-443"
-                hostname = "${var.domain}"
-                port     = 443
-                protocol = "HTTPS"
-                allowedRoutes = {
-                  namespaces = {
-                    from = "All"
+              ]
+            },
+            # HTTP to HTTPS redirect for internal Gateway
+            {
+              name = "http-to-https-redirect-internal"
+              parentRefs = [
+                {
+                  name        = "main-internal"
+                  sectionName = "http-80"
+                },
+                {
+                  name        = "main-internal"
+                  sectionName = "https-80-wildcard"
+                }
+              ]
+              hostnames = ["${var.domain}", "*.${var.domain}"]
+              rules = [
+                {
+                  redirect = {
+                    scheme     = "https"
+                    statusCode = 301
                   }
                 }
-                tls = {
-                  mode = "Terminate"
-                  certificateRefs = [
-                    {
-                      name  = "wildcard-istio-devops-dasmeta-com-tls"
-                      kind  = "Secret"
-                      group = ""
-                    }
-                  ]
-                }
-              },
-              # HTTP listener on port 80 wildcard
-              {
-                name     = "http-80-wildcard"
-                hostname = "*.${var.domain}"
-                port     = 80
-                protocol = "HTTP"
-                allowedRoutes = {
-                  namespaces = {
-                    from = "All"
-                  }
-                }
-              },
-              # HTTPS listener on port 443 with TLS wildcard
-              {
-                name     = "https-443-wildcard"
-                hostname = "*.${var.domain}"
-                port     = 443
-                protocol = "HTTPS"
-                allowedRoutes = {
-                  namespaces = {
-                    from = "All"
-                  }
-                }
-                tls = {
-                  mode = "Terminate"
-                  certificateRefs = [
-                    {
-                      name  = "wildcard-istio-devops-dasmeta-com-tls"
-                      kind  = "Secret"
-                      group = ""
-                    }
-                  ]
-                }
-              }
-            ]
-            # AWS NLB infrastructure configuration for internal LoadBalancer
-            infrastructure = {
-              annotations = {
-                "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internal"
-                "service.beta.kubernetes.io/aws-load-balancer-type"            = "nlb"
-                "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
-              }
+              ]
             }
-          }
-        ]
-        # HTTP to HTTPS redirect for both Gateways
-        # This creates HTTPRoute resources that automatically redirect all HTTP traffic to HTTPS
-        httpRoutes = [
-          # HTTP to HTTPS redirect for external Gateway
-          {
-            name = "http-to-https-redirect-external"
-            parentRefs = [
-              {
-                name        = "main"
-                sectionName = "http-80"
-              },
-              {
-                name        = "main"
-                sectionName = "https-80-wildcard"
-              }
-            ]
-            hostnames = ["${var.domain}", "*.${var.domain}"]
-            rules = [
-              {
-                redirect = {
-                  scheme     = "https"
-                  statusCode = 301
-                }
-              }
-            ]
-          },
-          # HTTP to HTTPS redirect for internal Gateway
-          {
-            name = "http-to-https-redirect-internal"
-            parentRefs = [
-              {
-                name        = "main-internal"
-                sectionName = "http-80"
-              },
-              {
-                name        = "main-internal"
-                sectionName = "https-80-wildcard"
-              }
-            ]
-            hostnames = ["${var.domain}", "*.${var.domain}"]
-            rules = [
-              {
-                redirect = {
-                  scheme     = "https"
-                  statusCode = 301
-                }
-              }
-            ]
-          }
-        ]
+          ]
+        }
       }
       # Istiod configuration - disable automatic sidecar injection
       istiod = {
@@ -400,13 +401,12 @@ module "this" {
 # Base chart with Gateway API enabled
 # This deploys an http-echo service with Gateway API HTTPRoute configuration
 resource "helm_release" "http_echo" {
-  name = "http-echo"
-  # repository = "https://dasmeta.github.io/helm"
-  # chart      = "base"
-  chart     = "/Users/tmuradyan/projects/dasmeta/helm/charts/base"
-  namespace = "default"
-  version   = "0.3.18"
-  wait      = true
+  name       = "http-echo"
+  repository = "https://dasmeta.github.io/helm"
+  chart      = "base"
+  namespace  = "default"
+  version    = "0.3.21"
+  wait       = true
 
   values = [templatefile("${path.module}/http-echo.yaml", { domain = var.domain })]
 
@@ -418,13 +418,12 @@ resource "helm_release" "http_echo" {
 # HTTPRoute routes all traffic (including /admin) to the service via internal gateway
 # Reuses http-echo.yaml and overrides only the necessary fields
 resource "helm_release" "http_echo_internal" {
-  name = "http-echo-internal"
-  # repository = "https://dasmeta.github.io/helm"
-  # chart      = "base"
-  chart     = "/Users/tmuradyan/projects/dasmeta/helm/charts/base"
-  namespace = "default"
-  version   = "0.3.18"
-  wait      = true
+  name       = "http-echo-internal"
+  repository = "https://dasmeta.github.io/helm"
+  chart      = "base"
+  namespace  = "default"
+  version    = "0.3.21"
+  wait       = true
 
   values = [
     templatefile("${path.module}/http-echo.yaml", { domain = var.domain }),
