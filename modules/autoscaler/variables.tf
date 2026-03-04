@@ -32,7 +32,7 @@ variable "requests" {
 
 variable "eks_version" {
   type        = string
-  default     = "1.32"
+  default     = "1.33"
   description = "The version of eks cluster"
 }
 

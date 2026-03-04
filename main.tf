@@ -125,6 +125,10 @@
  *    - got some cleanup of unnecessary tf codes
  *    - have aws-load-balancer-controller helm chart upgraded to new minor compatible version
  *    - do not worry if you do upgrade of eks version and got change that decrease addon version as we have using now not mos recent but the aws default picked one
+ *  - from version >= 2.25.0, no manual actions are required. here are what this release brings:
+ *    - upgraded eks cluster to 1.33 version
+ *    - gateway-api(istio) support added (example how to use can be found in examples/eks-with-istio-gateway-api)
+ *    - improved cert-manager implementation by adding cluster-issuer and certificate resources creation and validation based on HTTP01 and DNS01 challenges(example how to used with cloudflare can be found in examples/eks-with-cert-manager)
  *
  * ## How to run
  * ```hcl
@@ -468,21 +472,24 @@ module "efs-csi-driver" {
   depends_on = [module.eks-core-components]
 }
 
-resource "helm_release" "cert-manager" {
-  count = var.create_cert_manager ? 1 : var.metrics_exporter == "adot" ? 1 : 0
+# cert-manager module - combines Helm chart installation and resource creation
+module "cert-manager" {
+  count = var.create && (var.create_cert_manager || var.metrics_exporter == "adot") ? 1 : 0
 
-  namespace        = "cert-manager"
-  create_namespace = true
-  name             = "cert-manager"
-  chart            = "cert-manager"
-  repository       = "https://charts.jetstack.io"
-  atomic           = true
-  version          = var.cert_manager_chart_version
+  source = "./modules/cert-manager"
 
-  set {
-    name  = "installCRDs"
-    value = "true"
-  }
+  chart_version = var.cert_manager_chart_version
+  namespace     = var.cert_manager.namespace
+  atomic        = var.cert_manager.atomic
+  configs       = var.cert_manager.configs
+  extra_configs = var.cert_manager.extra_configs
+
+  cluster_name      = var.cluster_name
+  oidc_provider_arn = try(module.eks-cluster[0].oidc_provider_arn, "")
+
+  cluster_issuers   = try(var.cert_manager.resources.cluster_issuers, [])
+  dns01_secret_data = try(var.cert_manager.resources.dns01_secret_data, {})
+  certificates      = try(var.cert_manager.resources.certificates, [])
 
   depends_on = [module.eks-core-components-and-alb]
 }
@@ -641,6 +648,17 @@ module "linkerd" {
   configs_viz = var.linkerd.configs_viz
   crds_create = var.linkerd.crds_create
   viz_create  = var.linkerd.viz_create
+
+  depends_on = [module.eks-core-components-and-alb]
+}
+
+module "istio" {
+  source  = "dasmeta/shared/any//modules/istio"
+  version = "1.7.6"
+
+  count = var.create && var.istio.enabled ? 1 : 0
+
+  configs = var.istio.configs
 
   depends_on = [module.eks-core-components-and-alb]
 }

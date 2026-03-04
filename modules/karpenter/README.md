@@ -57,9 +57,7 @@ module "karpenter" {
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_ec2_node_classes_custom_default_configs"></a> [ec2\_node\_classes\_custom\_default\_configs](#module\_ec2\_node\_classes\_custom\_default\_configs) | cloudposse/config/yaml//modules/deepmerge | 1.0.2 |
-| <a name="module_karpenter_custom_default_configs_merged"></a> [karpenter\_custom\_default\_configs\_merged](#module\_karpenter\_custom\_default\_configs\_merged) | cloudposse/config/yaml//modules/deepmerge | 1.0.2 |
-| <a name="module_this"></a> [this](#module\_this) | terraform-aws-modules/eks/aws//modules/karpenter | 20.34.0 |
+| <a name="module_this"></a> [this](#module\_this) | terraform-aws-modules/eks/aws//modules/karpenter | 20.37.2 |
 
 ## Resources
 
@@ -78,7 +76,7 @@ module "karpenter" {
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_atomic"></a> [atomic](#input\_atomic) | Whether use helm deploy with --atomic flag | `bool` | `false` | no |
-| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The app chart version | `string` | `"1.4.0"` | no |
+| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The app chart version | `string` | `"1.9.0"` | no |
 | <a name="input_cluster_endpoint"></a> [cluster\_endpoint](#input\_cluster\_endpoint) | The eks cluster endpoint | `string` | n/a | yes |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | The eks cluster name | `string` | n/a | yes |
 | <a name="input_cluster_version"></a> [cluster\_version](#input\_cluster\_version) | The eks cluster version | `string` | n/a | yes |

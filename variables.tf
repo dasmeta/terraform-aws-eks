@@ -200,7 +200,7 @@ variable "cluster_enabled_log_types" {
 variable "cluster_version" {
   description = "Allows to set/change kubernetes cluster version, kubernetes version needs to be updated at leas once a year. Please check here for available versions https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html"
   type        = string
-  default     = "1.32"
+  default     = "1.33"
 }
 
 variable "cluster_addons" {
@@ -463,8 +463,9 @@ variable "kube_state_metrics_chart_version" {
   description = "The kube-state-metrics chart version"
 }
 
-// Cert manager
-// If you want enable ADOT you should enable cert_manager
+// Cert manager: use cert_manager.resources, cert_manager.configs, cert_manager.namespace, cert_manager.atomic.
+// TODO: create_cert_manager and cert_manager_chart_version remain in use for now; cert_manager.enabled and cert_manager.chart_version are reserved for future migration.
+// If you want enable ADOT you should enable cert_manager (via create_cert_manager).
 variable "create_cert_manager" {
   description = "If enabled it always gets deployed to the cert-manager namespace."
   type        = bool
@@ -473,7 +474,76 @@ variable "create_cert_manager" {
 variable "cert_manager_chart_version" {
   description = "The cert-manager helm chart version."
   type        = string
-  default     = "1.16.2"
+  default     = "1.16.5"
+}
+
+variable "cert_manager" {
+  type = object({
+    # enabled       = optional(bool, false)      # Reserved: will replace create_cert_manager when migrated, check above TODO for this
+    # chart_version = optional(string, "1.16.5") # Reserved: will replace cert_manager_chart_version when migrated, check above TODO for this
+    namespace = optional(string, "cert-manager") # Namespace where cert-manager is installed
+    atomic    = optional(bool, true)             # Whether to auto rollback if helm install fails
+    configs = optional(object({                  # default configuration (Helm values) passed to the cert-manager controller chart
+      installCRDs = optional(bool, true)
+    }), {})
+    extra_configs = optional(any, {}) # Extra configuration (Helm values) passed to the cert-manager controller chart
+    resources = optional(object({     # Configuration for cert-manager resources (ClusterIssuers and Certificates)
+      # Map of DNS01 secret data keyed by "${issuer.name}/${secret_ref.name}" (e.g. "letsencrypt-prod/cloudflare-api"). Pass sensitive token/API data here so for_each is not sensitive.
+      dns01_secret_data = optional(map(map(string)), {})
+      cluster_issuers = optional(list(object({
+        name                    = optional(string, "letsencrypt-prod")                               # Name of the ClusterIssuer resource
+        email                   = optional(string, "support@dasmeta.com")                            # Required - email for Let's Encrypt account registration
+        server                  = optional(string, "https://acme-v02.api.letsencrypt.org/directory") # ACME server URL
+        private_key_secret_name = optional(string, null)                                             # Optional: custom secret name for private key, defaults to cluster_issuer.name
+        # DNS01 challenge solver. For Route53 in the same AWS account we create the IAM role for the cert-manager controller automatically (see iam_role below).
+        # For other DNS providers (e.g. Cloudflare) or Route53 in another account: use secret_refs + dns01_secret_data to create API/token secrets here, or create them separately and reference in configs.
+        dns01 = optional(object({
+          enabled = optional(bool, false) # Enable DNS01 challenge solver
+          configs = optional(any, {})     # DNS01 solver configuration (e.g., route53 configs, or secretRef for Cloudflare/other providers)
+          # Optional: create Kubernetes secrets for the solver. List only names here; pass sensitive data via resources.dns01_secret_data so for_each is not sensitive. Created secret name = "${cluster_issuer.name}-${ref.name}".
+          secret_refs = optional(list(object({
+            name = string # Secret name (final name in cluster will be "${cluster_issuer.name}-${name}")
+          })), [])
+          iam_role = optional(object({
+            enabled          = optional(bool, true)       # Enable IAM role for DNS01 (IRSA) - uses cert-manager service account from Helm chart
+            hosted_zone_arns = optional(list(string), []) # Optional: restrict to specific hosted zones, empty list = all zones
+          }), {})
+        }), {})
+        http01 = optional(object({
+          enabled = optional(bool, false) # Enable HTTP01 challenge solver
+          gateway_http_route = optional(object({
+            parent_refs = optional(list(object({
+              name      = string                                        # Gateway name
+              namespace = optional(string, "istio-system")              # Gateway namespace
+              kind      = optional(string, "Gateway")                   # Gateway kind
+              group     = optional(string, "gateway.networking.k8s.io") # Gateway API group
+            })), [])
+          }), null) # Gateway API HTTP01 configuration
+          ingress = optional(object({
+            class = optional(string, "nginx") # Ingress class for HTTP01
+          }), null)                           # Traditional Ingress HTTP01 configuration
+        }), {})
+      })), [])
+      certificates = optional(list(object({
+        name        = string                      # Certificate resource name
+        namespace   = optional(string, "default") # Namespace for the certificate
+        secret_name = optional(string, null)      # Optional: secret name for the issued cert; default is certificate name
+        issuer_ref = object({
+          name  = string                              # ClusterIssuer name to use
+          kind  = optional(string, "ClusterIssuer")   # Issuer kind
+          group = optional(string, "cert-manager.io") # Issuer API group
+        })
+        dns_names    = optional(list(string), []) # DNS names for the certificate
+        common_name  = optional(string, null)     # Common name for the certificate
+        duration     = optional(string, null)     # Certificate duration (e.g., "2160h" for 90 days)
+        renew_before = optional(string, null)     # Renew before expiration (e.g., "360h" for 15 days)
+        usages       = optional(list(string), []) # Certificate usages (e.g., ["server auth", "client auth"])
+        configs      = optional(any, {})          # Extra configs to merge into the Certificate spec
+      })), [])
+    }), {})
+  })
+  default     = {}
+  description = "Cert-manager configuration: resources (ClusterIssuers and Certificates), configs (extra Helm values), namespace, atomic. Supports DNS01 and HTTP01 challenge solvers."
 }
 
 variable "enable_efs_driver" {
@@ -798,6 +868,15 @@ variable "linkerd" {
     enabled = true
   }
   description = "Allows to create/configure linkerd in eks cluster"
+}
+
+variable "istio" {
+  type = object({
+    enabled = optional(bool, false)
+    configs = optional(any, {}) # Istio configuration, see terraform-any-shared/modules/istio for available options
+  })
+  default     = {}
+  description = "Allows to create/configure Istio with Gateway API in eks cluster. NOTE: IAM role is typically NOT needed - AWS Load Balancer Controller (which has its own IAM role) handles LoadBalancer creation for all LoadBalancer services, including those created by istio-gateway Helm chart and Gateway API Gateways."
 }
 
 variable "event_exporter" {

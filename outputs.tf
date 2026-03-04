@@ -110,3 +110,13 @@ output "external_secret_deployment" {
 output "namespaces_and_docker_auth_helm_metadata" {
   value = try(module.namespaces_and_docker_auth[0].helm_metadata, null)
 }
+
+output "cert_manager_cluster_issuer_names" {
+  description = "Map of ClusterIssuer names created by cert-manager module"
+  value       = try(module.cert-manager[0].cluster_issuer_names, {})
+}
+
+output "cert_manager_certificate_names" {
+  value       = try(module.cert-manager[0].certificate_names, {})
+  description = "Map of created cert-manager Certificate resource names by namespace/name"
+}

@@ -4,7 +4,7 @@
 
 module "eks-cluster" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "20.34.0"
+  version = "20.37.2"
 
   # per Upgrade from v17.x to v18.x, see here for details https://github.com/terraform-aws-modules/terraform-aws-eks/blob/681e00aafea093be72ec06ada3825a23a181b1c5/docs/UPGRADE-18.0.md
   prefix_separator                         = ""
@@ -28,11 +28,13 @@ module "eks-cluster" {
 
   self_managed_node_groups         = var.worker_groups
   self_managed_node_group_defaults = var.workers_group_defaults
-  eks_managed_node_group_defaults  = var.node_groups_default
-  eks_managed_node_groups          = var.node_groups
-  cluster_addons                   = var.cluster_addons
-
-  tags = var.tags
+  eks_managed_node_group_defaults = merge(
+    var.node_groups_default,
+    { ami_type = try(var.node_groups_default.ami_type, null) != null ? var.node_groups_default.ami_type : "AL2023_x86_64_STANDARD" } # set default ami type if not set as with 1.33 eks version AL2 support removed, but underlying module still uses AL2 as default, TODO: the newer versions of the module already have AL2023_x86_64_STANDARD as default so consider to remove this after upgrade
+  )
+  eks_managed_node_groups = var.node_groups
+  cluster_addons          = var.cluster_addons
+  tags                    = var.tags
 }
 
 resource "null_resource" "enable_cloudwatch_metrics_autoscaling" {
