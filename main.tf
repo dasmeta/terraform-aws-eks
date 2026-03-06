@@ -623,8 +623,8 @@ module "karpenter" {
   configs                   = var.karpenter.configs
   resource_configs          = var.karpenter.resource_configs
   resource_configs_defaults = var.karpenter.resource_configs_defaults
-
-  depends_on = [module.eks-core-components]
+  tags                      = var.tags
+  depends_on                = [module.eks-core-components]
 }
 
 module "namespaces_and_docker_auth" {
