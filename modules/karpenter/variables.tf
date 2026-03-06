@@ -104,7 +104,6 @@ variable "resource_configs_defaults" {
       nodeClass = optional(any, {
         amiFamily          = null # if not specified the value will be identified based on eks managed nodes ami id, the valid values are for example "AL2", "AL2023"
         detailedMonitoring = true
-        tags               = {} # optional tags to propagate to underlying EC2 resources for this node class, merged with ec2_node_class_tags
         metadataOptions = {
           httpEndpoint            = "enabled"
           httpProtocolIPv6        = "disabled"
@@ -180,7 +179,6 @@ variable "resource_configs_defaults" {
         amiFamily          = null # if not specified the value will be identified based on eks managed nodes ami id, the valid values are for example "AL2", "AL2023"
         ami_name           = "amazon-eks-gpu-node-1.32-v20251120"
         detailedMonitoring = true
-        tags               = {} # optional tags to propagate to underlying EC2 resources for this node class, merged with ec2_node_class_tags
         metadataOptions = {
           httpEndpoint            = "enabled"
           httpProtocolIPv6        = "disabled"
@@ -229,4 +227,10 @@ variable "resource_configs_defaults" {
   })
   default     = {}
   description = "Configurations to pass and override default ones for karpenter-nodes chart. Check the helm chart available configs here: https://github.com/dasmeta/helm/tree/karpenter-nodes-0.1.0/charts/karpenter-nodes"
+}
+
+variable "tags" {
+  description = "Extra tags to attach to eks cluster."
+  type        = any
+  default     = {}
 }

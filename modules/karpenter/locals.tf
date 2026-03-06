@@ -9,7 +9,7 @@ locals {
 
   # We create this aws ec2 node class as default for karpenter as this is something general and can be used as default for node-pools which have not nodeClassRef required field set explicitly
   defaultEc2NodeClass = {
-    tags                = var.resource_configs_defaults["default"].nodeClass.tags
+    tags                = var.tags
     amiFamily           = coalesce(var.resource_configs_defaults["default"].nodeClass.amiFamily, local.amiFamily) # ami family should be get automatically, but it can be also passed for node class
     role                = module.this.node_iam_role_name
     subnetSelectorTerms = [for id in var.subnet_ids : { id = id }]
@@ -25,7 +25,7 @@ locals {
   }
 
   defaultEc2NodeClassGpu = {
-    tags                = var.resource_configs_defaults["gpu"].nodeClass.tags
+    tags                = var.tags
     amiFamily           = coalesce(var.resource_configs_defaults["gpu"].nodeClass.amiFamily, local.amiFamilyGpu) # ami family should be get automatically, but it can be also passed for node class
     role                = module.this.node_iam_role_name
     subnetSelectorTerms = [for id in var.subnet_ids : { id = id }]
