@@ -228,3 +228,9 @@ variable "resource_configs_defaults" {
   default     = {}
   description = "Configurations to pass and override default ones for karpenter-nodes chart. Check the helm chart available configs here: https://github.com/dasmeta/helm/tree/karpenter-nodes-0.1.0/charts/karpenter-nodes"
 }
+
+variable "tags" {
+  description = "Extra tags to attach to eks cluster."
+  type        = any
+  default     = {}
+}

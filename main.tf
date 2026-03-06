@@ -623,6 +623,7 @@ module "karpenter" {
   configs                   = var.karpenter.configs
   resource_configs          = var.karpenter.resource_configs
   resource_configs_defaults = var.karpenter.resource_configs_defaults
+  tags                      = var.tags
 
   depends_on = [module.eks-core-components]
 }
