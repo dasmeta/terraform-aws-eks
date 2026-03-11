@@ -210,45 +210,12 @@ variable "cluster_addons" {
 }
 
 variable "default_addons" {
-  description = "Allows to set/override default eks addons(like coredns, kube-proxy and vpc-cni) configurations. Ww have them here to have this core components be managed via addons instead of default managed component."
+  description = "Allows to set/override default eks addons(like coredns, kube-proxy and vpc-cni) configurations. Ww have them here to have this core components be managed via addons instead of default managed component. For coredns you can pass only the keys you want to override (e.g. replicaCount) and the rest will use module defaults."
   type = object({
     coredns = optional(object({
-      most_recent = optional(bool, false)
-      configuration_values = optional(any, { # here we have defaults for replica count, resource request/limits and corefile config file, in case there are dns resolve issues on high load websites check to increase limits
-        replicaCount = 2
-        resources = {
-          limits = {
-            memory = "171Mi"
-          }
-          requests = {
-            cpu    = "100m"
-            memory = "70Mi"
-          }
-        }
-        # this is main coredns config file and in case you get domain name resolution errors check ttl and max_concurrent values, NOTE: that for example increasing max_concurrent value requires also increase to memory 2kb per connection, check docs here: https://coredns.io/plugins/forward/
-        corefile = <<EOT
-        .:53 {
-            errors
-            health {
-                lameduck 5s
-              }
-            ready
-            kubernetes cluster.local in-addr.arpa ip6.arpa {
-              pods insecure
-              fallthrough in-addr.arpa ip6.arpa
-              ttl 120
-            }
-            prometheus :9153
-            forward . /etc/resolv.conf {
-              max_concurrent 2000
-            }
-            cache 30
-            loop
-            reload
-            loadbalance
-        }
-        EOT
-    }) }), {})
+      most_recent          = optional(bool, false)
+      configuration_values = optional(any, null) # optional: pass only what you want to override (e.g. replicaCount = 3); defaults for replicaCount, resources, and corefile are applied when not set
+    }), {})
     vpc-cni = optional(object({
       most_recent          = optional(bool, false)
       configuration_values = optional(any, {})

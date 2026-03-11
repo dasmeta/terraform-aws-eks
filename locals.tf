@@ -8,9 +8,47 @@ locals {
   vpc_id     = var.vpc.create.name != null ? module.vpc[0].id : var.vpc.link.id
   subnet_ids = var.vpc.create.name != null ? module.vpc[0].private_subnets : var.vpc.link.private_subnet_ids
 
+  # Default coredns configuration_values; user overrides (e.g. only replicaCount) are merged on top in cluster_addons
+  default_coredns_configuration_values = {
+    replicaCount = 2
+    resources = {
+      limits = {
+        memory = "171Mi"
+      }
+      requests = {
+        cpu    = "100m"
+        memory = "70Mi"
+      }
+    }
+    corefile = <<-EOT
+    .:53 {
+        errors
+        health {
+            lameduck 5s
+          }
+        ready
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+          pods insecure
+          fallthrough in-addr.arpa ip6.arpa
+          ttl 120
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf {
+          max_concurrent 2000
+        }
+        cache 30
+        loop
+        reload
+        loadbalance
+    }
+    EOT
+  }
+
   cluster_addons = { for key, value in merge(var.cluster_addons, var.default_addons) : key => merge(
     value,
-    try(value.configuration_values, null) == null ? {} : { for key, value in(can(tostring(value.configuration_values)) ? { configuration_values = null } : { configuration_values = jsonencode(value.configuration_values) }) : key => value if value != null }
+    key == "coredns" ? { configuration_values = jsonencode(merge(local.default_coredns_configuration_values, try(value.configuration_values, null) != null ? value.configuration_values : {})) } : (
+      try(value.configuration_values, null) == null ? {} : { for k, v in(can(tostring(value.configuration_values)) ? { configuration_values = null } : { configuration_values = jsonencode(value.configuration_values) }) : k => v if v != null }
+    )
   ) }
 
   meta_system_namespace = "meta-system"
