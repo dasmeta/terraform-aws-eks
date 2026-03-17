@@ -16,5 +16,10 @@ terraform {
       source  = "gavinbunney/kubectl"
       version = "~>1.14"
     }
+
+    deepmerge = {
+      source  = "isometry/deepmerge"
+      version = "~> 1.1"
+    }
   }
 }

@@ -33,14 +33,19 @@
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The app chart version to use | `string` | `"8.7.7"` | no |
+| <a name="input_atomic"></a> [atomic](#input\_atomic) | Enable atomic Helm upgrades for the external-dns release | `bool` | `true` | no |
+| <a name="input_chart_name"></a> [chart\_name](#input\_chart\_name) | The name of the external-dns Helm chart | `string` | `"external-dns"` | no |
+| <a name="input_chart_repository"></a> [chart\_repository](#input\_chart\_repository) | The external-dns chart repository to use | `string` | `"https://kubernetes-sigs.github.io/external-dns"` | no |
+| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The external-dns chart version to use (see https://github.com/kubernetes-sigs/external-dns/releases) | `string` | `"1.20.0"` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | K8s cluster name. | `string` | n/a | yes |
-| <a name="input_configs"></a> [configs](#input\_configs) | Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/bitnami/external-dns?modal=values | `any` | `{}` | no |
+| <a name="input_configs"></a> [configs](#input\_configs) | Configurations to pass and override default ones. See chart values: https://kubernetes-sigs.github.io/external-dns/latest/charts/external-dns/ | `any` | `{}` | no |
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | Create namespace if requested | `bool` | `true` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | The namespace to install external-dns helm. | `string` | `"external-dns"` | no |
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | EKC oidc provider arn in format 'arn:aws:iam::<account-id>:oidc-provider/oidc.eks.<region>.amazonaws.com/id/<oidc-id>'. | `string` | n/a | yes |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region, if not passed it will get region from terraform running current context | `string` | `null` | no |
+| <a name="input_release_name"></a> [release\_name](#input\_release\_name) | The name of the external-dns Helm release | `string` | `"external-dns"` | no |
 | <a name="input_service_account_name"></a> [service\_account\_name](#input\_service\_account\_name) | The name of service-account to use for accessing aws resources. | `string` | `"external-dns"` | no |
+| <a name="input_wait"></a> [wait](#input\_wait) | Whether to wait for external-dns Helm release to be deployed | `bool` | `false` | no |
 
 ## Outputs
 

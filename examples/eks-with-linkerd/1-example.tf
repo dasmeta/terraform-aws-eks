@@ -36,6 +36,10 @@ module "this" {
     enabled = false
   }
 
+  keda = {
+    enabled = false
+  }
+
   nginx_ingress_controller_config = {
     enabled      = true
     replicacount = 1

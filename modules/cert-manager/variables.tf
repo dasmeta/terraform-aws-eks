@@ -1,6 +1,6 @@
 variable "chart_version" {
   type        = string
-  default     = "1.16.5"
+  default     = "1.20.0"
   description = "The cert-manager helm chart version"
 }
 
@@ -24,7 +24,9 @@ variable "atomic" {
 
 variable "configs" {
   type = object({
-    installCRDs = optional(bool, true)
+    crds = optional(object({
+      enabled = optional(bool, true) # Enable CRD installation
+    }), {})
   })
   default     = {}
   description = "Default Helm values to merge with the default cert-manager chart values"

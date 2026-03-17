@@ -384,6 +384,7 @@ module "eks-cluster" {
   map_roles                            = var.map_roles
   node_security_group_additional_rules = var.node_security_group_additional_rules
   cluster_addons                       = local.cluster_addons
+  enable_autoscaling_group_metrics     = var.enable_autoscaling_group_metrics
   tags = merge(
     var.tags,
     local.cluster_autoscaler_enabled ? {
@@ -655,7 +656,7 @@ module "linkerd" {
 
 module "istio" {
   source  = "dasmeta/shared/any//modules/istio"
-  version = "1.7.6"
+  version = "1.7.9"
 
   count = var.create && var.istio.enabled ? 1 : 0
 

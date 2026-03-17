@@ -67,6 +67,7 @@ module "cluster_min" {
 | <a name="input_cluster_endpoint_public_access"></a> [cluster\_endpoint\_public\_access](#input\_cluster\_endpoint\_public\_access) | When you create EKS, API server endpoint access default is public. When you use private this variable value should be equal false | `bool` | `true` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | Creating cluster name. | `string` | n/a | yes |
 | <a name="input_cluster_version"></a> [cluster\_version](#input\_cluster\_version) | Cluster version. | `string` | `"1.33"` | no |
+| <a name="input_enable_autoscaling_group_metrics"></a> [enable\_autoscaling\_group\_metrics](#input\_enable\_autoscaling\_group\_metrics) | Whether to enable autoscaling group metrics. | `bool` | `false` | no |
 | <a name="input_enable_irsa"></a> [enable\_irsa](#input\_enable\_irsa) | Whether or not to enable OpenID connect protocol. | `bool` | `true` | no |
 | <a name="input_map_roles"></a> [map\_roles](#input\_map\_roles) | Additional IAM roles to add to the aws-auth configmap. | <pre>list(object({<br/>    rolearn  = string<br/>    username = string<br/>    groups   = list(string)<br/>  }))</pre> | `[]` | no |
 | <a name="input_node_groups"></a> [node\_groups](#input\_node\_groups) | Map of EKS managed node group definitions to create | `any` | <pre>{<br/>  "default": {<br/>    "ami_type": "AL2023_x86_64_STANDARD",<br/>    "desired_size": 1,<br/>    "instance_types": [<br/>      "t3.medium"<br/>    ],<br/>    "max_size": 2,<br/>    "min_size": 1<br/>  }<br/>}</pre> | no |

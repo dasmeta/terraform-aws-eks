@@ -111,6 +111,12 @@ variable "cluster_addons" {
   default     = {}
 }
 
+variable "enable_autoscaling_group_metrics" {
+  description = "Whether to enable autoscaling group metrics."
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "Tags to attach to eks cluster."
   type        = any

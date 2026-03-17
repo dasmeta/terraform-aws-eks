@@ -12,8 +12,38 @@ variable "oidc_provider_arn" {
 
 variable "chart_version" {
   type        = string
-  default     = "8.7.7"
-  description = "The app chart version to use"
+  default     = "1.20.0"
+  description = "The external-dns chart version to use (see https://github.com/kubernetes-sigs/external-dns/releases)"
+}
+
+variable "chart_repository" {
+  type        = string
+  default     = "https://kubernetes-sigs.github.io/external-dns"
+  description = "The external-dns chart repository to use"
+}
+
+variable "release_name" {
+  type        = string
+  default     = "external-dns"
+  description = "The name of the external-dns Helm release"
+}
+
+variable "chart_name" {
+  type        = string
+  default     = "external-dns"
+  description = "The name of the external-dns Helm chart"
+}
+
+variable "atomic" {
+  type        = bool
+  default     = true
+  description = "Enable atomic Helm upgrades for the external-dns release"
+}
+
+variable "wait" {
+  type        = bool
+  default     = false
+  description = "Whether to wait for external-dns Helm release to be deployed"
 }
 
 variable "namespace" {
@@ -43,5 +73,5 @@ variable "region" {
 variable "configs" {
   type        = any
   default     = {}
-  description = "Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/bitnami/external-dns?modal=values"
+  description = "Configurations to pass and override default ones. See chart values: https://kubernetes-sigs.github.io/external-dns/latest/charts/external-dns/"
 }

@@ -18,10 +18,6 @@ terraform {
       source  = "gavinbunney/kubectl"
       version = "~> 1.14"
     }
-    http = {
-      source  = "hashicorp/http"
-      version = "~> 3.0"
-    }
   }
 }
 
@@ -43,8 +39,6 @@ provider "kubectl" {
   token                  = module.this.cluster_token
   load_config_file       = false
 }
-
-provider "http" {}
 
 # Domain variable for DNS zones and Gateway API configuration
 variable "domain" {
