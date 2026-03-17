@@ -1,4 +1,4 @@
-# EKS with Istio Gateway API (Wildcard Domain and TLS)
+# EKS with Istio Gateway API (TLS enabled)
 
 This example demonstrates how to create an EKS cluster with Istio and Gateway API configured for a wildcard domain (`*.devops.dasmeta.com`) with both HTTP and HTTPS listeners, supporting both external (internet-facing) and internal LoadBalancers.
 
@@ -6,7 +6,7 @@ This example demonstrates how to create an EKS cluster with Istio and Gateway AP
 
 - **EKS Cluster**: Complete EKS cluster with all necessary components
 - **Istio Integration**: Istio service mesh with Gateway API support
-- **Wildcard Domain**: `*.devops.dasmeta.com` - supports all subdomains under `devops.dasmeta.com`
+- **Domains**: `external.devops.dasmeta.com`/`internal.devops.dasmeta.com` - supports external/internal subdomains under `devops.dasmeta.com`
 - **Dual Gateway Setup**:
   - **External Gateway** (`main`): Internet-facing AWS Network Load Balancer for public access
   - **Internal Gateway** (`main-internal`): Internal AWS Network Load Balancer for VPC-only access
@@ -14,7 +14,7 @@ This example demonstrates how to create an EKS cluster with Istio and Gateway AP
 - **HTTPS Listener**: Port 443 with TLS certificate managed by cert-manager on both Gateways
 - **Automatic HTTP to HTTPS Redirect**: HTTPRoute resources automatically redirect all HTTP traffic to HTTPS (301 redirect)
 - **Certificate Management**: Uses cert-manager with `letsencrypt-prod` ClusterIssuer for automatic certificate provisioning
-- **Shared Certificate**: Both Gateways use the same TLS certificate Secret
+- **Certificate**: Each Gateways use its own TLS certificate Secret(but if both use same domains/wildcard the certificate secret can be shared)
 
 ## Prerequisites
 
@@ -25,12 +25,12 @@ This example demonstrates how to create an EKS cluster with Istio and Gateway AP
 
 ### ClusterIssuer Configuration
 
-The example includes a `cert_manager_cluster_issuer` configuration that creates a Let's Encrypt ClusterIssuer with DNS01 challenge support (required for wildcard domains).
+The example includes a `cert_manager_cluster_issuer` configuration that creates a Let's Encrypt ClusterIssuer with DNS01 challenge support.
 
-**DNS01 Configuration** (for wildcard domains):
+**DNS01 Configuration**:
 - Configured in the example for Route53
 - Requires AWS credentials (IRSA, static credentials, etc.)
-- Works for wildcard domains (`*.devops.dasmeta.com`)
+- Works for domains (`external/internal.devops.dasmeta.com`)
 
 **HTTP01 Configuration** (optional, for exact domains only):
 - Can be enabled by uncommenting the `http01` section in the example
@@ -92,7 +92,6 @@ cert_manager_cluster_issuer = {
   - `service.beta.kubernetes.io/aws-load-balancer-type: "nlb"`
   - `service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"`
 
-**Shared Certificate**: Both Gateways reference the same certificate Secret (`wildcard-devops-dasmeta-com-tls`), allowing them to serve the same domains with the same TLS certificate.
 
 ### HTTP to HTTPS Redirect
 
@@ -119,7 +118,7 @@ Both redirects:
 ## Certificate Management
 
 The HTTPS listener uses cert-manager to automatically provision and renew TLS certificates:
-- Certificate name: `wildcard-devops-dasmeta-com-tls`
+- Certificate name: `{gateway-name}-tls`
 - ClusterIssuer: `letsencrypt-prod`
 - DNS names: `*.devops.dasmeta.com`, `devops.dasmeta.com`
 
@@ -174,7 +173,7 @@ After applying this configuration:
 3. The Certificate will be validated by the `letsencrypt-prod` ClusterIssuer:
    - **DNS01**: cert-manager creates DNS TXT records (no Gateway involvement)
    - **HTTP01**: cert-manager creates temporary HTTPRoutes for `/.well-known/acme-challenge/*` (Gateway routes them normally)
-4. Once validated, the certificate will be stored in the Secret `wildcard-devops-dasmeta-com-tls`
+4. Once validated, the certificate will be stored in the Secret `{gateway-name}-tls`
 5. The Gateway will read the certificate from the Secret and use it for TLS termination
 6. HTTPS traffic will be encrypted using the Let's Encrypt certificate
 7. cert-manager will automatically renew the certificate before expiration (no Gateway changes needed)
@@ -249,7 +248,6 @@ spec:
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.3 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 3.31, < 6.0.0 |
 | <a name="requirement_helm"></a> [helm](#requirement\_helm) | ~> 2.0 |
-| <a name="requirement_http"></a> [http](#requirement\_http) | ~> 3.0 |
 | <a name="requirement_kubectl"></a> [kubectl](#requirement\_kubectl) | ~> 1.14 |
 | <a name="requirement_tls"></a> [tls](#requirement\_tls) | ~> 4.0 |
 

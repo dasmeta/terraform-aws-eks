@@ -7,11 +7,8 @@ gatewayApi:
       parentRefs:
         - name: main-internal
           sectionName: https-443
-        - name: main-internal
-          sectionName: https-443-wildcard
       hostnames:
-        - "${domain}"
-        - "*.${domain}"
+        - "internal.${domain}"
       rules:
         # Rule 1: Return 403 for /forbidden path (automatically creates AuthorizationPolicy)
         - matches:

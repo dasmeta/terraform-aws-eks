@@ -1,15 +1,15 @@
-# Example: EKS with Istio Gateway API (Wildcard Domain and TLS)
+# Example: EKS with Istio Gateway API (TLS enabled)
 #
 # This configuration:
 # - Creates an EKS cluster
 # - Installs Istio with Gateway API CRDs
-# - Creates two Gateways for the same wildcard domain *.${var.domain}:
+# - Creates two Gateways for the domain external.${var.domain} and internal.${var.domain}:
 #   - "main": External Gateway (internet-facing AWS NLB)
 #   - "main-internal": Internal Gateway (internal AWS NLB)
 # - Both Gateways configure HTTP listener on port 80
 # - Both Gateways configure HTTPS listener on port 443 with cert-manager integration
 # - Uses letsencrypt-prod ClusterIssuer for automatic certificate provisioning
-# - Both Gateways share the same TLS certificate Secret
+# - Each Gateways uses its own TLS certificate Secret
 # - Automatically redirects all HTTP traffic to HTTPS via HTTPRoute resources
 
 module "this" {
@@ -33,7 +33,7 @@ module "this" {
   }
   node_groups_default = {
     capacity_type  = "SPOT",
-    instance_types = ["t3.medium", "t3a.medium", "t3.small", "t3a.small", "t3.xlarge", "t3a.xlarge", "t3.large", "t3a.large"]
+    instance_types = ["t3.medium", "t3a.medium", "t3.large", "t3a.large"]
   }
 
   alarms = {
@@ -58,6 +58,24 @@ module "this" {
   # Disable linkerd as we're using Istio
   linkerd = {
     enabled = false
+  }
+
+  # NOTE: by default aws has ability to handle LoadBalancer type services(which gateway objects create) without aws load balancer controller, but this is legacy mode and we do enable aws-loadbalancer-controller to use it
+  alb_load_balancer_controller = {
+    enabled = true # enabled by default but we explicitly enable it here
+  }
+
+  default_addons = {
+    coredns = {
+      configuration_values = {
+        replicaCount = 1
+      }
+    }
+  }
+
+  # enable external-dns to automatically create R53 records based on gateway/httpRoute domain/host configs
+  external_dns = {
+    enabled = true
   }
 
   karpenter = {
@@ -87,8 +105,14 @@ module "this" {
   # Enable cert-manager resources (ClusterIssuers and Certificates)
   cert_manager = {
     extra_configs = {
-      dns01RecursiveNameservers     = "1.1.1.1:53,8.8.8.8:53" # we set this dns01Recursive* options to overcome the private zone related issues as when we have both private and public zones the DNS01 solver waits to have dns record on private zone also but txt the record for challenge nge being created in public zone only
-      dns01RecursiveNameserversOnly = true
+      # NOTE: we set this extra options only to overcome the private zone related issues as when we have both private and public zones the DNS01 solver waits to have dns record on private zone also but txt record for challenge being created in public zone only and cert-manager controller from k8s cluster sees only private zone when it asks for dns records
+      extraArgs = [
+        "--dns01-recursive-nameservers-only",
+        "--dns01-recursive-nameservers=1.1.1.1:53",
+      ]
+      config = {
+        enableGatewayAPI = true # enable Gateway API resources handling by cert-manager
+      }
     }
     resources = {
       # ClusterIssuer configuration - supports multiple issuers
@@ -96,54 +120,13 @@ module "this" {
         {
           name  = "letsencrypt-prod"
           email = "support@dasmeta.com"
-          # DNS01 configuration (required for wildcard domains)
           dns01 = {
             enabled = true
             # Route53 configuration with IRSA (recommended)
             configs = {
-              route53 = {
-                region = "eu-central-1"
-                # When using IRSA, accessKeyID and secretAccessKeySecretRef are not needed
-                # The IAM role will be automatically used via the service account annotation
-              }
+              route53 = {}
             }
           }
-          # HTTP01 configuration (optional, for exact domains only)
-          # Uncomment and configure if you want to use HTTP01 for non-wildcard domains
-          # http01 = {
-          #   enabled = true
-          #   gateway_http_route = {
-          #     parent_refs = [
-          #       {
-          #         name      = "main"
-          #         namespace = "istio-system"
-          #       }
-          #     ]
-          #   }
-          # }
-        }
-        # Add more ClusterIssuers here if needed, e.g.:
-        # {
-        #   name  = "letsencrypt-staging"
-        #   email = "support@dasmeta.com"
-        #   server = "https://acme-staging-v02.api.letsencrypt.org/directory"
-        #   dns01 = { ... }
-        # }
-      ]
-      # Certificate resources (optional)
-      certificates = [
-        {
-          name        = "wildcard-istio-devops-dasmeta-com-tls"
-          namespace   = "istio-system"
-          secret_name = "wildcard-istio-devops-dasmeta-com-tls"
-          issuer_ref = {
-            name = "letsencrypt-prod"
-            kind = "ClusterIssuer"
-          }
-          dns_names = [
-            "*.${var.domain}",
-            var.domain
-          ]
         }
       ]
     }
@@ -163,167 +146,76 @@ module "this" {
             {
               name             = "main"
               gatewayClassName = "istio"
+              annotations = {
+                "cert-manager.io/cluster-issuer" = "letsencrypt-prod" # for handling certificate requests automatically by cert-manager controller
+              }
               listeners = [
                 # HTTP listener on port 80
                 {
                   name     = "http-80"
-                  hostname = "${var.domain}"
+                  hostname = "external.${var.domain}"
                   port     = 80
                   protocol = "HTTP"
-                  allowedRoutes = {
-                    namespaces = {
-                      from = "All"
-                    }
-                  }
                 },
-                # HTTPS listener on port 443 with TLS
+                # HTTPS listener on port 443 with TLS(the tls being set automatically for https)
                 {
                   name     = "https-443"
-                  hostname = "${var.domain}"
+                  hostname = "external.${var.domain}"
                   port     = 443
                   protocol = "HTTPS"
-                  allowedRoutes = {
-                    namespaces = {
-                      from = "All"
-                    }
-                  }
-                  tls = {
-                    mode = "Terminate"
-                    certificateRefs = [
-                      {
-                        name  = "wildcard-istio-devops-dasmeta-com-tls"
-                        kind  = "Secret"
-                        group = ""
-                      }
-                    ]
-                  }
-                },
-                # HTTP listener on port 80
-                {
-                  name     = "http-80-wildcard"
-                  hostname = "*.${var.domain}"
-                  port     = 80
-                  protocol = "HTTP"
-                  allowedRoutes = {
-                    namespaces = {
-                      from = "All"
-                    }
-                  }
-                },
-                # HTTPS listener on port 443 with TLS
-                {
-                  name     = "https-443-wildcard"
-                  hostname = "*.${var.domain}"
-                  port     = 443
-                  protocol = "HTTPS"
-                  allowedRoutes = {
-                    namespaces = {
-                      from = "All"
-                    }
-                  }
-                  tls = {
-                    mode = "Terminate"
-                    certificateRefs = [
-                      {
-                        name  = "wildcard-istio-devops-dasmeta-com-tls"
-                        kind  = "Secret"
-                        group = ""
-                      }
-                    ]
-                  }
                 }
               ]
               # AWS NLB infrastructure configuration for external LoadBalancer
               infrastructure = {
                 annotations = {
-                  "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
                   "service.beta.kubernetes.io/aws-load-balancer-type"            = "nlb"
+                  "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
                   "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
+
                   ## attaching custom security groups to the NLB for restricting access to the NLB
                   ## NOTE: this can be enabled to restrict access to the external NLB to allowed IP only
                   # "service.beta.kubernetes.io/aws-load-balancer-security-groups"                     = aws_security_group.nlb_restricted.id
                   # "service.beta.kubernetes.io/aws-load-balancer-manage-backend-security-group-rules" = "true" # needed for load balancer to backend services access
+                  # "service.beta.kubernetes.io/aws-load-balancer-extra-security-groups" = aws_security_group.nlb_restricted.id # for only AWS Cloud Provider attaching custom security groups to the classic load balancer(not working with NLB) for restricting access to the NLB(works with only Service Controller in the AWS Cloud Provider (legacy))
                 }
+                # can be used to customize the gateway proxy pods template
+                # parameters = {
+                #   deployment = {
+                #     spec = {
+                #       replicas = 2
+                #     }
+                #   }
+                # }
               }
             },
             # Internal Gateway (internal AWS NLB)
             {
               name             = "main-internal"
               gatewayClassName = "istio"
+              annotations = {
+                "cert-manager.io/cluster-issuer" = "letsencrypt-prod" # set cert-manager cluster issuer for the gateway to handle certificate requests provisioning
+              }
               listeners = [
                 # HTTP listener on port 80
                 {
                   name     = "http-80"
-                  hostname = "${var.domain}"
+                  hostname = "internal.${var.domain}"
                   port     = 80
                   protocol = "HTTP"
-                  allowedRoutes = {
-                    namespaces = {
-                      from = "All"
-                    }
-                  }
                 },
-                # HTTPS listener on port 443 with TLS
+                # HTTPS listener on port 443 with TLS(the tls being set automatically for https)
                 {
                   name     = "https-443"
-                  hostname = "${var.domain}"
+                  hostname = "internal.${var.domain}"
                   port     = 443
                   protocol = "HTTPS"
-                  allowedRoutes = {
-                    namespaces = {
-                      from = "All"
-                    }
-                  }
-                  tls = {
-                    mode = "Terminate"
-                    certificateRefs = [
-                      {
-                        name  = "wildcard-istio-devops-dasmeta-com-tls"
-                        kind  = "Secret"
-                        group = ""
-                      }
-                    ]
-                  }
-                },
-                # HTTP listener on port 80 wildcard
-                {
-                  name     = "http-80-wildcard"
-                  hostname = "*.${var.domain}"
-                  port     = 80
-                  protocol = "HTTP"
-                  allowedRoutes = {
-                    namespaces = {
-                      from = "All"
-                    }
-                  }
-                },
-                # HTTPS listener on port 443 with TLS wildcard
-                {
-                  name     = "https-443-wildcard"
-                  hostname = "*.${var.domain}"
-                  port     = 443
-                  protocol = "HTTPS"
-                  allowedRoutes = {
-                    namespaces = {
-                      from = "All"
-                    }
-                  }
-                  tls = {
-                    mode = "Terminate"
-                    certificateRefs = [
-                      {
-                        name  = "wildcard-istio-devops-dasmeta-com-tls"
-                        kind  = "Secret"
-                        group = ""
-                      }
-                    ]
-                  }
                 }
               ]
               # AWS NLB infrastructure configuration for internal LoadBalancer
               infrastructure = {
                 annotations = {
-                  "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internal"
+                  "service.beta.kubernetes.io/aws-load-balancer-scheme" = "internal"
+                  # "service.beta.kubernetes.io/aws-load-balancer-internal" = "true" # being used to have internal load balancer (works with only Service Controller in the AWS Cloud Provider (legacy))
                   "service.beta.kubernetes.io/aws-load-balancer-type"            = "nlb"
                   "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
                 }
@@ -340,13 +232,9 @@ module "this" {
                 {
                   name        = "main"
                   sectionName = "http-80"
-                },
-                {
-                  name        = "main"
-                  sectionName = "https-80-wildcard"
                 }
               ]
-              hostnames = ["${var.domain}", "*.${var.domain}"]
+              hostnames = ["external.${var.domain}"]
               rules = [
                 {
                   redirect = {
@@ -363,13 +251,9 @@ module "this" {
                 {
                   name        = "main-internal"
                   sectionName = "http-80"
-                },
-                {
-                  name        = "main-internal"
-                  sectionName = "https-80-wildcard"
                 }
               ]
-              hostnames = ["${var.domain}", "*.${var.domain}"]
+              hostnames = ["internal.${var.domain}"]
               rules = [
                 {
                   redirect = {
@@ -392,6 +276,7 @@ module "this" {
               autoInject = "disabled"
             }
           }
+          # autoscaleMin = 2 # for redundancy we can have more than 1 replica of istiod controller
         }
       }
     }
@@ -405,7 +290,7 @@ resource "helm_release" "http_echo" {
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
   namespace  = "default"
-  version    = "0.3.21"
+  version    = "0.3.24"
   wait       = true
 
   values = [templatefile("${path.module}/http-echo.yaml", { domain = var.domain })]
@@ -422,7 +307,7 @@ resource "helm_release" "http_echo_internal" {
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
   namespace  = "default"
-  version    = "0.3.21"
+  version    = "0.3.24"
   wait       = true
 
   values = [

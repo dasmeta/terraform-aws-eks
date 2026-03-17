@@ -38,7 +38,7 @@ module "eks-cluster" {
 }
 
 resource "null_resource" "enable_cloudwatch_metrics_autoscaling" {
-  for_each = { for key, name in keys(var.node_groups) : name => compact(module.eks-cluster.eks_managed_node_groups_autoscaling_group_names)[key] }
+  for_each = { for key, name in keys(var.node_groups) : name => compact(module.eks-cluster.eks_managed_node_groups_autoscaling_group_names)[key] if var.enable_autoscaling_group_metrics }
 
   provisioner "local-exec" {
     command     = "aws autoscaling enable-metrics-collection --region ${var.region} --granularity \"1Minute\" --auto-scaling-group-name  ${each.value}"

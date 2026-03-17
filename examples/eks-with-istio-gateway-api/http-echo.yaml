@@ -21,20 +21,14 @@ gatewayApi:
       parentRefs:
         - name: main
           sectionName: https-443
-        - name: main
-          sectionName: https-443-wildcard
       hostnames:
-        - "${domain}"
-        - "*.${domain}"
+        - "external.${domain}"
       rules:
         # Rule 1: Return 403 for /admin and /forbidden paths (automatically creates AuthorizationPolicy)
         - matches:
             - path:
                 value: /admin
                 type: PathPrefix
-          directResponse:
-            status: 403
-        - matches:
             - path:
                 value: /forbidden
                 type: PathPrefix

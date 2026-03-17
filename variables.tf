@@ -79,6 +79,12 @@ variable "users" {
   description = "List of users to open eks cluster api access"
 }
 
+variable "enable_autoscaling_group_metrics" {
+  description = "Whether to enable autoscaling group metrics."
+  type        = bool
+  default     = false
+}
+
 # ALB-INGRESS-CONTROLLER
 variable "alb_load_balancer_controller" {
   type = object({
@@ -213,15 +219,15 @@ variable "default_addons" {
   description = "Allows to set/override default eks addons(like coredns, kube-proxy and vpc-cni) configurations. Ww have them here to have this core components be managed via addons instead of default managed component. For coredns you can pass only the keys you want to override (e.g. replicaCount) and the rest will use module defaults."
   type = object({
     coredns = optional(object({
-      most_recent          = optional(bool, false)
-      configuration_values = optional(any, null) # optional: pass only what you want to override (e.g. replicaCount = 3); defaults for replicaCount, resources, and corefile are applied when not set
+      most_recent          = optional(bool, true)
+      configuration_values = optional(any, {}) # optional: pass only what you want to override (e.g. replicaCount = 3); defaults for replicaCount, resources, and corefile are applied when not set
     }), {})
     vpc-cni = optional(object({
-      most_recent          = optional(bool, false)
+      most_recent          = optional(bool, true)
       configuration_values = optional(any, {})
     }), {})
     kube-proxy = optional(object({
-      most_recent          = optional(bool, false)
+      most_recent          = optional(bool, true)
       configuration_values = optional(any, {})
     }), {})
   })
@@ -441,17 +447,19 @@ variable "create_cert_manager" {
 variable "cert_manager_chart_version" {
   description = "The cert-manager helm chart version."
   type        = string
-  default     = "1.16.5"
+  default     = "1.20.0"
 }
 
 variable "cert_manager" {
   type = object({
     # enabled       = optional(bool, false)      # Reserved: will replace create_cert_manager when migrated, check above TODO for this
-    # chart_version = optional(string, "1.16.5") # Reserved: will replace cert_manager_chart_version when migrated, check above TODO for this
+    # chart_version = optional(string, "1.20.0") # Reserved: will replace cert_manager_chart_version when migrated, check above TODO for this
     namespace = optional(string, "cert-manager") # Namespace where cert-manager is installed
     atomic    = optional(bool, true)             # Whether to auto rollback if helm install fails
     configs = optional(object({                  # default configuration (Helm values) passed to the cert-manager controller chart
-      installCRDs = optional(bool, true)
+      crds = optional(object({
+        enabled = optional(bool, true) # Enable CRD installation
+      }), {})
     }), {})
     extra_configs = optional(any, {}) # Extra configuration (Helm values) passed to the cert-manager controller chart
     resources = optional(object({     # Configuration for cert-manager resources (ClusterIssuers and Certificates)
