@@ -21,5 +21,11 @@ terraform {
       source  = "isometry/deepmerge"
       version = "~> 1.1"
     }
+
+    utils = {
+      source  = "cloudposse/utils"
+      version = "2.1.0"
+    }
+
   }
 }

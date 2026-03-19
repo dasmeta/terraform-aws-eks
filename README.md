@@ -345,6 +345,7 @@ module "eks" {
 | <a name="requirement_deepmerge"></a> [deepmerge](#requirement\_deepmerge) | ~> 1.1 |
 | <a name="requirement_helm"></a> [helm](#requirement\_helm) | ~> 2.0 |
 | <a name="requirement_kubectl"></a> [kubectl](#requirement\_kubectl) | ~>1.14 |
+| <a name="requirement_utils"></a> [utils](#requirement\_utils) | 2.1.0 |
 
 ## Providers
 
