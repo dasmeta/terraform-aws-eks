@@ -1,5 +1,12 @@
 # eks-with-karpenter
 
+This example keeps an on-demand system node group reserved for system-critical components
+and configures Karpenter with:
+
+- `replicas = 2` as the default high-availability baseline
+- `priorityClassName = "high"` to use the highest predefined default priority class
+- explicit toleration/node selector for the tainted system node group
+
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
@@ -9,8 +16,8 @@ No requirements.
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | n/a |
-| <a name="provider_helm"></a> [helm](#provider\_helm) | n/a |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.100.0 |
+| <a name="provider_helm"></a> [helm](#provider\_helm) | 2.17.0 |
 
 ## Modules
 

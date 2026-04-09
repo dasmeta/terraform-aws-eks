@@ -50,4 +50,21 @@ locals {
   cluster_addons        = { for key, value in local.cluster_addons_merged : key => merge(value, { configuration_values = jsonencode(value.configuration_values) }) }
 
   meta_system_namespace = "meta-system"
+
+  # Use priority classes exposed by priority-class submodule instead of mirroring defaults here.
+  priority_class_map = try(module.priority_class.priority_class_map, {})
+  highest_priority_class_value = try(
+    max([for pc in values(local.priority_class_map) : tonumber(pc.value)]...),
+    1000000
+  )
+  highest_priority_class_names = [
+    for name, pc in local.priority_class_map : name
+    if tonumber(pc.value) == local.highest_priority_class_value
+  ]
+  karpenter_priority_class_name = try(local.highest_priority_class_names[0], "high")
+  karpenter_default_configs = {
+    replicas          = 2
+    priorityClassName = local.karpenter_priority_class_name
+  }
+  karpenter_configs = merge(local.karpenter_default_configs, try(var.karpenter.configs, {}))
 }

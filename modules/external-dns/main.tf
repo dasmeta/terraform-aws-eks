@@ -14,7 +14,7 @@ resource "helm_release" "this" {
       provider = {
         name = "aws"
       }
-      sources = ["service", "ingress", "gateway-httproute", "gateway-grpcroute"]
+      sources = local.external_dns_sources
       serviceAccount = {
         create      = true
         name        = var.service_account_name

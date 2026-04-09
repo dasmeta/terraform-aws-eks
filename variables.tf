@@ -775,14 +775,14 @@ variable "nvidia_gpu_driver" {
 variable "karpenter" {
   type = object({
     enabled                   = optional(bool, true)
-    configs                   = optional(any, {})                               # karpenter chart configs, the underlying module sets some general/default ones, available option can be found here: https://github.com/aws/karpenter-provider-aws/blob/v1.0.8/charts/karpenter/values.yaml
+    configs                   = optional(any, {})                               # karpenter chart configs, merged on top of module defaults (replicas=2 and highest predefined priorityClassName). Available options: https://github.com/aws/karpenter-provider-aws/blob/v1.0.8/charts/karpenter/values.yaml
     resource_configs          = optional(any, { nodePools = { general = {} } }) # karpenter resources creation configs, available options can be fount here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources
     resource_configs_defaults = optional(any, {})                               # the default used for karpenter node pool creation, the available values to override/set can be found in karpenter submodule corresponding variable modules/karpenter/values.tf
   })
   default = {
     enabled = true
   }
-  description = "Allows to create/deploy/configure karpenter operator and its resources to have custom node auto-calling"
+  description = "Allows to create/deploy/configure karpenter operator and its resources to have custom node auto-calling. By default, Karpenter configs include replicas=2 and priorityClassName set to the highest predefined priority class."
 }
 
 variable "keda" {

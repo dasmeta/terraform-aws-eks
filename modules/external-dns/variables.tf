@@ -70,6 +70,12 @@ variable "region" {
   description = "AWS Region, if not passed it will get region from terraform running current context"
 }
 
+variable "enable_gateway_api_sources" {
+  type        = bool
+  default     = false
+  description = "Enable Gateway API route sources for external-dns (gateway-httproute and gateway-grpcroute)."
+}
+
 variable "configs" {
   type        = any
   default     = {}

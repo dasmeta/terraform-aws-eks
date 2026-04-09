@@ -40,6 +40,7 @@
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | K8s cluster name. | `string` | n/a | yes |
 | <a name="input_configs"></a> [configs](#input\_configs) | Configurations to pass and override default ones. See chart values: https://kubernetes-sigs.github.io/external-dns/latest/charts/external-dns/ | `any` | `{}` | no |
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | Create namespace if requested | `bool` | `true` | no |
+| <a name="input_enable_gateway_api_sources"></a> [enable\_gateway\_api\_sources](#input\_enable\_gateway\_api\_sources) | Enable Gateway API route sources for external-dns (gateway-httproute and gateway-grpcroute). | `bool` | `false` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | The namespace to install external-dns helm. | `string` | `"external-dns"` | no |
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | EKC oidc provider arn in format 'arn:aws:iam::<account-id>:oidc-provider/oidc.eks.<region>.amazonaws.com/id/<oidc-id>'. | `string` | n/a | yes |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region, if not passed it will get region from terraform running current context | `string` | `null` | no |
