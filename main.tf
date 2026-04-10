@@ -318,9 +318,12 @@
  *  .....
  *  karpenter = {
  *   enabled = true
- *   configs = {
- *     replicas = 1
- *   }
+ *   # Optional: defaults are replicas=2 and priorityClassName="high".
+ *   # Set only if you want to override defaults explicitly.
+ *   # configs = {
+ *   #   replicas          = 2
+ *   #   priorityClassName = "high"
+ *   # }
  *   resource_configs_defaults = { # this is optional param, look into karpenter submodule to get available defaults
  *     limits = {
  *       cpu = 11 # the default is 10 and we can add limit restrictions on memory also
@@ -591,13 +594,14 @@ module "portainer" {
 module "external-dns" {
   count = var.create && var.external_dns.enabled ? 1 : 0
 
-  source            = "./modules/external-dns"
-  cluster_name      = var.cluster_name
-  oidc_provider_arn = module.eks-cluster[0].oidc_provider_arn
-  region            = local.region
-  configs           = var.external_dns.configs
+  source                     = "./modules/external-dns"
+  cluster_name               = var.cluster_name
+  oidc_provider_arn          = module.eks-cluster[0].oidc_provider_arn
+  region                     = local.region
+  enable_gateway_api_sources = var.istio.enabled
+  configs                    = var.external_dns.configs
 
-  depends_on = [module.eks-core-components-and-alb]
+  depends_on = [module.eks-core-components-and-alb, module.istio]
 }
 
 module "flagger" {
@@ -621,12 +625,12 @@ module "karpenter" {
   cluster_endpoint          = module.eks-cluster[0].host
   oidc_provider_arn         = module.eks-cluster[0].oidc_provider_arn
   subnet_ids                = local.subnet_ids
-  configs                   = var.karpenter.configs
+  configs                   = local.karpenter_configs
   resource_configs          = var.karpenter.resource_configs
   resource_configs_defaults = var.karpenter.resource_configs_defaults
   tags                      = var.tags
 
-  depends_on = [module.eks-core-components]
+  depends_on = [module.eks-core-components, module.priority_class]
 }
 
 module "namespaces_and_docker_auth" {

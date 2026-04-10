@@ -16,23 +16,22 @@ module "this" {
 
   node_groups = {
     default = {
-      desired_size = 1,
-      max_size     = 1,
-      min_size     = 1
-      # taints = {
-      #   # This Taint aims to keep just EKS Addons and Karpenter running on this MNG
-      #   # The pods that do not tolerate this taint should run on nodes created by Karpenter
-      #   addons = {
-      #     key    = "CriticalAddonsOnly"
-      #     value  = "true"
-      #     effect = "NO_SCHEDULE"
-      #   },
-      # }
+      min_size     = 2 # have min/desired/max 2 replicas to get karpenter/coredns/alb-controller and other system components running on the nodes
+      desired_size = 2
+      max_size     = 2
+      taints = {
+        # This taint keeps system node-group capacity for system-critical workloads.
+        addons = {
+          key    = "CriticalAddonsOnly"
+          value  = "true"
+          effect = "NO_SCHEDULE"
+        },
+      }
     }
   }
   node_groups_default = {
     # "capacity_type" : "SPOT", # by default it uses on-demand node, and for karpenter it is preferred to have on-demand nodes where karpenter pods will be placed and the rest of nodes that karpenter will create/manage can be spot also
-    "instance_types" : ["t3.medium"]
+    "instance_types" : ["t3.small", "t3a.small"]
   }
 
   alarms = {
@@ -68,7 +67,10 @@ module "this" {
   karpenter = {
     enabled = true
     configs = {
-      replicas = 1
+      # Optional: defaults are replicas=2 and priorityClassName="high".
+      # Set only if you want to override defaults explicitly.
+      # replicas          = 2
+      # priorityClassName = "high"
     }
     resource_configs_defaults = { # this is optional param, look into karpenter submodule to get available defaults
       limits = {

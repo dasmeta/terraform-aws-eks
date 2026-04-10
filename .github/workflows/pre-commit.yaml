@@ -13,7 +13,7 @@ jobs:
           - ./
     steps:
       - name: Pre-Commit
-        uses: dasmeta/reusable-actions-workflows/pre-commit@4.2.0
+        uses: dasmeta/reusable-actions-workflows/pre-commit@4.3.0
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           path: ${{ matrix.path }}

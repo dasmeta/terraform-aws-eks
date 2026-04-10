@@ -1,0 +1,23 @@
+name: TRIVY
+# CI trigger note: keep workflow aligned with reusable-actions branch validation.
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+jobs:
+  trivy-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: dasmeta/reusable-actions-workflows/trivy@4.3.0
+        with:
+          fetch-depth: 0
+          scan-type: config
+          path: .
+          sarif-file: trivy.sarif
+          scanners: misconfig,secret
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+    continue-on-error: true

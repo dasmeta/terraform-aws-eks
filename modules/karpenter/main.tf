@@ -107,14 +107,16 @@ resource "helm_release" "this" {
         clusterEndpoint   = var.cluster_endpoint
         interruptionQueue = module.this.queue_name
       }
-      resources = {
-        requests = {
-          cpu    = "100m"
-          memory = "256Mi"
-        }
-        limits = {
-          cpu    = "100m"
-          memory = "256Mi"
+      controller = {
+        resources = {
+          requests = {
+            cpu    = "100m"
+            memory = "128Mi"
+          }
+          limits = {
+            cpu    = "200m"
+            memory = "256Mi"
+          }
         }
       }
     }),
