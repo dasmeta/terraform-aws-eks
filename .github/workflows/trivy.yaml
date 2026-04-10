@@ -11,7 +11,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: dasmeta/reusable-actions-workflows/trivy@DMVP-9688-fix-actions-add-trivy
+      - uses: dasmeta/reusable-actions-workflows/trivy@4.3.0
         with:
           fetch-depth: 0
           scan-type: config
