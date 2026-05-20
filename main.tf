@@ -48,7 +48,7 @@
  *      kubectl patch crd nodeclaims.karpenter.sh -p '{"metadata":{"labels":{"app.kubernetes.io/managed-by":"Helm"},"annotations":{"meta.helm.sh/release-name":"karpenter-crd","meta.helm.sh/release-namespace":"karpenter"}}}'
  *      kubectl patch crd nodepools.karpenter.sh -p '{"metadata":{"labels":{"app.kubernetes.io/managed-by":"Helm"},"annotations":{"meta.helm.sh/release-name":"karpenter-crd","meta.helm.sh/release-namespace":"karpenter"}}}'
  *      ```
- *    - the alb ingress/load-balancer controller variables have been moved under one variable set `alb_load_balancer_controller` so you have to change old way passed config(if you have this variables manually passed), here is the moved ones: `enable_alb_ingress_controller`, `enable_waf_for_alb`, `alb_log_bucket_name`, `alb_log_bucket_path`, `send_alb_logs_to_cloudwatch`
+ *    - the alb ingress/load-balancer controller variables have been moved under one variable set `alb_load_balancer_controller` so you have to change old way passed config(if you have this variables manually passed), here is the moved ones: `enable_alb_ingress_controller`, `enable_waf_for_alb`
  *  - from <2.21.0 to >=2.21.0 version
  *    - this version upgrade brings about all underlying main components updated to latest versions and eks default version 1.30. all core/important components compatibility have been tested with install from scratch and when applying the update over old version, but in any case possibility of issues in custom configured setups. so that make sure you apply the update in dev/stage environments at first and test that all works as expected and then apply for prod/live.
  *    - in case if karpenter is enabled there is some tricky behavior while upgrade.
@@ -155,8 +155,6 @@
  *    }
  *  }
  *   cluster_name = "your-cluster-name-goes-here"
- *  alb_log_bucket_name = "your-log-bucket-name-goes-here"
- *
  *  fluent_bit_name = "fluent-bit"
  *  log_group_name  = "fluent-bit-cloudwatch-env"
  * }
@@ -176,8 +174,6 @@
  *    }
  *  }
  *   cluster_name = "your-cluster-name-goes-here"
- *  alb_log_bucket_name = "your-log-bucket-name-goes-here"
- *
  *  fluent_bit_name = "fluent-bit"
  *  log_group_name  = "fluent-bit-cloudwatch-env"
  * }
@@ -287,9 +283,6 @@
  *    root_volume_type                = "gp3"
  *    root_volume_size                = 50
  *  }
- *
- *  ### ALB-INGRESS-CONTROLLER
- *  alb_log_bucket_name = local.alb_log_bucket_name
  *
  *  ### FLUENT-BIT
  *  fluent_bit_name = local.fluent_bit_name

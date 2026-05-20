@@ -48,7 +48,7 @@ Those include:
      kubectl patch crd nodeclaims.karpenter.sh -p '{"metadata":{"labels":{"app.kubernetes.io/managed-by":"Helm"},"annotations":{"meta.helm.sh/release-name":"karpenter-crd","meta.helm.sh/release-namespace":"karpenter"}}}'
      kubectl patch crd nodepools.karpenter.sh -p '{"metadata":{"labels":{"app.kubernetes.io/managed-by":"Helm"},"annotations":{"meta.helm.sh/release-name":"karpenter-crd","meta.helm.sh/release-namespace":"karpenter"}}}'
      ```
-   - the alb ingress/load-balancer controller variables have been moved under one variable set `alb_load_balancer_controller` so you have to change old way passed config(if you have this variables manually passed), here is the moved ones: `enable_alb_ingress_controller`, `enable_waf_for_alb`, `alb_log_bucket_name`, `alb_log_bucket_path`, `send_alb_logs_to_cloudwatch`
+   - the alb ingress/load-balancer controller variables have been moved under one variable set `alb_load_balancer_controller` so you have to change old way passed config(if you have this variables manually passed), here is the moved ones: `enable_alb_ingress_controller`, `enable_waf_for_alb`
  - from <2.21.0 to >=2.21.0 version
    - this version upgrade brings about all underlying main components updated to latest versions and eks default version 1.30. all core/important components compatibility have been tested with install from scratch and when applying the update over old version, but in any case possibility of issues in custom configured setups. so that make sure you apply the update in dev/stage environments at first and test that all works as expected and then apply for prod/live.
    - in case if karpenter is enabled there is some tricky behavior while upgrade.
@@ -155,8 +155,6 @@ locals {
    }
  }
   cluster_name = "your-cluster-name-goes-here"
- alb_log_bucket_name = "your-log-bucket-name-goes-here"
-
  fluent_bit_name = "fluent-bit"
  log_group_name  = "fluent-bit-cloudwatch-env"
 }
@@ -175,8 +173,6 @@ locals {
    }
  }
   cluster_name = "your-cluster-name-goes-here"
- alb_log_bucket_name = "your-log-bucket-name-goes-here"
-
  fluent_bit_name = "fluent-bit"
  log_group_name  = "fluent-bit-cloudwatch-env"
 }
@@ -287,9 +283,6 @@ worker_groups = {
    root_volume_size                = 50
  }
 
- ### ALB-INGRESS-CONTROLLER
- alb_log_bucket_name = local.alb_log_bucket_name
-
  ### FLUENT-BIT
  fluent_bit_name = local.fluent_bit_name
  log_group_name  = local.log_group_name
@@ -347,16 +340,16 @@ module "eks" {
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 3.31, < 6.0.0 |
 | <a name="requirement_deepmerge"></a> [deepmerge](#requirement\_deepmerge) | ~> 1.1 |
 | <a name="requirement_helm"></a> [helm](#requirement\_helm) | ~> 2.0 |
-| <a name="requirement_kubectl"></a> [kubectl](#requirement\_kubectl) | ~>1.14 |
+| <a name="requirement_kubectl"></a> [kubectl](#requirement\_kubectl) | ~> 1.14 |
 | <a name="requirement_utils"></a> [utils](#requirement\_utils) | 2.1.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 3.31, < 6.0.0 |
-| <a name="provider_helm"></a> [helm](#provider\_helm) | ~> 2.0 |
-| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | n/a |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.100.0 |
+| <a name="provider_helm"></a> [helm](#provider\_helm) | 2.17.0 |
+| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | 2.38.0 |
 
 ## Modules
 
@@ -416,7 +409,7 @@ module "eks" {
 | <a name="input_adot_config"></a> [adot\_config](#input\_adot\_config) | accept\_namespace\_regex defines the list of namespaces from which metrics will be exported, and additional\_metrics defines additional metrics to export. | <pre>object({<br/>    accept_namespace_regex = optional(string, "(default|kube-system)")<br/>    additional_metrics     = optional(list(string), [])<br/>    log_group_name         = optional(string, "adot")<br/>    log_retention          = optional(number, 14)<br/>    helm_values            = optional(any, null)<br/>    logging_enable         = optional(bool, false)<br/>    resources = optional(object({<br/>      limit = object({<br/>        cpu    = optional(string, "200m")<br/>        memory = optional(string, "200Mi")<br/>      })<br/>      requests = object({<br/>        cpu    = optional(string, "200m")<br/>        memory = optional(string, "200Mi")<br/>      })<br/>      }), {<br/>      limit = {<br/>        cpu    = "200m"<br/>        memory = "200Mi"<br/>      }<br/>      requests = {<br/>        cpu    = "200m"<br/>        memory = "200Mi"<br/>      }<br/>    })<br/>  })</pre> | <pre>{<br/>  "accept_namespace_regex": "(default|kube-system)",<br/>  "additional_metrics": [],<br/>  "helm_values": null,<br/>  "log_group_name": "adot",<br/>  "log_retention": 14,<br/>  "logging_enable": false,<br/>  "resources": {<br/>    "limit": {<br/>      "cpu": "200m",<br/>      "memory": "200Mi"<br/>    },<br/>    "requests": {<br/>      "cpu": "200m",<br/>      "memory": "200Mi"<br/>    }<br/>  }<br/>}</pre> | no |
 | <a name="input_adot_version"></a> [adot\_version](#input\_adot\_version) | The version of the AWS Distro for OpenTelemetry addon to use. If not passed it will get compatible version based on cluster\_version | `string` | `null` | no |
 | <a name="input_alarms"></a> [alarms](#input\_alarms) | Creates cloudwatch alarms  on ContainerInsights `cluster_failed_node_count` metric. If one of adot/cloudwatch metrics\_exporters is not enabled then we have to disable alarms as specified metric do not exist and creation may fail. You need set sns topic name if you enable alarms. For customize alarms threshold use custom\_values | <pre>object({<br/>    enabled       = optional(bool, false) # we need to have cloudwatch metrics based alarms disabled by default, as we disabled adot/cloudwatch metric exporters by default.<br/>    sns_topic     = optional(string, "")<br/>    custom_values = optional(any, {})<br/>  })</pre> | `{}` | no |
-| <a name="input_alb_load_balancer_controller"></a> [alb\_load\_balancer\_controller](#input\_alb\_load\_balancer\_controller) | Aws alb ingress/load-balancer controller configs. | <pre>object({<br/>    enabled                     = optional(bool, true)  # Whether alb ingress/load-balancer controller enabled, note that alb load balancer will be created also when nginx_ingress_controller_config.enabled=true as nginx loadbalancer service needs it<br/>    enable_waf_for_alb          = optional(bool, false) # Enables WAF and WAF V2 addons for ALB<br/>    configs                     = optional(any, {})     # allows to pass additional helm chart configs<br/>    alb_log_bucket_name         = optional(string, "")  # The s3 bucket where alb logs will be placed, TODO: option and its related ability disable, check if we need this ability<br/>    alb_log_bucket_path         = optional(string, "")  # The s3 bucket path/folder where alb logs will be placed, TODO: option and its related ability disable, check if we need this ability<br/>    send_alb_logs_to_cloudwatch = optional(bool, true)  # Whether logs will be pushed to cloudwatch also, TODO: option and its related ability disable, check if we need this ability<br/>  })</pre> | `{}` | no |
+| <a name="input_alb_load_balancer_controller"></a> [alb\_load\_balancer\_controller](#input\_alb\_load\_balancer\_controller) | Aws alb ingress/load-balancer controller configs. | <pre>object({<br/>    enabled            = optional(bool, true)  # Whether alb ingress/load-balancer controller enabled, note that alb load balancer will be created also when nginx_ingress_controller_config.enabled=true as nginx loadbalancer service needs it<br/>    enable_waf_for_alb = optional(bool, false) # Enables WAF and WAF V2 addons for ALB<br/>    chart = optional(object({<br/>      version    = optional(string, "3.3.0")                            # Chart version to install<br/>      repository = optional(string, "https://aws.github.io/eks-charts") # Chart repository URL, ignored when name is a direct packaged-chart URL<br/>      name       = optional(string, "aws-load-balancer-controller")     # Chart name or a direct packaged-chart URL ending with .tgz<br/>    }), {})<br/>    image = optional(object({<br/>      repository = optional(string, null) # Optional controller image repository override; when null, the chart default image is used<br/>      tag        = optional(string, null) # Optional controller image tag override; when null, the chart default tag is used<br/>    }), {})<br/>    iam = optional(object({<br/>      policy_name = optional(string, null) # Optional IAM policy name override; when null, a cluster-based default is used<br/>      role_name   = optional(string, null) # Optional IAM role name override; when null, a cluster-based default is used<br/>    }), {})<br/>    use_service_account_role_annotation = optional(bool, true)  # Whether to attach the IAM role through the eks.amazonaws.com/role-arn service account annotation<br/>    create_pod_identity_association     = optional(bool, false) # Whether to create an EKS Pod Identity association for the controller service account<br/>    configs                             = optional(any, {})     # Allows to pass additional helm chart configs<br/>  })</pre> | `{}` | no |
 | <a name="input_api_gateway_resources"></a> [api\_gateway\_resources](#input\_api\_gateway\_resources) | Nested map containing API, Stage, and VPC Link resources | <pre>list(object({<br/>    namespace = string<br/>    api = object({<br/>      name         = string<br/>      protocolType = string<br/>    })<br/>    stages = optional(list(object({<br/>      name        = string<br/>      namespace   = string<br/>      apiRef_name = string<br/>      stageName   = string<br/>      autoDeploy  = bool<br/>      description = string<br/>    })))<br/>    vpc_links = optional(list(object({<br/>      name      = string<br/>      namespace = string<br/>    })))<br/>  }))</pre> | `[]` | no |
 | <a name="input_api_gw_deploy_region"></a> [api\_gw\_deploy\_region](#input\_api\_gw\_deploy\_region) | Region in which API gatewat will be configured | `string` | `""` | no |
 | <a name="input_autoscaler_image_patch"></a> [autoscaler\_image\_patch](#input\_autoscaler\_image\_patch) | The patch number of autoscaler image | `number` | `0` | no |
@@ -490,6 +483,7 @@ module "eks" {
 | Name | Description |
 |------|-------------|
 | <a name="output_account_id"></a> [account\_id](#output\_account\_id) | n/a |
+| <a name="output_alb_load_balancer_controller"></a> [alb\_load\_balancer\_controller](#output\_alb\_load\_balancer\_controller) | Combined AWS load balancer controller module output object. |
 | <a name="output_cert_manager_certificate_names"></a> [cert\_manager\_certificate\_names](#output\_cert\_manager\_certificate\_names) | Map of created cert-manager Certificate resource names by namespace/name |
 | <a name="output_cert_manager_cluster_issuer_names"></a> [cert\_manager\_cluster\_issuer\_names](#output\_cert\_manager\_cluster\_issuer\_names) | Map of ClusterIssuer names created by cert-manager module |
 | <a name="output_cluster_certificate"></a> [cluster\_certificate](#output\_cluster\_certificate) | EKS cluster certificate used for authentication/access in helm/kubectl/kubernetes providers |
