@@ -66,11 +66,12 @@ variable "image" {
 
 variable "iam" {
   type = object({
-    policy_name = optional(string, null)
-    role_name   = optional(string, null)
+    policy_name           = optional(string, null)
+    role_name             = optional(string, null)
+    use_descriptive_names = optional(bool, false)
   })
   default     = {}
-  description = "Optional IAM naming overrides. When null, names are generated from cluster_name."
+  description = "Optional IAM naming controls. Explicit names win when set. When use_descriptive_names is true, names are generated as aws-load-balancer-controller-{cluster_name} and aws-load-balancer-controller-{cluster_name}_iam_role. Otherwise the legacy cluster_name-based defaults are used. Enable by default in new-cluster use cases when possible."
 }
 
 variable "use_service_account_role_annotation" {

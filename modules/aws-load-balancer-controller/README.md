@@ -15,8 +15,9 @@ module "this" {
   region       = "eu-central-1"
 
   iam = {
-    policy_name = null
-    role_name   = null
+    policy_name           = null
+    role_name             = null
+    use_descriptive_names = false
   }
 }
 ```
@@ -123,7 +124,7 @@ No modules.
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | wether or no to create namespace | `bool` | `false` | no |
 | <a name="input_create_pod_identity_association"></a> [create\_pod\_identity\_association](#input\_create\_pod\_identity\_association) | Whether to create an EKS Pod Identity association for the controller service account. | `bool` | `false` | no |
 | <a name="input_enable_waf"></a> [enable\_waf](#input\_enable\_waf) | Enables WAF and WAF V2 addons for ALB | `bool` | `false` | no |
-| <a name="input_iam"></a> [iam](#input\_iam) | Optional IAM naming overrides. When null, names are generated from cluster\_name. | <pre>object({<br/>    policy_name = optional(string, null)<br/>    role_name   = optional(string, null)<br/>  })</pre> | `{}` | no |
+| <a name="input_iam"></a> [iam](#input\_iam) | Optional IAM naming controls. Explicit names win when set. When use\_descriptive\_names is true, names are generated as aws-load-balancer-controller-{cluster\_name} and aws-load-balancer-controller-{cluster\_name}\_iam\_role. Otherwise the legacy cluster\_name-based defaults are used. Enable by default in new-cluster use cases when possible. | <pre>object({<br/>    policy_name           = optional(string, null)<br/>    role_name             = optional(string, null)<br/>    use_descriptive_names = optional(bool, false)<br/>  })</pre> | `{}` | no |
 | <a name="input_image"></a> [image](#input\_image) | Optional controller image override. When repository/tag are null, the chart default image is used. | <pre>object({<br/>    repository = optional(string, null)<br/>    tag        = optional(string, null)<br/>  })</pre> | `{}` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | namespace load balancer controller should be deployed into | `string` | `"kube-system"` | no |
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | OIDC provider ARN used for the IRSA trust policy. If not provided, it is resolved from the EKS cluster identified by cluster\_name. | `string` | `null` | no |
