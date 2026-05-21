@@ -67,6 +67,7 @@ variable "image" {
 variable "iam" {
   type = object({
     policy_name           = optional(string, null)
+    policy_description    = optional(string, null)
     role_name             = optional(string, null)
     use_descriptive_names = optional(bool, false)
   })

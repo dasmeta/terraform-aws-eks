@@ -1,7 +1,7 @@
 
 resource "aws_iam_policy" "this" {
   name        = local.iam_policy_name
-  description = "Permissions that are required to manage AWS Application Load Balancers."
+  description = local.iam_policy_description
   policy      = file("${path.module}/iam-policy.json")
 }
 

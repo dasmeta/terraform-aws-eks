@@ -101,6 +101,7 @@ variable "alb_load_balancer_controller" {
     }), {})
     iam = optional(object({
       policy_name           = optional(string, null) # Optional IAM policy name override
+      policy_description    = optional(string, null) # Optional IAM policy description override
       role_name             = optional(string, null) # Optional IAM role name override
       use_descriptive_names = optional(bool, false)  # When true, generate descriptive names instead of legacy cluster-based defaults
     }), {})

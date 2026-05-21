@@ -15,8 +15,9 @@ locals {
   generated_iam_policy_name = var.iam.use_descriptive_names ? "aws-load-balancer-controller-${var.cluster_name}" : "${var.cluster_name}-alb-management"
   generated_iam_role_name   = var.iam.use_descriptive_names ? "aws-load-balancer-controller-${var.cluster_name}_iam_role" : var.cluster_name
 
-  iam_policy_name = coalesce(var.iam.policy_name, local.generated_iam_policy_name)
-  iam_role_name   = coalesce(var.iam.role_name, local.generated_iam_role_name)
+  iam_policy_name        = coalesce(var.iam.policy_name, local.generated_iam_policy_name)
+  iam_policy_description = coalesce(var.iam.policy_description, "Permissions that are required to manage AWS Application Load Balancers.")
+  iam_role_name          = coalesce(var.iam.role_name, local.generated_iam_role_name)
 
   service_account_values = merge(
     {
