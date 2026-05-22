@@ -1,5 +1,8 @@
 locals {
-  create_external_pod_identity_role = !var.use_service_account_role_annotation && !var.create_pod_identity_association
+  attachment_method                 = var.iam.attachment_method
+  use_service_account_annotation    = local.attachment_method == "service_account_role_annotation"
+  create_pod_identity_association   = local.attachment_method == "pod_identity_association"
+  create_external_pod_identity_role = local.attachment_method == null
   oidc_provider_arn                 = coalesce(var.oidc_provider_arn, try(data.aws_iam_openid_connect_provider.this[0].arn, null))
   oidc_provider_id                  = replace(try(local.oidc_provider_arn, ""), "/.*id//", "")
 
@@ -23,7 +26,7 @@ locals {
     {
       name = var.service_account_name
     },
-    var.use_service_account_role_annotation ? {
+    local.use_service_account_annotation ? {
       annotations = {
         "eks.amazonaws.com/role-arn" = aws_iam_role.aws-load-balancer-role.arn
       }

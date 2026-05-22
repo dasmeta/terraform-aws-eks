@@ -100,25 +100,23 @@ variable "alb_load_balancer_controller" {
       tag        = optional(string, null) # Optional controller image tag override; when null, the chart default tag is used
     }), {})
     iam = optional(object({
-      policy_name                       = optional(string, null) # Optional IAM policy name override
-      policy_description                = optional(string, null) # Optional IAM policy description override
-      role_name                         = optional(string, null) # Optional IAM role name override
-      use_descriptive_names             = optional(bool, false)  # When true, generate descriptive names instead of legacy cluster-based defaults
-      enforce_pod_identity_request_tags = optional(bool, true)   # Whether to keep the Pod Identity request-tag condition on the role trust policy
+      policy_name           = optional(string, null)                              # Optional IAM policy name override
+      policy_description    = optional(string, null)                              # Optional IAM policy description override
+      role_name             = optional(string, null)                              # Optional IAM role name override
+      attachment_method     = optional(string, "service_account_role_annotation") # IAM role attachment mode: service_account_role_annotation or pod_identity_association; set null to manage the association externally
+      use_descriptive_names = optional(bool, false)                               # When true, generate descriptive names instead of legacy cluster-based defaults
     }), {})
-    use_service_account_role_annotation = optional(bool, true)  # Whether to attach the IAM role through the eks.amazonaws.com/role-arn service account annotation
-    create_pod_identity_association     = optional(bool, false) # Whether to create an EKS Pod Identity association for the controller service account
-    configs                             = optional(any, {})     # Allows to pass additional helm chart configs
+    configs = optional(any, {}) # Allows to pass additional helm chart configs
   })
   default     = {}
   description = "Aws alb ingress/load-balancer controller configs."
 
   validation {
-    condition = !(
-      try(var.alb_load_balancer_controller.use_service_account_role_annotation, true) &&
-      try(var.alb_load_balancer_controller.create_pod_identity_association, false)
+    condition = contains(
+      ["service_account_role_annotation", "pod_identity_association", null],
+      try(var.alb_load_balancer_controller.iam.attachment_method, "service_account_role_annotation")
     )
-    error_message = "alb_load_balancer_controller.use_service_account_role_annotation and alb_load_balancer_controller.create_pod_identity_association cannot both be true."
+    error_message = "alb_load_balancer_controller.iam.attachment_method must be service_account_role_annotation, pod_identity_association, or null for an externally managed association."
   }
 }
 

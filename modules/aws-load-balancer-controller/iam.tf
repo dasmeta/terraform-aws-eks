@@ -11,7 +11,7 @@ resource "aws_iam_role" "aws-load-balancer-role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = concat(
-      var.use_service_account_role_annotation ? [
+      local.use_service_account_annotation ? [
         {
           Effect = "Allow"
           Principal = {
@@ -26,9 +26,8 @@ resource "aws_iam_role" "aws-load-balancer-role" {
           }
         }
       ] : [],
-      (var.create_pod_identity_association || local.create_external_pod_identity_role) ? [
+      (local.create_pod_identity_association || local.create_external_pod_identity_role) ? [
         {
-          Sid    = "AllowEksAuthToAssumeRoleForPodIdentity"
           Effect = "Allow"
           Principal = {
             Service = "pods.eks.amazonaws.com"
@@ -37,12 +36,6 @@ resource "aws_iam_role" "aws-load-balancer-role" {
             "sts:AssumeRole",
             "sts:TagSession"
           ]
-          Condition = var.iam.enforce_pod_identity_request_tags ? {
-            StringEquals = {
-              "aws:RequestTag/kubernetes-namespace"       = var.namespace
-              "aws:RequestTag/kubernetes-service-account" = var.service_account_name
-            }
-          } : null
         }
       ] : []
     )
@@ -55,7 +48,7 @@ resource "aws_iam_role_policy_attachment" "AWSLoadBalancerControllerIAMPolicy" {
 }
 
 resource "aws_eks_pod_identity_association" "this" {
-  count = var.create_pod_identity_association ? 1 : 0
+  count = local.create_pod_identity_association ? 1 : 0
 
   cluster_name    = var.cluster_name
   namespace       = var.namespace

@@ -66,26 +66,22 @@ variable "image" {
 
 variable "iam" {
   type = object({
-    policy_name                       = optional(string, null) # Optional IAM policy name override
-    policy_description                = optional(string, null) # Optional IAM policy description override
-    role_name                         = optional(string, null) # Optional IAM role name override
-    use_descriptive_names             = optional(bool, false)  # When true, generate descriptive names instead of legacy cluster-based defaults
-    enforce_pod_identity_request_tags = optional(bool, true)   # Whether to keep the Pod Identity request-tag condition on the role trust policy
+    policy_name           = optional(string, null)                              # Optional IAM policy name override
+    policy_description    = optional(string, null)                              # Optional IAM policy description override
+    role_name             = optional(string, null)                              # Optional IAM role name override
+    attachment_method     = optional(string, "service_account_role_annotation") # IAM role attachment mode: service_account_role_annotation or pod_identity_association; set null to manage the association externally
+    use_descriptive_names = optional(bool, false)                               # When true, generate descriptive names instead of legacy cluster-based defaults
   })
   default     = {}
-  description = "Optional IAM naming and enforcement controls. Explicit names win when set. When use_descriptive_names is true, names are generated as aws-load-balancer-controller-{cluster_name} and aws-load-balancer-controller-{cluster_name}_iam_role. Otherwise the legacy cluster_name-based defaults are used. Enable by default in new-cluster use cases when possible."
-}
+  description = "Optional IAM naming controls. Explicit names win when set. When use_descriptive_names is true, names are generated as aws-load-balancer-controller-{cluster_name} and aws-load-balancer-controller-{cluster_name}_iam_role. Otherwise the legacy cluster_name-based defaults are used. Enable by default in new-cluster use cases when possible."
 
-variable "use_service_account_role_annotation" {
-  type        = bool
-  default     = true
-  description = "Whether to attach the IAM role to the controller service account through the eks.amazonaws.com/role-arn annotation."
-}
-
-variable "create_pod_identity_association" {
-  type        = bool
-  default     = false
-  description = "Whether to create an EKS Pod Identity association for the controller service account."
+  validation {
+    condition = contains(
+      ["service_account_role_annotation", "pod_identity_association", null],
+      var.iam.attachment_method
+    )
+    error_message = "iam.attachment_method must be service_account_role_annotation, pod_identity_association, or null for an externally managed association."
+  }
 }
 
 variable "configs" {

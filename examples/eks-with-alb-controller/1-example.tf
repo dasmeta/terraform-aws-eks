@@ -37,8 +37,9 @@ module "this" {
     chart = {
       version = "3.3.0"
     }
-    use_service_account_role_annotation = true
-    create_pod_identity_association     = false
+    iam = {
+      attachment_method = "service_account_role_annotation"
+    }
     configs = {
       replicaCount = 1
     }

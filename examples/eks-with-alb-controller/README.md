@@ -27,8 +27,7 @@ ALB-backed Kubernetes `Ingress`.
 
 This example uses the service-account annotation path by default:
 
-- `use_service_account_role_annotation = true`
-- `create_pod_identity_association = false`
+- `iam.attachment_method = "service_account_role_annotation"`
 
 That keeps the example self-contained and avoids requiring separate Pod Identity setup to
 validate the controller.

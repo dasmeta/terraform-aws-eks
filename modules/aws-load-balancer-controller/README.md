@@ -15,11 +15,11 @@ module "this" {
   region       = "eu-central-1"
 
   iam = {
-    policy_name                       = null
-    policy_description                = null
-    role_name                         = null
-    use_descriptive_names             = false
-    enforce_pod_identity_request_tags = true
+    policy_name           = null
+    policy_description    = null
+    role_name             = null
+    attachment_method     = "service_account_role_annotation"
+    use_descriptive_names = false
   }
 }
 ```
@@ -41,16 +41,13 @@ module "this" {
 
 The module supports three permission-binding modes:
 
-1. `use_service_account_role_annotation = true`
+1. `iam.attachment_method = "service_account_role_annotation"`
    The controller service account gets the `eks.amazonaws.com/role-arn` annotation.
-2. `create_pod_identity_association = true`
+2. `iam.attachment_method = "pod_identity_association"`
    The module creates an EKS Pod Identity association for the controller service account.
-3. Both options `false`
+3. `iam.attachment_method = null`
    The module still creates the IAM role and IAM policy, and you can create the Pod
    Identity association separately outside the module.
-
-Do not enable both built-in attachment modes at the same time. The module validates and
-rejects that configuration.
 
 For IRSA mode, `oidc_provider_arn` is the only required OIDC input. The module derives
 the issuer ID suffix used in the trust-policy condition keys from that ARN. If
@@ -124,15 +121,13 @@ No modules.
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | eks cluster name | `string` | `""` | no |
 | <a name="input_configs"></a> [configs](#input\_configs) | Configurations to pass and override default ones. Check the chart values here: https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller | `any` | `{}` | no |
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | wether or no to create namespace | `bool` | `false` | no |
-| <a name="input_create_pod_identity_association"></a> [create\_pod\_identity\_association](#input\_create\_pod\_identity\_association) | Whether to create an EKS Pod Identity association for the controller service account. | `bool` | `false` | no |
 | <a name="input_enable_waf"></a> [enable\_waf](#input\_enable\_waf) | Enables WAF and WAF V2 addons for ALB | `bool` | `false` | no |
-| <a name="input_iam"></a> [iam](#input\_iam) | Optional IAM naming and enforcement controls. Explicit names win when set. When use\_descriptive\_names is true, names are generated as aws-load-balancer-controller-{cluster\_name} and aws-load-balancer-controller-{cluster\_name}\_iam\_role. Otherwise the legacy cluster\_name-based defaults are used. Enable by default in new-cluster use cases when possible. | <pre>object({<br/>    policy_name                       = optional(string, null) # Optional IAM policy name override<br/>    policy_description                = optional(string, null) # Optional IAM policy description override<br/>    role_name                         = optional(string, null) # Optional IAM role name override<br/>    use_descriptive_names             = optional(bool, false)  # When true, generate descriptive names instead of legacy cluster-based defaults<br/>    enforce_pod_identity_request_tags = optional(bool, true)   # Whether to keep the Pod Identity request-tag condition on the role trust policy<br/>  })</pre> | `{}` | no |
+| <a name="input_iam"></a> [iam](#input\_iam) | Optional IAM naming controls. Explicit names win when set. When use\_descriptive\_names is true, names are generated as aws-load-balancer-controller-{cluster\_name} and aws-load-balancer-controller-{cluster\_name}\_iam\_role. Otherwise the legacy cluster\_name-based defaults are used. Enable by default in new-cluster use cases when possible. | <pre>object({<br/>    policy_name           = optional(string, null)                              # Optional IAM policy name override<br/>    policy_description    = optional(string, null)                              # Optional IAM policy description override<br/>    role_name             = optional(string, null)                              # Optional IAM role name override<br/>    attachment_method     = optional(string, "service_account_role_annotation") # IAM role attachment mode: service_account_role_annotation or pod_identity_association; set null to manage the association externally<br/>    use_descriptive_names = optional(bool, false)                               # When true, generate descriptive names instead of legacy cluster-based defaults<br/>  })</pre> | `{}` | no |
 | <a name="input_image"></a> [image](#input\_image) | Optional controller image override. When repository/tag are null, the chart default image is used. | <pre>object({<br/>    repository = optional(string, null)<br/>    tag        = optional(string, null)<br/>  })</pre> | `{}` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | namespace load balancer controller should be deployed into | `string` | `"kube-system"` | no |
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | OIDC provider ARN used for the IRSA trust policy. If not provided, it is resolved from the EKS cluster identified by cluster\_name. | `string` | `null` | no |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region name. | `string` | n/a | yes |
 | <a name="input_service_account_name"></a> [service\_account\_name](#input\_service\_account\_name) | The service account name to attach balancer deployment | `string` | `"aws-load-balancer-controller"` | no |
-| <a name="input_use_service_account_role_annotation"></a> [use\_service\_account\_role\_annotation](#input\_use\_service\_account\_role\_annotation) | Whether to attach the IAM role to the controller service account through the eks.amazonaws.com/role-arn annotation. | `bool` | `true` | no |
 | <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | The AWS VPC Id where EKS deployed. Issue https://github.com/kubernetes-sigs/aws-load-balancer-controller/issues/3695 | `string` | `null` | no |
 
 ## Outputs
@@ -142,5 +137,5 @@ No modules.
 | <a name="output_iam_policy_arn"></a> [iam\_policy\_arn](#output\_iam\_policy\_arn) | The IAM policy ARN used by the controller role. |
 | <a name="output_iam_role_arn"></a> [iam\_role\_arn](#output\_iam\_role\_arn) | The IAM role ARN used by the controller. |
 | <a name="output_iam_role_name"></a> [iam\_role\_name](#output\_iam\_role\_name) | The IAM role name used by the controller. |
-| <a name="output_pod_identity_association_id"></a> [pod\_identity\_association\_id](#output\_pod\_identity\_association\_id) | The EKS Pod Identity association ID when create\_pod\_identity\_association is enabled. |
+| <a name="output_pod_identity_association_id"></a> [pod\_identity\_association\_id](#output\_pod\_identity\_association\_id) | The EKS Pod Identity association ID when iam.attachment\_method is pod\_identity\_association. |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

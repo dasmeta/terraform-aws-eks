@@ -14,6 +14,6 @@ output "iam_role_name" {
 }
 
 output "pod_identity_association_id" {
-  description = "The EKS Pod Identity association ID when create_pod_identity_association is enabled."
+  description = "The EKS Pod Identity association ID when iam.attachment_method is pod_identity_association."
   value       = try(aws_eks_pod_identity_association.this[0].association_id, null)
 }

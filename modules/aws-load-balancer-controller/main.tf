@@ -18,11 +18,4 @@ resource "helm_release" "aws-load-balancer-controller" {
     jsonencode(local.default_values),
     jsonencode(var.configs)
   ]
-
-  lifecycle {
-    precondition {
-      condition     = !(var.use_service_account_role_annotation && var.create_pod_identity_association)
-      error_message = "use_service_account_role_annotation and create_pod_identity_association cannot both be true at the same time."
-    }
-  }
 }
