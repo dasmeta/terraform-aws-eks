@@ -66,13 +66,14 @@ variable "image" {
 
 variable "iam" {
   type = object({
-    policy_name           = optional(string, null)
-    policy_description    = optional(string, null)
-    role_name             = optional(string, null)
-    use_descriptive_names = optional(bool, false)
+    policy_name                       = optional(string, null) # Optional IAM policy name override
+    policy_description                = optional(string, null) # Optional IAM policy description override
+    role_name                         = optional(string, null) # Optional IAM role name override
+    use_descriptive_names             = optional(bool, false)  # When true, generate descriptive names instead of legacy cluster-based defaults
+    enforce_pod_identity_request_tags = optional(bool, true)   # Whether to keep the Pod Identity request-tag condition on the role trust policy
   })
   default     = {}
-  description = "Optional IAM naming controls. Explicit names win when set. When use_descriptive_names is true, names are generated as aws-load-balancer-controller-{cluster_name} and aws-load-balancer-controller-{cluster_name}_iam_role. Otherwise the legacy cluster_name-based defaults are used. Enable by default in new-cluster use cases when possible."
+  description = "Optional IAM naming and enforcement controls. Explicit names win when set. When use_descriptive_names is true, names are generated as aws-load-balancer-controller-{cluster_name} and aws-load-balancer-controller-{cluster_name}_iam_role. Otherwise the legacy cluster_name-based defaults are used. Enable by default in new-cluster use cases when possible."
 }
 
 variable "use_service_account_role_annotation" {

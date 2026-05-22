@@ -100,10 +100,11 @@ variable "alb_load_balancer_controller" {
       tag        = optional(string, null) # Optional controller image tag override; when null, the chart default tag is used
     }), {})
     iam = optional(object({
-      policy_name           = optional(string, null) # Optional IAM policy name override
-      policy_description    = optional(string, null) # Optional IAM policy description override
-      role_name             = optional(string, null) # Optional IAM role name override
-      use_descriptive_names = optional(bool, false)  # When true, generate descriptive names instead of legacy cluster-based defaults
+      policy_name                       = optional(string, null) # Optional IAM policy name override
+      policy_description                = optional(string, null) # Optional IAM policy description override
+      role_name                         = optional(string, null) # Optional IAM role name override
+      use_descriptive_names             = optional(bool, false)  # When true, generate descriptive names instead of legacy cluster-based defaults
+      enforce_pod_identity_request_tags = optional(bool, true)   # Whether to keep the Pod Identity request-tag condition on the role trust policy
     }), {})
     use_service_account_role_annotation = optional(bool, true)  # Whether to attach the IAM role through the eks.amazonaws.com/role-arn service account annotation
     create_pod_identity_association     = optional(bool, false) # Whether to create an EKS Pod Identity association for the controller service account

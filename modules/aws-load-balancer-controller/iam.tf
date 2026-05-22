@@ -37,12 +37,12 @@ resource "aws_iam_role" "aws-load-balancer-role" {
             "sts:AssumeRole",
             "sts:TagSession"
           ]
-          Condition = {
+          Condition = var.iam.enforce_pod_identity_request_tags ? {
             StringEquals = {
               "aws:RequestTag/kubernetes-namespace"       = var.namespace
               "aws:RequestTag/kubernetes-service-account" = var.service_account_name
             }
-          }
+          } : null
         }
       ] : []
     )
