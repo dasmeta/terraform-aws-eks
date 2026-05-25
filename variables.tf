@@ -88,15 +88,36 @@ variable "enable_autoscaling_group_metrics" {
 # ALB-INGRESS-CONTROLLER
 variable "alb_load_balancer_controller" {
   type = object({
-    enabled                     = optional(bool, true)  # Whether alb ingress/load-balancer controller enabled, note that alb load balancer will be created also when nginx_ingress_controller_config.enabled=true as nginx loadbalancer service needs it
-    enable_waf_for_alb          = optional(bool, false) # Enables WAF and WAF V2 addons for ALB
-    configs                     = optional(any, {})     # allows to pass additional helm chart configs
-    alb_log_bucket_name         = optional(string, "")  # The s3 bucket where alb logs will be placed, TODO: option and its related ability disable, check if we need this ability
-    alb_log_bucket_path         = optional(string, "")  # The s3 bucket path/folder where alb logs will be placed, TODO: option and its related ability disable, check if we need this ability
-    send_alb_logs_to_cloudwatch = optional(bool, true)  # Whether logs will be pushed to cloudwatch also, TODO: option and its related ability disable, check if we need this ability
+    enabled            = optional(bool, true)  # Whether alb ingress/load-balancer controller enabled, note that alb load balancer will be created also when nginx_ingress_controller_config.enabled=true as nginx loadbalancer service needs it
+    enable_waf_for_alb = optional(bool, false) # Enables WAF and WAF V2 addons for ALB
+    chart = optional(object({
+      version    = optional(string, "3.3.0")                            # Chart version to install
+      repository = optional(string, "https://aws.github.io/eks-charts") # Chart repository URL, ignored when name is a direct packaged-chart URL
+      name       = optional(string, "aws-load-balancer-controller")     # Chart name or a direct packaged-chart URL ending with .tgz
+    }), {})
+    image = optional(object({
+      repository = optional(string, null) # Optional controller image repository override; when null, the chart default image is used
+      tag        = optional(string, null) # Optional controller image tag override; when null, the chart default tag is used
+    }), {})
+    iam = optional(object({
+      policy_name           = optional(string, null)                              # Optional IAM policy name override
+      policy_description    = optional(string, null)                              # Optional IAM policy description override
+      role_name             = optional(string, null)                              # Optional IAM role name override
+      attachment_method     = optional(string, "service_account_role_annotation") # IAM role attachment mode: service_account_role_annotation or pod_identity_association; set null to manage the association externally
+      use_descriptive_names = optional(bool, false)                               # When true, generate descriptive names instead of legacy cluster-based defaults
+    }), {})
+    configs = optional(any, {}) # Allows to pass additional helm chart configs
   })
   default     = {}
   description = "Aws alb ingress/load-balancer controller configs."
+
+  validation {
+    condition = contains(
+      ["service_account_role_annotation", "pod_identity_association", null],
+      try(var.alb_load_balancer_controller.iam.attachment_method, "service_account_role_annotation")
+    )
+    error_message = "alb_load_balancer_controller.iam.attachment_method must be service_account_role_annotation, pod_identity_association, or null for an externally managed association."
+  }
 }
 
 # FLUENT-BIT

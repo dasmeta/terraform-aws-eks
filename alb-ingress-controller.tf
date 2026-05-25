@@ -3,21 +3,17 @@ module "alb-ingress-controller" {
 
   count = var.create && (var.alb_load_balancer_controller.enabled || var.nginx_ingress_controller_config.enabled) ? 1 : 0
 
-  account_id = local.account_id
-  region     = local.region
+  region = local.region
 
-  cluster_name                = module.eks-cluster[0].cluster_name
-  eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
-  oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
-  enable_waf                  = var.alb_load_balancer_controller.enable_waf_for_alb
-  configs                     = var.alb_load_balancer_controller.configs
-  vpc_id                      = local.vpc_id
+  cluster_name = module.eks-cluster[0].cluster_name
 
-  ## the load balancer access logs sync to s3=>lambda=>cloudwatch was disabled/commented-out so this params also need/can be commented,
-  ## after then the fix be applied for enabling this functionality we can uncomment them
-  # create_alb_log_bucket       = true
-  # alb_log_bucket_name = var.alb_load_balancer_controller.alb_log_bucket_name != "" ? var.alb_load_balancer_controller.alb_log_bucket_name : "${module.eks-cluster[0].cluster_name}-ingress-controller-log-bucket"
-  # alb_log_bucket_path = var.alb_load_balancer_controller.alb_log_bucket_path != "" ? var.alb_load_balancer_controller.alb_log_bucket_path : module.eks-cluster[0].cluster_name
+  oidc_provider_arn = module.eks-cluster[0].oidc_provider_arn
+  enable_waf        = var.alb_load_balancer_controller.enable_waf_for_alb
+  chart             = var.alb_load_balancer_controller.chart
+  image             = var.alb_load_balancer_controller.image
+  iam               = var.alb_load_balancer_controller.iam
+  configs           = var.alb_load_balancer_controller.configs
+  vpc_id            = local.vpc_id
 
   depends_on = [module.eks-core-components]
 }

@@ -1,6 +1,6 @@
 {
   "integration": "cursor-agent",
-  "version": "0.5.0",
+  "version": "0.6.1",
   "scripts": {
     "update-context": ".specify/integrations/cursor-agent/scripts/update-context.sh"
   }

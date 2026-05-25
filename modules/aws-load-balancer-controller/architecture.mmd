@@ -1,0 +1,76 @@
+flowchart TB
+  client([Browser / external client])
+
+  subgraph k8s["Kubernetes / EKS cluster"]
+    direction TB
+
+    subgraph app["Application-specific workload setup"]
+      direction TB
+      pods((Pods))
+      appsvc([App Service])
+      ingress([Ingress resource<br/>ingressClass: alb])
+      lbsvc([LoadBalancer Service<br/>optional path])
+    end
+
+    subgraph platform["Shared controller setup"]
+      direction TB
+      controller([aws-load-balancer-controller])
+      sa([ServiceAccount<br/>kube-system/aws-load-balancer-controller])
+    end
+  end
+
+  subgraph aws["AWS account resources"]
+    direction TB
+
+    subgraph identity["IAM / identity resources"]
+      direction TB
+      irsa[/IRSA annotation path/]
+      podid[/EKS Pod Identity path/]
+      role[/IAM role/]
+      policy[/IAM policy/]
+    end
+
+    subgraph lbs["Managed load balancer resources"]
+      direction LR
+      alb{{Application<br/>Load Balancer}}
+      nlb[(Network<br/>Load Balancer)]
+    end
+
+    tg{{Target groups / listeners}}
+  end
+
+  ingress -->|dependency| controller
+  lbsvc -->|dependency| controller
+  controller -->|uses| sa
+
+  sa -. annotation .-> irsa
+  sa -. association .-> podid
+  irsa -. binds .-> role
+  podid -. binds .-> role
+  role -->|attached| policy
+
+  controller -. assumes / uses .-> role
+  controller -->|reconciles| alb
+  controller -->|reconciles| nlb
+  controller -->|reconciles| tg
+
+  client == traffic ==> alb
+  client == traffic ==> nlb
+  alb == traffic ==> tg
+  nlb == traffic ==> tg
+  tg == traffic ==> appsvc
+  appsvc == traffic ==> pods
+
+  classDef platform fill:#d9f2e6,stroke:#1f7a52,stroke-width:2px,color:#103b2a;
+  classDef app fill:#e8f1ff,stroke:#2b6cb0,stroke-width:1.5px,color:#12344d;
+  classDef identity fill:#fff3d6,stroke:#b7791f,stroke-width:1.5px,color:#4a2d00;
+  classDef alb fill:#ffe3e3,stroke:#b83232,stroke-width:2px,color:#4a1414;
+  classDef nlb fill:#f7e8ff,stroke:#7b3fb3,stroke-width:2px,color:#3f1c63;
+  classDef client fill:#f4f4f5,stroke:#6b7280,stroke-width:1.5px,color:#222;
+
+  class controller,sa platform;
+  class pods,appsvc,ingress,lbsvc app;
+  class irsa,podid,role,policy identity;
+  class alb,tg alb;
+  class nlb nlb;
+  class client client;

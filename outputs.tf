@@ -103,6 +103,11 @@ output "region" {
   value = local.region
 }
 
+output "alb_load_balancer_controller" {
+  description = "Combined AWS load balancer controller module output object."
+  value       = try(module.alb-ingress-controller[0], null)
+}
+
 output "external_secret_deployment" {
   value = try(module.external-secrets[0].deployment, null)
 }

@@ -12,3 +12,7 @@ terraform {
     }
   }
 }
+
+provider "aws" {}
+
+provider "helm" {}
