@@ -5,7 +5,7 @@ locals {
     (strcontains(data.aws_ami.this.name, "amzn2") || strcontains(data.aws_ami.this.description, "AmazonLinux2")) ? "AL2" :
     null
   )
-  amiFamilyGpu = "AL2"
+  amiFamilyGpu = "AL2023"
 
   # We create this aws ec2 node class as default for karpenter as this is something general and can be used as default for node-pools which have not nodeClassRef required field set explicitly
   defaultEc2NodeClass = {
