@@ -5,7 +5,7 @@ module "this" {
   region       = "eu-central-1"
 
   chart = {
-    version = "3.3.0"
+    version = "3.4.2"
   }
   configs = {
     replicaCount = 1
