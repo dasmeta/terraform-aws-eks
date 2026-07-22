@@ -47,7 +47,7 @@ variable "enable_waf" {
 
 variable "chart" {
   type = object({
-    version    = optional(string, "3.3.0")
+    version    = optional(string, "3.4.2")
     repository = optional(string, "https://aws.github.io/eks-charts")
     name       = optional(string, "aws-load-balancer-controller")
   })

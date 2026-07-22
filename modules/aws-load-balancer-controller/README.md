@@ -117,7 +117,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_chart"></a> [chart](#input\_chart) | Chart source settings. name can be a chart name or a direct packaged-chart URL ending with .tgz; repository is ignored for direct URLs. | <pre>object({<br/>    version    = optional(string, "3.3.0")<br/>    repository = optional(string, "https://aws.github.io/eks-charts")<br/>    name       = optional(string, "aws-load-balancer-controller")<br/>  })</pre> | `{}` | no |
+| <a name="input_chart"></a> [chart](#input\_chart) | Chart source settings. name can be a chart name or a direct packaged-chart URL ending with .tgz; repository is ignored for direct URLs. | <pre>object({<br/>    version    = optional(string, "3.4.2")<br/>    repository = optional(string, "https://aws.github.io/eks-charts")<br/>    name       = optional(string, "aws-load-balancer-controller")<br/>  })</pre> | `{}` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | eks cluster name | `string` | `""` | no |
 | <a name="input_configs"></a> [configs](#input\_configs) | Configurations to pass and override default ones. Check the chart values here: https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller | `any` | `{}` | no |
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | wether or no to create namespace | `bool` | `false` | no |
