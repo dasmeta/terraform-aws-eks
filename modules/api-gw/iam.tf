@@ -1,13 +1,16 @@
 locals {
   oidc_id = split("/", var.cluster_oidc_arn)[3]
+  region  = coalesce(var.region, try(data.aws_region.current[0].name, null))
 }
 
-data "aws_region" "current" {}
+data "aws_region" "current" {
+  count = var.region == null ? 1 : 0
+}
 
 data "aws_caller_identity" "this" {}
 
 resource "aws_iam_policy" "policy" {
-  name        = "AmazonEKSClusterApiGateway-${var.cluster_name}-${data.aws_region.current.name}"
+  name        = "AmazonEKSClusterApiGateway-${var.cluster_name}-${local.region}"
   path        = "/"
   description = "Amazon EKS API gateway Policy"
 
@@ -17,10 +20,10 @@ resource "aws_iam_policy" "policy" {
 }
 
 resource "aws_iam_role" "role" {
-  name = "api-gw-${var.cluster_name}-${data.aws_region.current.name}"
+  name = "api-gw-${var.cluster_name}-${local.region}"
   assume_role_policy = templatefile("${path.module}/policies/trusted-policy.json", {
     oidc           = var.cluster_oidc_arn,
-    current_region = data.aws_region.current.name,
+    current_region = local.region,
   oidc_id = local.oidc_id })
   managed_policy_arns = [aws_iam_policy.policy.arn]
 }

@@ -16,7 +16,7 @@ variable "addon_version" {
 
 variable "cluster_version" {
   type        = string
-  default     = "1.33"
+  default     = "1.34"
   description = "Version of eks cluster"
 }
 
@@ -24,6 +24,12 @@ variable "most_recent" {
   type        = bool
   default     = true
   description = "Whether to use addon latest compatible version"
+}
+
+variable "region" {
+  type        = string
+  default     = null
+  description = "AWS Region, if not set the region will be fetched from provider/caller current context"
 }
 
 variable "storage_classes" {

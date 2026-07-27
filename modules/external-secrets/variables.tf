@@ -6,6 +6,6 @@ variable "namespace" {
 
 variable "chart_version" {
   type        = string
-  default     = "0.15.0"
+  default     = "2.8.0"
   description = "The app chart version to use"
 }

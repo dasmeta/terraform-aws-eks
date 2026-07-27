@@ -31,3 +31,9 @@ variable "chart_version" {
   default     = "3.1.8"
   description = "The app chart version"
 }
+
+variable "region" {
+  type        = string
+  default     = null
+  description = "AWS Region, if not set the region will be fetched from provider/caller current context"
+}

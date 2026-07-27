@@ -9,7 +9,7 @@ module "keda" {
   create_namespace  = var.keda.create_namespace
   keda_version      = var.keda.keda_version
   attach_policies   = var.keda.attach_policies
-  eks_cluster_name  = module.eks-cluster[0].cluster_name
+  eks_cluster_name  = var.cluster_name
 
   depends_on = [module.eks-core-components-and-alb]
 }

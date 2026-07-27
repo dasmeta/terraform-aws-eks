@@ -45,7 +45,7 @@
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | Create Namespace to deploy KEDA | `bool` | `true` | no |
 | <a name="input_eks_cluster_name"></a> [eks\_cluster\_name](#input\_eks\_cluster\_name) | Cluster name | `string` | n/a | yes |
 | <a name="input_keda_trigger_auth_additional"></a> [keda\_trigger\_auth\_additional](#input\_keda\_trigger\_auth\_additional) | This variable stores the YAML configuration for a KEDA `TriggerAuthentication` resource. It is used to define authentication settings for KEDA to interact with external cloud providers such as AWS. Module have default for aws you can use default(keda-trigger-auth-default) | `any` | `null` | no |
-| <a name="input_keda_version"></a> [keda\_version](#input\_keda\_version) | Version of the KEDA Helm chart | `string` | `"2.16.1"` | no |
+| <a name="input_keda_version"></a> [keda\_version](#input\_keda\_version) | Version of the KEDA Helm chart | `string` | `"2.20.0"` | no |
 | <a name="input_name"></a> [name](#input\_name) | Name to deploy KEDA | `string` | `"keda"` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | Namespace to deploy KEDA | `string` | `"keda"` | no |
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | EKC oidc provider arn in format 'arn:aws:iam::<account-id>:oidc-provider/oidc.eks.<region>.amazonaws.com/id/<oidc-id>'. If not provided, this value will be fetched from based on var.eks\_cluster\_name | `string` | `null` | no |

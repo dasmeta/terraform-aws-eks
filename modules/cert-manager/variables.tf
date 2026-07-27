@@ -4,6 +4,12 @@ variable "chart_version" {
   description = "The cert-manager helm chart version"
 }
 
+variable "region" {
+  type        = string
+  default     = null
+  description = "AWS Region, if not set the region will be fetched from provider/caller current context"
+}
+
 variable "namespace" {
   type        = string
   default     = "cert-manager"

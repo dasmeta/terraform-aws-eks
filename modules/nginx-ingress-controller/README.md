@@ -29,8 +29,8 @@
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The app chart version | `string` | `"4.12.0"` | no |
-| <a name="input_configs"></a> [configs](#input\_configs) | Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx/4.12.0?modal=values | `any` | `{}` | no |
+| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The app chart version | `string` | `"4.15.1"` | no |
+| <a name="input_configs"></a> [configs](#input\_configs) | Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx/4.15.1?modal=values | `any` | `{}` | no |
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | Create namespace or use existing one | `bool` | `true` | no |
 | <a name="input_metrics_enabled"></a> [metrics\_enabled](#input\_metrics\_enabled) | Enable metric export | `bool` | `true` | no |
 | <a name="input_name"></a> [name](#input\_name) | Name | `string` | `"nginx"` | no |

@@ -19,7 +19,7 @@ variable "create_namespace" {
 variable "keda_version" {
   description = "Version of the KEDA Helm chart"
   type        = string
-  default     = "2.16.1"
+  default     = "2.20.0"
 }
 
 variable "chart_name" {

@@ -41,7 +41,7 @@ resources:
   requests:
     cpu: 15m
 
-externalSecretsApiVersion: external-secrets.io/v1beta1 # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
+externalSecretsApiVersion: external-secrets.io/v1 # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
 secrets:
   - AN_TEST_SECRET_ENV
 

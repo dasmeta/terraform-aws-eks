@@ -1,5 +1,7 @@
 
 locals {
+  region = coalesce(var.region, try(data.aws_region.current[0].name, null))
+
   # Create a map of cluster issuers keyed by name for easier iteration
   cluster_issuers_map = {
     for issuer in var.cluster_issuers : issuer.name => issuer

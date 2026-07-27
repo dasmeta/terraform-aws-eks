@@ -7,7 +7,7 @@ resource "helm_release" "efs-driver" {
 
   set {
     name  = "image.repository"
-    value = "602401143452.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/eks/aws-efs-csi-driver"
+    value = "602401143452.dkr.ecr.${local.region}.amazonaws.com/eks/aws-efs-csi-driver"
   }
 
   set {
@@ -22,4 +22,6 @@ resource "helm_release" "efs-driver" {
 
 }
 
-data "aws_region" "current" {}
+data "aws_region" "current" {
+  count = var.region == null ? 1 : 0
+}
