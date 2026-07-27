@@ -30,7 +30,13 @@ variable "service_account_name" {
 variable "oidc_provider_arn" {
   type        = string
   default     = null
-  description = "OIDC provider ARN used for the IRSA trust policy. If not provided, it is resolved from the EKS cluster identified by cluster_name."
+  description = "OIDC provider ARN used for the IRSA trust policy. If not provided and resolve_oidc_from_cluster is true, it is resolved from the EKS cluster identified by cluster_name."
+}
+
+variable "resolve_oidc_from_cluster" {
+  type        = bool
+  default     = true
+  description = "Whether to look up the OIDC provider from the EKS cluster identified by cluster_name when oidc_provider_arn is not supplied. Set to false when the caller always supplies oidc_provider_arn (e.g. from a cluster created in the same plan), otherwise Terraform cannot evaluate the data source count while the cluster's OIDC provider ARN is still unknown at plan time."
 }
 
 variable "vpc_id" {

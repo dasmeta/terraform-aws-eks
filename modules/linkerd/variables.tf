@@ -6,13 +6,19 @@ variable "crds_create" {
 
 variable "crds_chart_version" {
   type        = string
-  default     = "1.8.0"
+  default     = "2025.10.7"
   description = "The app crds chart version"
+}
+
+variable "chart_repository" {
+  type        = string
+  default     = "https://helm.linkerd.io/edge"
+  description = "The Linkerd Helm chart repository to use for CRDs, control plane, and viz charts"
 }
 
 variable "chart_version" {
   type        = string
-  default     = "1.16.11" # we use an old/stable release version here, TODO: check possibility to upgrade to newer and stable version(which maybe can be found in edge releases) as this one seems got deprecated
+  default     = "2025.10.7"
   description = "The linkerd chart version"
 }
 
@@ -24,7 +30,7 @@ variable "viz_create" {
 
 variable "viz_chart_version" {
   type        = string
-  default     = "30.12.11"
+  default     = "2025.10.7"
   description = "The dashboard/monitoring chart version for linkerd"
 }
 

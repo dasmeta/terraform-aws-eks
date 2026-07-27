@@ -20,9 +20,8 @@
 resource "helm_release" "this_crds" {
   count = var.crds_create ? 1 : 0
 
-  name = "linkerd-crds"
-  # repository       = "https://helm.linkerd.io/edge" # we use latest stable version, TODO: the stable version registry seems deprecated, check possibility to update to new registry named edge and with stable version for this and other linkerd helm components
-  repository       = "https://helm.linkerd.io/stable"
+  name             = "linkerd-crds"
+  repository       = var.chart_repository
   chart            = "linkerd-crds"
   namespace        = var.namespace
   version          = var.crds_chart_version
@@ -33,9 +32,8 @@ resource "helm_release" "this_crds" {
 
 # installs linkerd operator helm package
 resource "helm_release" "this" {
-  name = "linkerd-control-plane"
-  # repository       = "https://helm.linkerd.io/edge" # we use latest stable version, TODO: the stable version registry seems deprecated, check possibility to update to new registry named edge and with stable version for this and other linkerd helm components
-  repository       = "https://helm.linkerd.io/stable"
+  name             = "linkerd-control-plane"
+  repository       = var.chart_repository
   chart            = "linkerd-control-plane"
   namespace        = var.namespace
   version          = var.chart_version
@@ -53,9 +51,8 @@ resource "helm_release" "this" {
 resource "helm_release" "this_viz" {
   count = var.viz_create ? 1 : 0
 
-  name = "linkerd-viz"
-  # repository       = "https://helm.linkerd.io/edge" # we use latest stable version, TODO: the stable version registry seems deprecated, check possibility to update to new registry named edge and with stable version for this and other linkerd helm components
-  repository       = "https://helm.linkerd.io/stable"
+  name             = "linkerd-viz"
+  repository       = var.chart_repository
   chart            = "linkerd-viz"
   namespace        = "${var.namespace}-viz"
   version          = var.viz_chart_version

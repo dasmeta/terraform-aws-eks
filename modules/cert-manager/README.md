@@ -147,6 +147,7 @@ module "cert-manager" {
 | <a name="input_extra_configs"></a> [extra\_configs](#input\_extra\_configs) | Extra Helm values to merge with the default cert-manager chart values (e.g., controller config, webhook config) | `any` | `{}` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | Namespace where cert-manager will be installed | `string` | `"cert-manager"` | no |
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | EKS OIDC provider ARN for IAM role trust policy | `string` | n/a | yes |
+| <a name="input_region"></a> [region](#input\_region) | AWS Region, if not set the region will be fetched from provider/caller current context | `string` | `null` | no |
 
 ## Outputs
 

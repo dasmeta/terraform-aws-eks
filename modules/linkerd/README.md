@@ -50,15 +50,16 @@ module "this" {
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_atomic"></a> [atomic](#input\_atomic) | Whether use helm deploy with --atomic flag | `bool` | `false` | no |
-| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The linkerd chart version | `string` | `"1.16.11"` | no |
+| <a name="input_chart_repository"></a> [chart\_repository](#input\_chart\_repository) | The Linkerd Helm chart repository to use for CRDs, control plane, and viz charts | `string` | `"https://helm.linkerd.io/edge"` | no |
+| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The linkerd chart version | `string` | `"2025.10.7"` | no |
 | <a name="input_configs"></a> [configs](#input\_configs) | Configurations to pass and override default ones for linkerd. Check the helm chart available configs  here: https://artifacthub.io/packages/helm/linkerd2/linkerd2 | `any` | `{}` | no |
 | <a name="input_configs_viz"></a> [configs\_viz](#input\_configs\_viz) | Configurations to pass and override default ones for linkerd\_viz. Check the helm chart available configs for specified var.viz\_chart\_version here: https://artifacthub.io/packages/helm/linkerd2/linkerd-viz | `any` | `{}` | no |
-| <a name="input_crds_chart_version"></a> [crds\_chart\_version](#input\_crds\_chart\_version) | The app crds chart version | `string` | `"1.8.0"` | no |
+| <a name="input_crds_chart_version"></a> [crds\_chart\_version](#input\_crds\_chart\_version) | The app crds chart version | `string` | `"2025.10.7"` | no |
 | <a name="input_crds_create"></a> [crds\_create](#input\_crds\_create) | Whether to create linkerd crds | `bool` | `true` | no |
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | Create namespace if requested | `bool` | `true` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | The namespace to install main helm. | `string` | `"linkerd"` | no |
 | <a name="input_resourcesDefaults"></a> [resourcesDefaults](#input\_resourcesDefaults) | The default/shared container memory/cpu request/limits to use in all containers. For now we have only requests set to have minimal resources for services. | `any` | <pre>{<br/>  "cpu": {<br/>    "request": "100m"<br/>  },<br/>  "memory": {<br/>    "request": "128Mi"<br/>  }<br/>}</pre> | no |
-| <a name="input_viz_chart_version"></a> [viz\_chart\_version](#input\_viz\_chart\_version) | The dashboard/monitoring chart version for linkerd | `string` | `"30.12.11"` | no |
+| <a name="input_viz_chart_version"></a> [viz\_chart\_version](#input\_viz\_chart\_version) | The dashboard/monitoring chart version for linkerd | `string` | `"2025.10.7"` | no |
 | <a name="input_viz_create"></a> [viz\_create](#input\_viz\_create) | Whether to create linkerd viz dashboards | `bool` | `true` | no |
 | <a name="input_wait"></a> [wait](#input\_wait) | Whether use helm deploy with --wait flag | `bool` | `true` | no |
 

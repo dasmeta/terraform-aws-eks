@@ -8,6 +8,12 @@ variable "cluster_name" {
   description = "Cluster name to pass to role"
 }
 
+variable "region" {
+  type        = string
+  default     = null
+  description = "AWS Region, if not set the region will be fetched from provider/caller current context"
+}
+
 variable "limits" {
   type = object({
     cpu    = string
@@ -32,14 +38,14 @@ variable "requests" {
 
 variable "eks_version" {
   type        = string
-  default     = "1.33"
+  default     = "1.34"
   description = "The version of eks cluster"
 }
 
 variable "autoscaler_image_patch" {
   type        = number
   description = "The patch number of autoscaler image"
-  default     = 0
+  default     = 3
 }
 
 variable "scale_down_unneeded_time" {

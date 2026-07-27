@@ -109,8 +109,8 @@ module "secret_store" {
   source  = "dasmeta/modules/aws//modules/external-secret-store"
   version = "2.18.1"
 
-  name                         = "app/test"                    # {{ .Values.product }}-{{ .Values.env }}
-  external_secrets_api_version = "external-secrets.io/v1beta1" # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
+  name                         = "app/test"               # {{ .Values.product }}-{{ .Values.env }}
+  external_secrets_api_version = "external-secrets.io/v1" # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
   namespace                    = local.namespace
 
   depends_on = [module.this.namespaces_and_docker_auth_helm_metadata]

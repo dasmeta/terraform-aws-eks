@@ -201,6 +201,13 @@ variable "metrics_server_name" {
   type    = string
   default = "metrics-server"
 }
+
+variable "metrics_server_chart_version" {
+  type        = string
+  default     = "7.4.12"
+  description = "Metrics Server Helm chart version"
+}
+
 variable "cluster_endpoint_public_access" {
   type    = bool
   default = true
@@ -218,6 +225,12 @@ variable "external_secrets_namespace" {
   default     = "kube-system"
 }
 
+variable "external_secrets_chart_version" {
+  type        = string
+  description = "External Secrets Operator Helm chart version"
+  default     = "2.8.0"
+}
+
 variable "cluster_enabled_log_types" {
   description = "A list of the desired control plane logs to enable. For more information, see Amazon EKS Control Plane Logging documentation (https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html)"
   type        = list(string)
@@ -227,7 +240,7 @@ variable "cluster_enabled_log_types" {
 variable "cluster_version" {
   description = "Allows to set/change kubernetes cluster version, kubernetes version needs to be updated at leas once a year. Please check here for available versions https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html"
   type        = string
-  default     = "1.33"
+  default     = "1.34"
 }
 
 variable "cluster_addons" {
@@ -373,9 +386,10 @@ variable "nginx_ingress_controller_config" {
     name             = optional(string, "nginx")
     create_namespace = optional(bool, true)
     namespace        = optional(string, "ingress-nginx")
+    chart_version    = optional(string, "4.15.1")
     replicacount     = optional(number, 3)
     metrics_enabled  = optional(bool, true)
-    configs          = optional(any, {}) # Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx/4.12.0?modal=values
+    configs          = optional(any, {}) # Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx/4.15.1?modal=values
   })
 
   default = {
@@ -383,6 +397,7 @@ variable "nginx_ingress_controller_config" {
     name             = "nginx"
     create_namespace = true
     namespace        = "ingress-nginx"
+    chart_version    = "4.15.1"
     replicacount     = 3
     metrics_enabled  = true
   }
@@ -453,7 +468,7 @@ variable "enable_kube_state_metrics" {
 
 variable "kube_state_metrics_chart_version" {
   type        = string
-  default     = "5.27.0"
+  default     = "7.8.1"
   description = "The kube-state-metrics chart version"
 }
 
@@ -576,7 +591,7 @@ variable "autoscaling" {
 variable "autoscaler_image_patch" {
   type        = number
   description = "The patch number of autoscaler image"
-  default     = 0
+  default     = 3
 }
 
 variable "scale_down_unneeded_time" {
@@ -812,7 +827,7 @@ variable "keda" {
     name             = optional(string, "keda")   # keda chart name,
     namespace        = optional(string, "keda")   # keda chart namespace
     create_namespace = optional(bool, true)       # create keda chart
-    keda_version     = optional(string, "2.16.1") # chart version
+    keda_version     = optional(string, "2.20.0") # chart version
     attach_policies = optional(object({
       sqs = bool
     }), { sqs = false })
@@ -823,7 +838,7 @@ variable "keda" {
     name             = "keda"
     namespace        = "keda"
     create_namespace = true
-    keda_version     = "2.16.1"
+    keda_version     = "2.20.0"
   }
   description = "Allows to create/deploy/configure keda"
 }
@@ -854,14 +869,22 @@ variable "namespaces_and_docker_auth" {
 
 variable "linkerd" {
   type = object({
-    enabled     = optional(bool, true)
-    configs     = optional(any, {})    # allows to override default configs of linkerd main helm chart, check underlying sub-module module for more info
-    configs_viz = optional(any, {})    # allows to override default configs of linkerd viz helm chart, check underlying sub-module module for more info
-    crds_create = optional(bool, true) # whether to have linkerd crd installed
-    viz_create  = optional(bool, true) # whether to have linkerd monitoring/dashboard tooling installed
+    enabled            = optional(bool, true)
+    chart_repository   = optional(string, "https://helm.linkerd.io/edge") # Linkerd Helm repository to use for CRDs, control plane, and viz charts
+    crds_chart_version = optional(string, "2025.10.7")                    # linkerd-crds chart version
+    chart_version      = optional(string, "2025.10.7")                    # linkerd-control-plane chart version
+    viz_chart_version  = optional(string, "2025.10.7")                    # linkerd-viz chart version
+    configs            = optional(any, {})                                # allows to override default configs of linkerd main helm chart, check underlying sub-module module for more info
+    configs_viz        = optional(any, {})                                # allows to override default configs of linkerd viz helm chart, check underlying sub-module module for more info
+    crds_create        = optional(bool, true)                             # whether to have linkerd crd installed
+    viz_create         = optional(bool, true)                             # whether to have linkerd monitoring/dashboard tooling installed
   })
   default = {
-    enabled = true
+    enabled            = true
+    chart_repository   = "https://helm.linkerd.io/edge"
+    crds_chart_version = "2025.10.7"
+    chart_version      = "2025.10.7"
+    viz_chart_version  = "2025.10.7"
   }
   description = "Allows to create/configure linkerd in eks cluster"
 }

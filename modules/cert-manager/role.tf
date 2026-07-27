@@ -1,6 +1,6 @@
 # Create a single shared IAM policy for all issuers (combines permissions from all issuers)
 resource "aws_iam_policy" "dns01_route53" {
-  name        = "${var.cluster_name}-${data.aws_region.current.name}-cert-manager-dns01-route53"
+  name        = "${var.cluster_name}-${local.region}-cert-manager-dns01-route53"
   description = "Permissions for cert-manager DNS01 to manage Route53 records"
   policy = jsonencode({
     Version = "2012-10-17"
@@ -37,7 +37,7 @@ module "dns01_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "5.28.0"
 
-  role_name = "${var.cluster_name}-${data.aws_region.current.name}-cert-manager-dns01"
+  role_name = "${var.cluster_name}-${local.region}-cert-manager-dns01"
 
   role_policy_arns = {
     route53 = aws_iam_policy.dns01_route53.arn

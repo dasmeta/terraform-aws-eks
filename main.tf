@@ -129,6 +129,67 @@
  *    - upgraded eks cluster to 1.33 version
  *    - gateway-api(istio) support added (example how to use can be found in examples/eks-with-istio-gateway-api)
  *    - improved cert-manager implementation by adding cluster-issuer and certificate resources creation and validation based on HTTP01 and DNS01 challenges(example how to used with cloudflare can be found in examples/eks-with-cert-manager)
+ *  - from version >= 2.26.0, EKS 1.34 support is added and 1.34 is the new default cluster version.
+ *    - This module change does not include live client cluster delivery. Each real cluster upgrade should be handled in a separate delivery ticket with environment-specific validation and rollback planning.
+ *    - EKS 1.33 standard support ends on 2026-07-29 and then enters charged extended support. EKS 1.34 standard support ends on 2026-12-02.
+ *    - EKS 1.34 has no Amazon Linux 2 optimized AMI. The module defaults for managed node groups already use AL2023, but any consumer override using AL2 must be migrated before the cluster upgrade (separate, unrelated change, out of scope here).
+ *    - Components intentionally left unchanged because current defaults already support EKS 1.34 or are selected dynamically from `cluster_version`: terraform-aws-eks v20.x, AWS Load Balancer Controller (root's `alb_load_balancer_controller.chart.version` default, tracked separately from this EKS version change), Karpenter 1.9.0, cert-manager 1.20.0, AWS managed addons such as coredns/vpc-cni/kube-proxy/EBS/S3/ADOT, and node-problem-detector. Broader refreshes for those tools should be separate from this EKS version change.
+ *    - Deprecated/removed API review: no module-owned Kubernetes core API removed in 1.34 was found. CRD-owned APIs still depend on their operators. External Secrets examples have been updated to `external-secrets.io/v1`; consumer-owned manifests should also be checked for `storage.k8s.io/v1beta1` VolumeAttributesClass usage, deprecated AppArmor annotations, and manual kubelet `--cgroup-driver` configuration.
+ *
+ *    ### 1.33 -> 1.34 upgrade runbook (existing clusters only; new clusters can start straight on 1.34, no staging needed)
+ *    Each stage below is exactly one `terraform apply` (Stage 2 is the exception: it applies consumer-level manifest changes outside this module, over one or more applies, all under the same intent). Do not combine two stages' config changes into a single apply. Every stage lists an explicit exit criteria; all of it must be true before starting the next stage. If a stage fails verification, revert that stage's own config change and re-apply rather than proceeding.
+ *
+ *    Preconditions (check once, before Stage 1): no node group overrides pin the AL2 AMI type; PodDisruptionBudgets exist for workloads that must not go fully unavailable during rollouts; if Linkerd is enabled and traffic-critical, read Stage 4 fully before starting, it is the most operationally involved stage.
+ *
+ *    1. Adopt the module version, hold the control plane and both API-breaking components at their pre-upgrade behavior.
+ *       - Goal: pick up every EKS 1.34-safe tooling default (Autoscaler, Metrics Server, KEDA, kube-state-metrics, ingress-nginx) in one apply, while explicitly holding the three things that can break something (`cluster_version`, External Secrets, Linkerd) at their old, known-good behavior.
+ *       - Action: bump the module to `>= 2.26.0` and explicitly set the pins below (omit the `linkerd` block entirely if `linkerd.enabled = false`):
+ *         ```terraform
+ *         module "this" {
+ *           source  = "dasmeta/eks/aws"
+ *           version = ">= 2.26.0"
+ *
+ *           # Keep pinned through Stage 4. Move to "1.34" only in Stage 5.
+ *           cluster_version = "1.33"
+ *
+ *           # Bridge version: serves both v1beta1 and v1. Remove in Stage 3.
+ *           external_secrets_chart_version = "0.16.2"
+ *
+ *           # Old chart line. Remove (or set to module defaults) in Stage 4.
+ *           linkerd = {
+ *             enabled            = true
+ *             chart_repository   = "https://helm.linkerd.io/stable"
+ *             crds_chart_version = "1.8.0"
+ *             chart_version      = "1.16.11"
+ *             viz_chart_version  = "30.12.11"
+ *           }
+ *         }
+ *         ```
+ *         Apply.
+ *       - Verify: apply completes clean; `cluster_version` unchanged (cluster still reports 1.33); Autoscaler/Metrics Server/KEDA/kube-state-metrics/ingress-nginx pods `Running` on their new versions; the External Secrets operator pod is still running the 0.16.2 image; Linkerd control plane/proxies are untouched (still the old stable chart, no pod restarts on meshed workloads).
+ *       - Exit criteria: all pods from the tools bumped in this stage are `Ready`; nothing else drifted.
+ *    2. Migrate External Secrets manifests to `v1` (operator still on the 0.16.2 bridge from Stage 1).
+ *       - Goal: move every ExternalSecret/SecretStore/ClusterSecretStore-consuming config to the `v1` API while the operator still serves both APIs, so there is a safe rollback window if something doesn't reconcile.
+ *       - Action (consumer-level, not this module): set `external_secrets_api_version = "external-secrets.io/v1"` on every `external-secret-store` module call, and update `externalSecretsApiVersion: external-secrets.io/v1` in the `values.yaml` of any chart that renders ExternalSecret/SecretStore manifests. Apply each affected stack.
+ *       - Verify: `kubectl get externalsecret,secretstore,clustersecretstore -A -o jsonpath='{.items[*].apiVersion}'` shows only `external-secrets.io/v1`; `kubectl get externalsecret -A` shows `SecretSynced`/`Ready=True` for all objects; the resulting Kubernetes Secret values are unchanged from before the migration.
+ *       - Exit criteria: zero `external-secrets.io/v1beta1` objects remain in the cluster; every ExternalSecret is synced under `v1`.
+ *    3. Complete the External Secrets Operator upgrade.
+ *       - Goal: move the operator itself off the bridge version onto the module's real default.
+ *       - Action: remove `external_secrets_chart_version = "0.16.2"` from the module call (or set it explicitly to `"2.8.0"`). Apply.
+ *       - Verify: the operator pod is running the new chart's image; `kubectl get externalsecret -A` still shows `SecretSynced`/`Ready=True` for everything.
+ *       - Exit criteria: operator on 2.8.0+ (v1-only line), all secrets still syncing. This stage is independent of Stage 4 and may run before, after, or in parallel with it, but both must complete before Stage 5.
+ *    4. Migrate Linkerd (skip entirely if `linkerd.enabled = false`).
+ *       - Goal: move the mesh off the unsupported stable-2.14 line onto the edge 2025.10.7 line supported on EKS 1.34, before the control plane moves.
+ *       - Precondition: `linkerd check` and `linkerd check --proxy` pass clean against the current (old) install.
+ *       - Action: remove the `linkerd` override block added in Stage 1 (or set it explicitly to the module defaults: edge repo, `2025.10.7` for all three chart versions). Apply. The module's `helm_release` dependency chain (`linkerd-crds` -> `linkerd-control-plane` -> `linkerd-viz`) installs/upgrades those three in that order within this single apply; do not attempt to stage CRDs/control-plane/viz across separate applies pointed at different repositories, the module shares one `chart_repository` across all three.
+ *       - Verify: `linkerd check` and `linkerd check --proxy` pass against the new control plane. Existing meshed workloads' sidecars are still the OLD proxy version at this point (they only pick up the new proxy on their next pod restart) — this is expected and safe for a bounded version-skew window, not a stalled migration.
+ *       - Follow-up (workload-level, outside this module): restart meshed workloads gradually, namespace by namespace or deployment by deployment rather than a single cluster-wide rollout, so each batch re-injects the new proxy version. Check traffic/error metrics after each batch before restarting the next.
+ *       - Exit criteria: `linkerd check --proxy` reports every meshed pod on the new proxy version; traffic metrics healthy across all batches.
+ *    5. Upgrade the EKS control plane to 1.34.
+ *       - Precondition: Stage 3 and Stage 4 (if applicable) both met their exit criteria; all tooling from Stage 1 still healthy.
+ *       - Action: set `cluster_version = "1.34"` (or remove the pin entirely, 1.34 is the module default). Apply.
+ *       - Verify: `aws eks describe-cluster --name <cluster> --query cluster.version` returns `1.34`; `kubectl get nodes -o wide` shows nodes on a `1.34.x` kubelet version; `aws eks describe-addon` reports coredns/vpc-cni/kube-proxy/EBS/S3/ADOT as `ACTIVE`/healthy; all tooling verified in earlier stages is still healthy post-upgrade.
+ *       - Exit criteria: cluster and all node groups report 1.34; all addons `ACTIVE`; no `CrashLoopBackOff` across kube-system or tooling namespaces. Upgrade complete.
  *
  * ## How to run
  * ```hcl
@@ -418,7 +479,7 @@ module "cloudwatch-metrics" {
 
   eks_oidc_root_ca_thumbprint = local.eks_oidc_root_ca_thumbprint
   oidc_provider_arn           = module.eks-cluster[0].oidc_provider_arn
-  cluster_name                = module.eks-cluster[0].cluster_name
+  cluster_name                = var.cluster_name
 
   depends_on = [module.eks-core-components]
 }
@@ -428,7 +489,8 @@ module "metrics-server" {
 
   count = var.create ? 1 : 0
 
-  name = var.metrics_server_name != "" ? var.metrics_server_name : "${module.eks-cluster[0].cluster_name}-metrics-server"
+  name          = var.metrics_server_name != "" ? var.metrics_server_name : "${module.eks-cluster[0].cluster_name}-metrics-server"
+  chart_version = var.metrics_server_chart_version
 
   depends_on = [module.eks-core-components-and-alb]
 }
@@ -438,7 +500,8 @@ module "external-secrets" {
 
   count = var.create && var.enable_external_secrets ? 1 : 0
 
-  namespace = var.external_secrets_namespace
+  namespace     = var.external_secrets_namespace
+  chart_version = var.external_secrets_chart_version
 
   depends_on = [module.eks-core-components-and-alb]
 }
@@ -465,6 +528,7 @@ module "efs-csi-driver" {
   efs_id           = var.efs_id
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
   storage_classes  = var.efs_storage_classes
+  region           = local.region
 
   depends_on = [module.eks-core-components]
 }
@@ -483,6 +547,7 @@ module "cert-manager" {
 
   cluster_name      = var.cluster_name
   oidc_provider_arn = try(module.eks-cluster[0].oidc_provider_arn, "")
+  region            = local.region
 
   cluster_issuers   = try(var.cert_manager.resources.cluster_issuers, [])
   dns01_secret_data = try(var.cert_manager.resources.dns01_secret_data, {})
@@ -524,6 +589,7 @@ module "autoscaler" {
   scale_down_unneeded_time = var.scale_down_unneeded_time
   requests                 = var.autoscaler_requests
   limits                   = var.autoscaler_limits
+  region                   = local.region
 
   depends_on = [module.eks-core-components]
 }
@@ -538,6 +604,7 @@ module "ebs-csi" {
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
   addon_version    = var.ebs_csi_version
   storage_classes  = var.ebs_csi_storage_classes
+  region           = local.region
 
   depends_on = [module.eks-core-components]
 }
@@ -566,6 +633,7 @@ module "api-gw-controller" {
   cluster_name     = var.cluster_name
   cluster_oidc_arn = module.eks-cluster[0].oidc_provider_arn
   deploy_region    = var.api_gw_deploy_region
+  region           = local.region
 
   api_gateway_resources = var.api_gateway_resources
   vpc_id                = var.api_gateway_resources[0].vpc_links != null ? module.vpc[0].id : null
@@ -642,11 +710,15 @@ module "namespaces_and_docker_auth" {
 module "linkerd" {
   count = var.create && var.linkerd.enabled ? 1 : 0
 
-  source      = "./modules/linkerd"
-  configs     = var.linkerd.configs
-  configs_viz = var.linkerd.configs_viz
-  crds_create = var.linkerd.crds_create
-  viz_create  = var.linkerd.viz_create
+  source             = "./modules/linkerd"
+  chart_repository   = var.linkerd.chart_repository
+  crds_chart_version = var.linkerd.crds_chart_version
+  chart_version      = var.linkerd.chart_version
+  viz_chart_version  = var.linkerd.viz_chart_version
+  configs            = var.linkerd.configs
+  configs_viz        = var.linkerd.configs_viz
+  crds_create        = var.linkerd.crds_create
+  viz_create         = var.linkerd.viz_create
 
   depends_on = [module.eks-core-components-and-alb]
 }

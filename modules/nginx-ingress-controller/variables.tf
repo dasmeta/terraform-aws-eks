@@ -12,7 +12,7 @@ variable "namespace" {
 
 variable "chart_version" {
   type        = string
-  default     = "4.12.0"
+  default     = "4.15.1"
   description = "The app chart version"
 }
 
@@ -37,5 +37,5 @@ variable "metrics_enabled" {
 variable "configs" {
   type        = any
   default     = {}
-  description = "Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx/4.12.0?modal=values"
+  description = "Configurations to pass and override default ones. Check the helm chart available configs here: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx/4.15.1?modal=values"
 }

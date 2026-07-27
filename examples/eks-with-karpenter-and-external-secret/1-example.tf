@@ -1,8 +1,10 @@
 module "this" {
-  # source          = "dasmeta/eks/aws"
-  # version         = "2.20.3"
-  # cluster_version = "1.29"
-  source       = "../.."
+  # source  = "dasmeta/eks/aws"
+  # version = "2.25.7"
+  # cluster_version = "1.33" # at fist we set cluster version to 1.33 to have only components upgraded to new versions and then we can remove this to get the new 1.34
+  source = "../.."
+  # external_secrets_chart_version = "0.16.2" # at first we upgrade to 0.16.x version to support v1 and v1beta1 api versions, then we need to upgrade secret_store module and apps helm charts values to use new api v1 version, then we can remove/comment out this to get the latest version
+  # source       = "/Users/tmuradyan/projects/dasmeta/terraform-aws-eks-2"
   cluster_name = local.cluster_name
 
   vpc = {
@@ -21,7 +23,7 @@ module "this" {
   users = [
     { username = "terraform" }
   ]
-  metrics_exporter = "adot"
+  # metrics_exporter = "adot"
   adot_config = {
     accept_namespace_regex = "(default|kube-system)"
     additional_metrics     = []
@@ -31,6 +33,7 @@ module "this" {
 
   node_groups = {
     dev_nodes = {
+      # cluster_version: "1.33"
       min_size : 1
       max_size : 2
       desired_size : 2
@@ -92,8 +95,8 @@ module "secret_store" {
   source  = "dasmeta/modules/aws//modules/external-secret-store"
   version = "2.18.1"
 
-  name                         = "app/test"                    # {{ .Values.product }}-{{ .Values.env }}
-  external_secrets_api_version = "external-secrets.io/v1beta1" # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
+  name                         = "app/test"               # {{ .Values.product }}-{{ .Values.env }}
+  external_secrets_api_version = "external-secrets.io/v1" # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
   namespace                    = local.namespace
 
   depends_on = [module.this]

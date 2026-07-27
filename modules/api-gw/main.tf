@@ -14,6 +14,6 @@ resource "helm_release" "api-gw-release" {
 
   set {
     name  = "aws.region"
-    value = var.deploy_region == "" ? data.aws_region.current.name : var.deploy_region
+    value = var.deploy_region == "" ? local.region : var.deploy_region
   }
 }

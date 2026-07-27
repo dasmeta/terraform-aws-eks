@@ -22,15 +22,15 @@ which you can find [here](https://aws-controllers-k8s.github.io/community/docs/t
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.3 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 3.31 |
-| <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.4.1 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 3.31, < 6.0.0 |
+| <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.4.1, < 3.0.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 3.31 |
-| <a name="provider_helm"></a> [helm](#provider\_helm) | >= 2.4.1 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 3.31, < 6.0.0 |
+| <a name="provider_helm"></a> [helm](#provider\_helm) | >= 2.4.1, < 3.0.0 |
 | <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | n/a |
 
 ## Modules
@@ -63,6 +63,7 @@ No modules.
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | Cluster name to pass to role | `string` | n/a | yes |
 | <a name="input_cluster_oidc_arn"></a> [cluster\_oidc\_arn](#input\_cluster\_oidc\_arn) | Cluster OIDC arn to pass to policy | `string` | n/a | yes |
 | <a name="input_deploy_region"></a> [deploy\_region](#input\_deploy\_region) | Region in which API gatewat will be configured | `string` | n/a | yes |
+| <a name="input_region"></a> [region](#input\_region) | AWS Region, if not set the region will be fetched from provider/caller current context | `string` | `null` | no |
 | <a name="input_subnet_ids"></a> [subnet\_ids](#input\_subnet\_ids) | n/a | `list(string)` | n/a | yes |
 | <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | n/a | `string` | n/a | yes |
 
