@@ -54,6 +54,9 @@ module "this" {
 
   linkerd = {
     enabled = true # enabled by default
+    configs_crds = {
+      installGatewayAPI = true
+    }
   }
 
 }
