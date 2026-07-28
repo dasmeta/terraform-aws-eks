@@ -1,8 +1,8 @@
 # Feature Specification: Linkerd CRD Chart Configuration
 
-**Feature Branch**: `005-linkerd-crds-config`  
-**Created**: 2026-07-28  
-**Status**: Approved  
+**Feature Branch**: `005-linkerd-crds-config`
+**Created**: 2026-07-28
+**Status**: Approved
 **Input**: Expose optional Linkerd CRD Helm chart values through the root EKS
 module and Linkerd child module so YAML consumers can explicitly enable
 `installGatewayAPI` without changing existing defaults.

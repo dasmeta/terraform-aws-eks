@@ -12,14 +12,14 @@ the explicit `installGatewayAPI` use case.
 
 ## Technical Context
 
-**Language/Version**: Terraform >= 1.3.0  
-**Primary Dependencies**: HashiCorp Helm provider >= 2.0, Linkerd Helm charts  
-**Storage**: N/A  
-**Testing**: Terraform native tests, `terraform validate`, `terraform fmt`  
-**Target Platform**: AWS EKS and Kubernetes  
-**Project Type**: Terraform wrapper module with a nested Linkerd submodule  
-**Performance Goals**: N/A; configuration-only plan-time behavior  
-**Constraints**: Backward-compatible interface; no default Gateway API install  
+**Language/Version**: Terraform >= 1.3.0
+**Primary Dependencies**: HashiCorp Helm provider >= 2.0, Linkerd Helm charts
+**Storage**: N/A
+**Testing**: Terraform native tests, `terraform validate`, `terraform fmt`
+**Target Platform**: AWS EKS and Kubernetes
+**Project Type**: Terraform wrapper module with a nested Linkerd submodule
+**Performance Goals**: N/A; configuration-only plan-time behavior
+**Constraints**: Backward-compatible interface; no default Gateway API install
 **Scale/Scope**: Root EKS module, `modules/linkerd`, one Linkerd example
 
 ## Constitution Check

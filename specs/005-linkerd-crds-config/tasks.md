@@ -1,6 +1,6 @@
 # Tasks: Linkerd CRD Chart Configuration
 
-**Input**: `specs/005-linkerd-crds-config/spec.md`  
+**Input**: `specs/005-linkerd-crds-config/spec.md`
 **Prerequisites**: `spec.md`, `plan.md`
 
 ## Phase 1: Test-First Contract
