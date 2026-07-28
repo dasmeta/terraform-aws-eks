@@ -716,6 +716,7 @@ module "linkerd" {
   chart_version      = var.linkerd.chart_version
   viz_chart_version  = var.linkerd.viz_chart_version
   configs            = var.linkerd.configs
+  configs_crds       = var.linkerd.configs_crds
   configs_viz        = var.linkerd.configs_viz
   crds_create        = var.linkerd.crds_create
   viz_create         = var.linkerd.viz_create
