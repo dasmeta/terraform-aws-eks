@@ -53,6 +53,7 @@ module "this" {
 | <a name="input_chart_repository"></a> [chart\_repository](#input\_chart\_repository) | The Linkerd Helm chart repository to use for CRDs, control plane, and viz charts | `string` | `"https://helm.linkerd.io/edge"` | no |
 | <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The linkerd chart version | `string` | `"2025.10.7"` | no |
 | <a name="input_configs"></a> [configs](#input\_configs) | Configurations to pass and override default ones for linkerd. Check the helm chart available configs  here: https://artifacthub.io/packages/helm/linkerd2/linkerd2 | `any` | `{}` | no |
+| <a name="input_configs_crds"></a> [configs\_crds](#input\_configs\_crds) | Configurations to pass and override defaults for the linkerd-crds Helm chart | `any` | `{}` | no |
 | <a name="input_configs_viz"></a> [configs\_viz](#input\_configs\_viz) | Configurations to pass and override default ones for linkerd\_viz. Check the helm chart available configs for specified var.viz\_chart\_version here: https://artifacthub.io/packages/helm/linkerd2/linkerd-viz | `any` | `{}` | no |
 | <a name="input_crds_chart_version"></a> [crds\_chart\_version](#input\_crds\_chart\_version) | The app crds chart version | `string` | `"2025.10.7"` | no |
 | <a name="input_crds_create"></a> [crds\_create](#input\_crds\_create) | Whether to create linkerd crds | `bool` | `true` | no |

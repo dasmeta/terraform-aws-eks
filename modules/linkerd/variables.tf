@@ -77,6 +77,12 @@ variable "configs" {
   description = "Configurations to pass and override default ones for linkerd. Check the helm chart available configs  here: https://artifacthub.io/packages/helm/linkerd2/linkerd2"
 }
 
+variable "configs_crds" {
+  type        = any
+  default     = {}
+  description = "Configurations to pass and override defaults for the linkerd-crds Helm chart"
+}
+
 variable "configs_viz" {
   type        = any
   default     = {}
