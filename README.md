@@ -187,6 +187,25 @@ Those include:
    2. Migrate External Secrets manifests to `v1` (operator still on the 0.16.2 bridge from Stage 1).
       - Goal: move every ExternalSecret/SecretStore/ClusterSecretStore-consuming config to the `v1` API while the operator still serves both APIs, so there is a safe rollback window if something doesn't reconcile.
       - Action (consumer-level, not this module): set `external_secrets_api_version = "external-secrets.io/v1"` on every `external-secret-store` module call, and update `externalSecretsApiVersion: external-secrets.io/v1` in the `values.yaml` of any chart that renders ExternalSecret/SecretStore manifests. Apply each affected stack.
+      - Known failure mode: `helm upgrade` on a chart that renders an ExternalSecret/SecretStore can fail with `UPGRADE FAILED: unable to build kubernetes objects from current release manifest: ... no matches for kind "ExternalSecret" in version "external-secrets.io/v1alpha1", ensure CRDs are installed first`, even though the upgrade itself is only changing the apiVersion forward. Helm computes upgrades via a three-way merge, which needs the REST mapping for whatever apiVersion is recorded in that release's *previous* stored manifest (still `v1alpha1` before this migration); once the CRD stops serving `v1alpha1`, that lookup fails and Helm refuses to proceed with the upgrade at all. This is a Helm release-history problem, not a live cluster or config problem, and it blocks any further `helm upgrade` of that release, not just this one. Fix with the [`helm-mapkubeapis`](https://github.com/helm/helm-mapkubeapis) plugin, which rewrites the deprecated apiVersion recorded in Helm's own release history (it does not touch any live object, so the running ExternalSecret and the Kubernetes Secret it owns are unaffected):
+        ```sh
+        helm plugin install https://github.com/helm/helm-mapkubeapis
+
+        cat > /tmp/eso-mapkubeapis.yaml <<EOF
+        mappings:
+          - deprecatedAPI: |
+              apiVersion: external-secrets.io/v1alpha1
+              kind: ExternalSecret
+            newAPI: |
+              apiVersion: external-secrets.io/v1
+              kind: ExternalSecret
+            deprecatedInVersion: "v1.0"
+            removedInVersion: "v1.0"
+        EOF
+
+        helm mapkubeapis <release-name> -n <namespace> --mapfile /tmp/eso-mapkubeapis.yaml
+        ```
+        `deprecatedInVersion`/`removedInVersion` normally hold the Kubernetes version an API was deprecated/removed in, used by the plugin's built-in core-API mappings; External Secrets is a third-party CRD with no such Kubernetes-version tie-in, and leaving these blank makes the plugin fail with `Failed to get the deprecated or removed Kubernetes version for API`. Setting both to a version trivially below any real cluster (e.g. `v1.0`) makes the plugin always treat the mapping as applicable. Retry the `helm upgrade` after running this; add a second `mappings` entry with `kind: SecretStore` (and `ClusterSecretStore` if used) if those hit the same error.
       - Verify: `kubectl get externalsecret,secretstore,clustersecretstore -A -o jsonpath='{.items[*].apiVersion}'` shows only `external-secrets.io/v1`; `kubectl get externalsecret -A` shows `SecretSynced`/`Ready=True` for all objects; the resulting Kubernetes Secret values are unchanged from before the migration.
       - Exit criteria: zero `external-secrets.io/v1beta1` objects remain in the cluster; every ExternalSecret is synced under `v1`.
    3. Complete the External Secrets Operator upgrade.
