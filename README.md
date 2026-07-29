@@ -166,6 +166,22 @@ Those include:
         }
         ```
         Apply.
+      - Known failure mode: on clusters whose External Secrets install predates the `v1alpha1` -> `v1beta1` CRD transition, this apply can fail with `CustomResourceDefinition ... is invalid: status.storedVersions[0]: Invalid value: "v1alpha1": missing from spec.versions`. This is Kubernetes refusing to drop a version from a CRD's `spec.versions` while it is still listed in that CRD's `status.storedVersions`, regardless of whether any live object actually uses it; it is pre-existing cluster state, not a sign of a bad config, and would block any External Secrets chart bump on that cluster. Fix before retrying the apply:
+        ```sh
+        # 1. Confirm the stale entry (compare against spec.versions in the same output)
+        kubectl get crd clustersecretstores.external-secrets.io externalsecrets.external-secrets.io secretstores.external-secrets.io -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.storedVersions}{"\n"}{end}'
+
+        # 2. Re-persist existing objects so etcd re-encodes them under the current storage version (content unchanged; clustersecretstores is cluster-scoped, no -A)
+        kubectl get clustersecretstores.external-secrets.io -o json | kubectl replace -f -
+        kubectl get secretstores.external-secrets.io -A -o json | kubectl replace -f -
+        kubectl get externalsecrets.external-secrets.io -A -o json | kubectl replace -f -
+
+        # 3. Patch storedVersions to drop v1alpha1, keeping whatever else step 1 showed (usually just v1beta1)
+        kubectl patch crd clustersecretstores.external-secrets.io --subresource=status --type=merge -p '{"status":{"storedVersions":["v1beta1"]}}'
+        kubectl patch crd externalsecrets.external-secrets.io --subresource=status --type=merge -p '{"status":{"storedVersions":["v1beta1"]}}'
+        kubectl patch crd secretstores.external-secrets.io --subresource=status --type=merge -p '{"status":{"storedVersions":["v1beta1"]}}'
+        ```
+        Then retry the apply from this stage.
       - Verify: apply completes clean; `cluster_version` unchanged (cluster still reports 1.33); Autoscaler/Metrics Server/KEDA/kube-state-metrics/ingress-nginx pods `Running` on their new versions; the External Secrets operator pod is still running the 0.16.2 image; Linkerd control plane/proxies are untouched (still the old stable chart, no pod restarts on meshed workloads).
       - Exit criteria: all pods from the tools bumped in this stage are `Ready`; nothing else drifted.
    2. Migrate External Secrets manifests to `v1` (operator still on the 0.16.2 bridge from Stage 1).
