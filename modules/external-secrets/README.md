@@ -1,51 +1,34 @@
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
-# How to use
-This needs to be included in eks cluster along side with other services.
+# external-secrets (controller)
 
-At this stage it does not require any credentials.
+Installs the [external-secrets](https://external-secrets.io/) controller via Helm and
+provisions the AWS identity it runs as.
 
-```
-module external-secrets-staging {
-  source = "dasmeta/terraform/modules/external-secrets"
-}
-```
+Adapted from the upstream dasmeta module:
 
-After this one has to deploy specific stores which do contain credentials to pull secrets from AWS Secret Manager.
+- **Configurable chart source** — `chart.name` accepts either a chart name (resolved against
+  `chart.repository`) or a full `https://…/*.tgz` URL (a direct compressed endpoint, e.g. an
+  privately-hosted archive); when a URL is given, repository/version are ignored.
+- **Image overrides** — `image.{registry,repository,tag}` override the controller / webhook /
+  cert-controller images (e.g. to a private registry mirror). Unset ⇒ chart defaults.
+- **Extra values** — `values` and `extra_values` are merged into the release (extras last).
+- **Modern AWS identity** — the controller service account gets its IAM role via an EKS
+  **Pod Identity association** (default) or **IRSA** (`attachment_method =
+  "service_account_role_annotation"`). The base role carries no Secrets Manager access; it
+  may only `sts:AssumeRole` the per-store roles (`role/<store_role_name_prefix>*`). No IAM
+  users or static access keys are created.
 
-See related modules:
-- external-secret-store
-- aws-secret
+The direct `terraform-module/release/helm` wrapper and static-credential handling from the
+upstream module have been replaced by a direct `helm_release` plus the IAM wiring above.
 
-## Requirements
+## Key inputs
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.0 |
-
-## Providers
-
-No providers.
-
-## Modules
-
-| Name | Source | Version |
-|------|--------|---------|
-| <a name="module_release"></a> [release](#module\_release) | terraform-module/release/helm | 2.8.2 |
-
-## Resources
-
-No resources.
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_chart_version"></a> [chart\_version](#input\_chart\_version) | The app chart version to use | `string` | `"2.8.0"` | no |
-| <a name="input_namespace"></a> [namespace](#input\_namespace) | The namespace of kubernetes resources | `string` | `"kube-system"` | no |
-
-## Outputs
-
-| Name | Description |
-|------|-------------|
-| <a name="output_deployment"></a> [deployment](#output\_deployment) | n/a |
-<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+| Name | Description | Default |
+|------|-------------|---------|
+| `cluster_name` | EKS cluster name (required). | — |
+| `region` | Region (for the IRSA OIDC host). | `""` |
+| `namespace` | Install namespace. | `kube-system` |
+| `service_account_name` | Controller SA name. | `external-secrets` |
+| `chart` | `{ name, repository, version }`. | chart `external-secrets` @ `2.8.0` |
+| `image` | `{ registry, repository, tag }` overrides. | chart defaults |
+| `attachment_method` | `pod_identity_association` / `service_account_role_annotation` / `null`. | `pod_identity_association` |
+| `store_role_name_prefix` | Prefix of store roles the controller may assume. | `external-secrets-store-` |

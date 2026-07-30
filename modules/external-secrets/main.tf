@@ -1,34 +1,29 @@
 /**
- * # How to use
- * This needs to be included in eks cluster along side with other services.
+ * # external-secrets controller
  *
- * At this stage it does not require any credentials.
- *
- * ```
- * module external-secrets-staging {
- *   source = "dasmeta/terraform/modules/external-secrets"
- * }
- * ```
- *
- * After this one has to deploy specific stores which do contain credentials to pull secrets from AWS Secret Manager.
- *
- * See related modules:
- * - external-secret-store
- * - aws-secret
+ * Installs the external-secrets controller via Helm and provisions the AWS identity it runs
+ * as (EKS Pod Identity association by default, IRSA optional). Static IAM users / access keys
+ * are never created. The chart source supports both a standard Helm repo and a direct
+ * compressed .tgz endpoint, and controller/webhook/cert-controller images can be overridden
+ * to a private registry.
  */
 
-module "release" {
-  source  = "terraform-module/release/helm"
-  version = "2.8.2"
+resource "helm_release" "this" {
+  name             = var.release_name
+  repository       = local.chart_is_url ? null : var.chart.repository
+  chart            = var.chart.name
+  version          = local.chart_is_url ? null : var.chart.version
+  namespace        = var.namespace
+  create_namespace = var.create_namespace
+  atomic           = var.atomic
+  wait             = var.wait
+  timeout          = var.timeout
 
-  namespace  = var.namespace
-  repository = "https://charts.external-secrets.io"
-
-  app = {
-    name          = "external-secrets"
-    version       = var.chart_version
-    chart         = "external-secrets"
-    recreate_pods = false
-    deploy        = 1
-  }
+  # Later entries win in Helm: base config, then image overrides, then caller values/extras.
+  values = [
+    jsonencode(local.base_values),
+    jsonencode(local.image_values),
+    jsonencode(var.values),
+    jsonencode(var.extra_values),
+  ]
 }
