@@ -213,6 +213,28 @@ variable "cluster_endpoint_public_access" {
   default = true
 }
 
+variable "external_secrets" {
+  type = object({
+    enabled = optional(bool, true)
+    chart = optional(object({
+      version    = optional(string, "2.8.0")
+      repository = optional(string, "https://charts.external-secrets.io")
+      name       = optional(string, "external-secrets")
+    }), {})
+    image = optional(object({
+      repository = optional(string, null)
+      tag        = optional(string, null)
+    }), {})
+    iam = optional(object({
+      policy_name        = optional(string, null)
+      policy_description = optional(string, null)
+      role_name          = optional(string, null)
+    }), {})
+    namespace = optional(string, "kube-system")
+  })
+  default = {}
+}
+
 variable "enable_external_secrets" {
   type        = bool
   description = "Whether to enable external-secrets operator"

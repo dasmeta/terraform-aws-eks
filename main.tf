@@ -516,8 +516,14 @@ module "external-secrets" {
 
   count = var.create && var.enable_external_secrets ? 1 : 0
 
-  namespace     = var.external_secrets_namespace
-  chart_version = var.external_secrets_chart_version
+  cluster_name = var.cluster_name
+  namespace    = var.external_secrets_namespace
+  chart = {
+    version = var.external_secrets_chart_version
+  }
+  region                    = local.region
+  oidc_provider_arn         = module.eks-cluster[0].oidc_provider_arn
+  resolve_oidc_from_cluster = false # oidc_provider_arn is always supplied above; avoids an unknown-at-plan count on first cluster creation
 
   depends_on = [module.eks-core-components-and-alb]
 }

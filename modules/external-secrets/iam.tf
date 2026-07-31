@@ -14,8 +14,8 @@ resource "aws_iam_role" "this" {
           Action    = "sts:AssumeRoleWithWebIdentity"
           Condition = {
             StringEquals = {
-              "oidc.eks.${var.region}.amazonaws.com/id/${local.oidc_provider_id}:aud" = "sts.amazonaws.com"
-              "oidc.eks.${var.region}.amazonaws.com/id/${local.oidc_provider_id}:sub" = "system:serviceaccount:${var.namespace}:${var.service_account_name}"
+              "oidc.eks.${local.region}.amazonaws.com/id/${local.oidc_provider_id}:aud" = "sts.amazonaws.com"
+              "oidc.eks.${local.region}.amazonaws.com/id/${local.oidc_provider_id}:sub" = "system:serviceaccount:${var.namespace}:${var.service_account_name}"
             }
           }
         }

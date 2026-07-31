@@ -2,6 +2,7 @@ locals {
   # A direct .tgz endpoint is detected by an http(s) scheme in chart.name; in that case the
   # repository/version are dropped (the archive is self-describing).
   chart_is_url = can(regex("^https?://", var.chart.name))
+  region       = coalesce(var.region, try(data.aws_region.this[0].name, null))
 
   # Full image repository path: "<registry>/<repository>" when a registry override is set,
   # else just "<repository>". Only emitted when a repository override is present.
@@ -36,7 +37,7 @@ locals {
   oidc_provider_arn = local.use_service_account_annotation ? coalesce(var.oidc_provider_arn, try(data.aws_iam_openid_connect_provider.this[0].arn, null)) : null
   oidc_provider_id  = local.use_service_account_annotation ? replace(try(local.oidc_provider_arn, ""), "/.*id//", "") : ""
 
-  iam_role_name = coalesce(var.iam_role_name, "external-secrets-${var.cluster_name}")
+  iam_role_name = coalesce(var.iam_role_name, "external-secrets-${var.cluster_name}-${local.region}")
 
   # Per-store IAM roles the controller is allowed to assume (role chaining), matched by name prefix.
   store_role_arn_pattern = "arn:aws:iam::${data.aws_caller_identity.this.account_id}:role/${var.store_role_name_prefix}*"

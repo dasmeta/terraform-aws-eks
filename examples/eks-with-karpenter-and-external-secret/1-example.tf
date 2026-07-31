@@ -1,10 +1,8 @@
 module "this" {
-  # source  = "dasmeta/eks/aws"
-  # version = "2.25.7"
-  # cluster_version = "1.33" # at fist we set cluster version to 1.33 to have only components upgraded to new versions and then we can remove this to get the new 1.34
-  source = "../.."
-  # external_secrets_chart_version = "0.16.2" # at first we upgrade to 0.16.x version to support v1 and v1beta1 api versions, then we need to upgrade secret_store module and apps helm charts values to use new api v1 version, then we can remove/comment out this to get the latest version
-  # source       = "/Users/tmuradyan/projects/dasmeta/terraform-aws-eks-2"
+  source  = "dasmeta/eks/aws"
+  version = "2.27.0"
+  # source = "../.."
+  # external_secrets_chart_version = "0.16.2" # 0.16.x version supports both v1 and v1beta1 api versions, then we need to upgrade secret_store module and apps helm charts values to use new api v1 version, then we can remove/comment out this to get the latest version
   cluster_name = local.cluster_name
 
   vpc = {
@@ -94,6 +92,8 @@ module "this" {
 module "secret_store" {
   source  = "dasmeta/modules/aws//modules/external-secret-store"
   version = "2.18.1"
+  # source  = "/Users/tmuradyan/projects/dasmeta/terraform-aws-modules/modules/external-secret-store"
+
 
   name                         = "app/test"               # {{ .Values.product }}-{{ .Values.env }}
   external_secrets_api_version = "external-secrets.io/v1" # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
@@ -105,6 +105,8 @@ module "secret_store" {
 module "secret_manager" {
   source  = "dasmeta/modules/aws//modules/secret"
   version = "2.6.2"
+  # source  = "/Users/tmuradyan/projects/dasmeta/terraform-aws-modules/modules/secret"
+
 
   name                    = "app/test/http-echo"
   recovery_window_in_days = 0
