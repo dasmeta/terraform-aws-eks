@@ -19,8 +19,8 @@
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_secret_manager"></a> [secret\_manager](#module\_secret\_manager) | dasmeta/modules/aws//modules/secret | 2.6.2 |
-| <a name="module_secret_store"></a> [secret\_store](#module\_secret\_store) | dasmeta/modules/aws//modules/external-secret-store | 2.18.1 |
-| <a name="module_this"></a> [this](#module\_this) | dasmeta/eks/aws | 2.27.0 |
+| <a name="module_secret_store"></a> [secret\_store](#module\_secret\_store) | ../../../terraform-aws-modules/modules/external-secret-store | n/a |
+| <a name="module_this"></a> [this](#module\_this) | ../.. | n/a |
 
 ## Resources
 

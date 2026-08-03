@@ -47,6 +47,10 @@ resource "aws_iam_role_policy" "assume_store_roles" {
   })
 }
 
+// The association is created before the release (see helm_release's depends_on) so the
+// controller pods can obtain credentials on first start. It does not require the namespace
+// or service account to exist yet, so there is no ordering problem in creating it first;
+// the reverse order leaves the controller unable to authenticate until it retries.
 resource "aws_eks_pod_identity_association" "this" {
   count = local.create_pod_identity_association ? 1 : 0
 
@@ -54,6 +58,4 @@ resource "aws_eks_pod_identity_association" "this" {
   namespace       = var.namespace
   service_account = var.service_account_name
   role_arn        = aws_iam_role.this.arn
-
-  depends_on = [helm_release.this]
 }

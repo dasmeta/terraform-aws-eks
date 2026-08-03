@@ -1,7 +1,9 @@
 module "this" {
-  source  = "dasmeta/eks/aws"
-  version = "2.27.0"
-  # source = "../.."
+  # Local source so this example exercises the in-repo module. Switch back to the registry
+  # source below once the external-secrets changes are released.
+  source = "../.."
+  # source  = "dasmeta/eks/aws"
+  # version = "2.27.0"
   # external_secrets_chart_version = "0.16.2" # 0.16.x version supports both v1 and v1beta1 api versions, then we need to upgrade secret_store module and apps helm charts values to use new api v1 version, then we can remove/comment out this to get the latest version
   cluster_name = local.cluster_name
 
@@ -90,14 +92,21 @@ module "this" {
 }
 
 module "secret_store" {
-  source  = "dasmeta/modules/aws//modules/external-secret-store"
-  version = "2.18.1"
-  # source  = "/Users/tmuradyan/projects/dasmeta/terraform-aws-modules/modules/external-secret-store"
-
+  # Local source so this example exercises the in-repo store changes (IAM role chaining
+  # instead of an IAM user with static keys). Switch back to the registry source once released.
+  source = "../../../terraform-aws-modules/modules/external-secret-store"
+  # source  = "dasmeta/modules/aws//modules/external-secret-store"
+  # version = "2.18.1"
 
   name                         = "app/test"               # {{ .Values.product }}-{{ .Values.env }}
   external_secrets_api_version = "external-secrets.io/v1" # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
   namespace                    = local.namespace
+
+  # The store creates its own least-privilege role scoped to secrets named app/test*, and
+  # trusts the controller's base role so the controller can assume it. store_role_name_prefix
+  # must match on both sides, otherwise the controller's sts:AssumeRole grant won't cover it.
+  controller_role_arn    = module.this.external_secrets.controller_role_arn
+  store_role_name_prefix = module.this.external_secrets.store_role_name_prefix
 
   depends_on = [module.this]
 }

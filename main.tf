@@ -207,6 +207,59 @@
  *       - Verify: `aws eks describe-cluster --name <cluster> --query cluster.version` returns `1.34`; `kubectl get nodes -o wide` shows nodes on a `1.34.x` kubelet version; `aws eks describe-addon` reports coredns/vpc-cni/kube-proxy/EBS/S3/ADOT as `ACTIVE`/healthy; all tooling verified in earlier stages is still healthy post-upgrade.
  *       - Exit criteria: cluster and all node groups report 1.34; all addons `ACTIVE`; no `CrashLoopBackOff` across kube-system or tooling namespaces. Upgrade complete.
  *
+ *  - from <2.28.0 to >=2.28.0 version, External Secrets moves off IAM users and static access keys onto EKS Pod Identity with IAM role chaining. **This is a two-repository change: the EKS module and every `external-secret-store` call must both be upgraded, in that order.** Read this whole entry before starting.
+ *    - What changes: the controller now runs with an EKS Pod Identity association instead of reading credentials from a Kubernetes Secret. It holds no Secrets Manager access itself; it may only `sts:AssumeRole` the per-store roles (`external-secrets-store-*`) created by the `external-secret-store` module, and each of those is scoped to its own `secret:<store-name>*` prefix. The IAM user, its access keys and the `<store>-awssm-secret` Kubernetes Secret are destroyed by this upgrade, which is the intent of the change. The `eks-pod-identity-agent` addon is now installed by default, since a Pod Identity association delivers nothing without it.
+ *    - The Helm release moves from the `terraform-module/release/helm` wrapper to a plain `helm_release`. The module carries a `moved` block for this, so the release is re-pointed in state rather than destroyed and recreated. Do not `terraform state rm` anything to "clean up" the old address; that is what causes an uninstall.
+ *
+ *    **Step 1 - upgrade the EKS module.** Bump the module version and apply. The controller role, its `sts:AssumeRole` grant on `external-secrets-store-*`, the Pod Identity association and the agent addon are all created here. Stores still authenticate with their old static keys at this point and keep working, so this step is safe on its own.
+ *
+ *    **Step 2 - upgrade every `external-secret-store` call** to `dasmeta/modules/aws//modules/external-secret-store` >= 2.20.0 and wire it to the EKS module's output. `controller_role_arn` is now required; `store_role_name_prefix` must match on both sides or the controller's wildcard `sts:AssumeRole` grant will not cover the store's role:
+ *      ```hcl
+ *      module "secret_store" {
+ *        source  = "dasmeta/modules/aws//modules/external-secret-store"
+ *        version = ">= 2.20.0"
+ *
+ *        name                         = "app/prod"
+ *        namespace                    = "prod"
+ *        external_secrets_api_version = "external-secrets.io/v1"
+ *
+ *        controller_role_arn    = module.eks.external_secrets.controller_role_arn
+ *        store_role_name_prefix = module.eks.external_secrets.store_role_name_prefix
+ *
+ *        depends_on = [module.eks]
+ *      }
+ *      ```
+ *      Removed inputs: `create_user`, `aws_access_key_id`, `aws_access_secret`, `aws_role_arn` and `controller`. Applying this destroys the store's IAM user, access key and `<store>-awssm-secret` Secret, and rewrites the `SecretStore` to use `spec.provider.aws.role`. The `SecretStore` object keeps its address, so it is updated in place rather than recreated.
+ *
+ *    **Step 3 - confirm the controller picked up its new identity.** EKS Pod Identity delivers credentials through environment variables (`AWS_CONTAINER_CREDENTIALS_FULL_URI` and `AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE`) injected into a pod **at admission time**, when the pod is created. Pods already running before the association existed never receive them, their AWS SDK falls back to the node instance role, and every store assume-role call fails with `AccessDenied`. Neither the association nor a Helm values change restarts those pods on its own, so the module stamps the controller's role ARN onto all three pod templates as an annotation; creating or changing the identity therefore rolls the deployments and the replacement pods get the credentials injected. If sync is still failing right after the apply, restart them by hand:
+ *      ```sh
+ *      kubectl rollout restart deploy -n kube-system external-secrets external-secrets-webhook external-secrets-cert-controller
+ *      kubectl rollout status  deploy -n kube-system external-secrets --timeout=180s
+ *      ```
+ *
+ *    **Validation - run this after Step 2/3 and treat it as the exit criteria.** Existing Kubernetes Secrets keep their last synced values when sync breaks, so a broken store looks healthy from the workload side; the checks below force the question rather than relying on pods looking fine:
+ *      ```sh
+ *      # 1. Every store and secret reports ready. Any False/SecretSyncedError here is a failure.
+ *      kubectl get clustersecretstore,secretstore -A
+ *      kubectl get externalsecret -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,READY:.status.conditions[0].status,REASON:.status.conditions[0].reason
+ *
+ *      # 2. No assume-role or permission errors in the controller.
+ *      kubectl logs -n kube-system deploy/external-secrets --tail=200 | grep -iE 'denied|assume|forbidden|error' || echo "clean"
+ *
+ *      # 3. The static-credential path is really gone (expect NotFound for each store).
+ *      kubectl get secret -A | grep awssm-secret || echo "no static key secrets remain - expected"
+ *
+ *      # 4. Prove a live re-sync actually works rather than trusting cached values: force one
+ *      #    ExternalSecret to refetch and confirm it goes Ready again.
+ *      kubectl annotate externalsecret <name> -n <ns> force-sync="$(date +%s)" --overwrite
+ *      kubectl get externalsecret <name> -n <ns> -w   # expect SecretSynced, Ready=True
+ *
+ *      # 5. End-to-end: change a value in Secrets Manager and confirm it lands in the Secret.
+ *      kubectl get secret <target-secret> -n <ns> -o jsonpath='{.data.<KEY>}' | base64 -d
+ *      ```
+ *      Step 4 is the one that matters most: a store whose credentials are broken keeps serving the previously synced Secret indefinitely, so only a forced refetch distinguishes "working" from "stale".
+ *    - If it still fails, check in this order: the `eks-pod-identity-agent` pods are running (`kubectl get pods -n kube-system -l app.kubernetes.io/name=eks-pod-identity-agent`); `store_role_name_prefix` matches on both the EKS module and every `external-secret-store` call; the store role's `secret:<name>*` scope actually covers the secret being read (a store named `app/prod` cannot read `app/production-extra` only by luck of prefix, but it also cannot read `other/prod`); and the controller pods were actually recreated after the association appeared (`kubectl get pod -n kube-system -l app.kubernetes.io/name=external-secrets -o jsonpath='{.items[*].spec.containers[*].env[?(@.name=="AWS_CONTAINER_CREDENTIALS_FULL_URI")].name}'` should print the variable name, not empty).
+ *
  * ## How to run
  * ```hcl
  * data "aws_availability_zones" "available" {}
@@ -514,13 +567,22 @@ module "metrics-server" {
 module "external-secrets" {
   source = "./modules/external-secrets"
 
-  count = var.create && var.enable_external_secrets ? 1 : 0
+  count = var.create && local.external_secrets_enabled ? 1 : 0
 
   cluster_name = var.cluster_name
-  namespace    = var.external_secrets_namespace
+  namespace    = local.external_secrets_namespace
   chart = {
-    version = var.external_secrets_chart_version
+    name       = var.external_secrets.chart.name
+    repository = var.external_secrets.chart.repository
+    version    = local.external_secrets_chart_version
   }
+  image                     = var.external_secrets.image
+  attachment_method         = var.external_secrets.iam.attachment_method
+  iam_role_name             = var.external_secrets.iam.role_name
+  store_role_name_prefix    = var.external_secrets.iam.store_role_name_prefix
+  service_account_name      = var.external_secrets.service_account_name
+  values                    = var.external_secrets.values
+  extra_values              = var.external_secrets.extra_values
   region                    = local.region
   oidc_provider_arn         = module.eks-cluster[0].oidc_provider_arn
   resolve_oidc_from_cluster = false # oidc_provider_arn is always supplied above; avoids an unknown-at-plan count on first cluster creation

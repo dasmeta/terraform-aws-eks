@@ -5,8 +5,8 @@ variable "cluster_name" {
 
 variable "region" {
   type        = string
-  default     = ""
-  description = "AWS region of the cluster; used to build the OIDC issuer host for the IRSA trust policy."
+  default     = null
+  description = "AWS region of the cluster; used to build the OIDC issuer host for the IRSA trust policy. Resolved from the current provider region when not set."
 }
 
 variable "release_name" {

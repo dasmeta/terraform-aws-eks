@@ -24,9 +24,23 @@ locals {
     certController = { image = local.image_block }
   }
 
+  # Pod Identity hands credentials to a pod through environment variables injected at admission
+  # time, and IRSA works off the service account bound at pod creation. Either way a pod that was
+  # already running when the identity changed keeps its old (or absent) credentials and fails
+  # every assume-role call, and neither a Helm value change nor the association itself restarts
+  # it. Stamping the identity onto the pod templates makes any identity change roll the three
+  # deployments, so the new pods pick the credentials up. The ARN is stable once created, so this
+  # does not churn on later applies. Hashed only to keep the annotation short - it is not secret.
+  # The `checksum/` prefix follows the convention Helm charts use for exactly this purpose
+  # (`checksum/config`, `checksum/secret`), so it stays vendor neutral.
+  identity_annotation = { "checksum/aws-identity" = sha1(aws_iam_role.this.arn) }
+
   base_values = {
     installCRDs    = var.install_crds
     serviceAccount = local.service_account_values
+    podAnnotations = local.identity_annotation
+    webhook        = { podAnnotations = local.identity_annotation }
+    certController = { podAnnotations = local.identity_annotation }
   }
 
   # IAM attachment mode switches (same idiom as the aws-load-balancer-controller module).
