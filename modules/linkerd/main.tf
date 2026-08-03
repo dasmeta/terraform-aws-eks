@@ -44,7 +44,7 @@ resource "helm_release" "this" {
   wait             = var.wait
   skip_crds        = true
 
-  values = [jsonencode(module.custom_default_configs_together.merged)]
+  values = [jsonencode(local.default_configs), jsonencode(var.configs)]
 
   depends_on = [helm_release.this_crds]
 }
@@ -63,7 +63,7 @@ resource "helm_release" "this_viz" {
   wait             = var.wait
   skip_crds        = true
 
-  values = [jsonencode(module.custom_default_configs_viz_together.merged)]
+  values = [jsonencode(local.default_configs_viz), jsonencode(var.configs_viz)]
 
   depends_on = [helm_release.this]
 }
