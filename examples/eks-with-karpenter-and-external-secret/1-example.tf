@@ -114,8 +114,6 @@ module "secret_store" {
 module "secret_manager" {
   source  = "dasmeta/modules/aws//modules/secret"
   version = "2.6.2"
-  # source  = "/Users/tmuradyan/projects/dasmeta/terraform-aws-modules/modules/secret"
-
 
   name                    = "app/test/http-echo"
   recovery_window_in_days = 0
