@@ -92,11 +92,8 @@ module "this" {
 }
 
 module "secret_store" {
-  # Local source so this example exercises the in-repo store changes (IAM role chaining
-  # instead of an IAM user with static keys). Switch back to the registry source once released.
-  source = "../../../terraform-aws-modules/modules/external-secret-store"
-  # source  = "dasmeta/modules/aws//modules/external-secret-store"
-  # version = "2.18.1"
+  source  = "dasmeta/modules/aws//modules/external-secret-store"
+  version = "3.0.0"
 
   name                         = "app/test"               # {{ .Values.product }}-{{ .Values.env }}
   external_secrets_api_version = "external-secrets.io/v1" # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
