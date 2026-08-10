@@ -8,6 +8,13 @@ locals {
   vpc_id     = var.vpc.create.name != null ? module.vpc[0].id : var.vpc.link.id
   subnet_ids = var.vpc.create.name != null ? module.vpc[0].private_subnets : var.vpc.link.private_subnet_ids
 
+  # External Secrets. The grouped `external_secrets` object is the current interface; the
+  # older top-level variables still win when explicitly set, so existing callers (and the
+  # staged upgrade runbook in main.tf, which pins external_secrets_chart_version) keep working.
+  external_secrets_enabled       = var.enable_external_secrets && var.external_secrets.enabled
+  external_secrets_namespace     = coalesce(var.external_secrets_namespace, var.external_secrets.namespace)
+  external_secrets_chart_version = coalesce(var.external_secrets_chart_version, var.external_secrets.chart.version)
+
   # Default configuration values; user overrides (e.g. only replicaCount) are merged on top in cluster_addons
   default_configuration_values = {
     coredns = {

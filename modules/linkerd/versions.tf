@@ -1,8 +1,11 @@
 terraform {
-  required_version = ">= 1.3.0"
+  required_version = "~> 1.3"
 
   required_providers {
-    helm = ">= 2.0"
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.0"
+    }
     tls = {
       source  = "hashicorp/tls"
       version = "~> 4.0"
