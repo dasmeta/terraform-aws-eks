@@ -107,11 +107,17 @@ module "this" {
 
 module "secret_store" {
   source  = "dasmeta/modules/aws//modules/external-secret-store"
-  version = "2.18.1"
+  version = "3.0.0"
 
   name                         = "app/test"               # {{ .Values.product }}-{{ .Values.env }}
   external_secrets_api_version = "external-secrets.io/v1" # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
   namespace                    = local.namespace
+
+  # From 3.0.0 the store creates its own least-privilege IAM role instead of an IAM user with
+  # static keys, so it needs the controller's base role to trust. store_role_name_prefix must
+  # match on both sides, otherwise the controller's sts:AssumeRole grant won't cover this role.
+  controller_role_arn    = module.this.external_secrets.controller_role_arn
+  store_role_name_prefix = module.this.external_secrets.store_role_name_prefix
 
   depends_on = [module.this.namespaces_and_docker_auth_helm_metadata]
 }

@@ -109,7 +109,19 @@ output "alb_load_balancer_controller" {
 }
 
 output "external_secret_deployment" {
-  value = try(module.external-secrets[0].deployment, null)
+  description = "Deprecated: the external-secrets module now installs the chart through a plain helm_release and no longer exposes a `deployment` object. Kept so existing references keep resolving; use `external_secrets` instead."
+  value       = try(module.external-secrets[0].deployment, null)
+}
+
+output "external_secrets" {
+  description = "External Secrets controller details. `controller_role_arn` is the base role each per-store role must trust, and is what the external-secret-store module expects as `controller_role_arn`."
+  value = try({
+    controller_role_arn    = module.external-secrets[0].controller_role_arn
+    service_account        = module.external-secrets[0].service_account
+    namespace              = module.external-secrets[0].namespace
+    release_name           = module.external-secrets[0].release_name
+    store_role_name_prefix = var.external_secrets.iam.store_role_name_prefix
+  }, null)
 }
 
 output "namespaces_and_docker_auth_helm_metadata" {

@@ -20,7 +20,7 @@
 |------|--------|---------|
 | <a name="module_aws_secret_for_docker_hub_credentials"></a> [aws\_secret\_for\_docker\_hub\_credentials](#module\_aws\_secret\_for\_docker\_hub\_credentials) | dasmeta/modules/aws//modules/secret | 2.6.2 |
 | <a name="module_secret_manager"></a> [secret\_manager](#module\_secret\_manager) | dasmeta/modules/aws//modules/secret | 2.6.2 |
-| <a name="module_secret_store"></a> [secret\_store](#module\_secret\_store) | dasmeta/modules/aws//modules/external-secret-store | 2.18.1 |
+| <a name="module_secret_store"></a> [secret\_store](#module\_secret\_store) | dasmeta/modules/aws//modules/external-secret-store | 3.0.0 |
 | <a name="module_this"></a> [this](#module\_this) | ../.. | n/a |
 
 ## Resources
