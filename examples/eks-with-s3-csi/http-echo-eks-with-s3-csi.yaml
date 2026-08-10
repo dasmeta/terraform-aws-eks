@@ -1,4 +1,4 @@
-# helm diff upgrade --install -n default http-echo dasmeta/base --version 0.3.10 -f ./http-echo-eks-with-s3-csi.yaml
+# helm diff upgrade --install -n default http-echo dasmeta/base --version 0.3.32 -f ./http-echo-eks-with-s3-csi.yaml
 
 image:
   repository: mendhak/http-https-echo

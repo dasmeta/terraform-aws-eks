@@ -290,7 +290,7 @@ resource "helm_release" "http_echo" {
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
   namespace  = "default"
-  version    = "0.3.24"
+  version    = "0.3.32"
   wait       = true
 
   values = [templatefile("${path.module}/http-echo.yaml", { domain = var.domain })]
@@ -307,7 +307,7 @@ resource "helm_release" "http_echo_internal" {
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
   namespace  = "default"
-  version    = "0.3.24"
+  version    = "0.3.32"
   wait       = true
 
   values = [

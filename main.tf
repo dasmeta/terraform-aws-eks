@@ -206,6 +206,18 @@
  *       - Action: set `cluster_version = "1.34"` (or remove the pin entirely, 1.34 is the module default). Apply.
  *       - Verify: `aws eks describe-cluster --name <cluster> --query cluster.version` returns `1.34`; `kubectl get nodes -o wide` shows nodes on a `1.34.x` kubelet version; `aws eks describe-addon` reports coredns/vpc-cni/kube-proxy/EBS/S3/ADOT as `ACTIVE`/healthy; all tooling verified in earlier stages is still healthy post-upgrade.
  *       - Exit criteria: cluster and all node groups report 1.34; all addons `ACTIVE`; no `CrashLoopBackOff` across kube-system or tooling namespaces. Upgrade complete.
+ *  - from version >= 2.28.0, the linkerd-crds chart installs the Gateway API CRDs by default, and the dasmeta chart pins used across `examples/` are refreshed.
+ *    - `linkerd.configs_crds.installGatewayAPI` now defaults to `true`. The upstream linkerd-crds chart ships it as `false`, so on an existing cluster this apply **creates the Gateway API CRDs** (`httproutes` and `grpcroutes`, plus `tlsroutes`/`tcproutes` depending on the chart's `enable*Routes` values, all under `gateway.networking.k8s.io`).
+ *    - Action is required only if something else in the cluster already owns those CRDs - an Istio or Gateway API controller install, or a separate `gateway-api` chart. Two components managing the same CRDs will fight over them. In that case set the value off explicitly:
+ *      ```terraform
+ *      linkerd = {
+ *        configs_crds = {
+ *          installGatewayAPI = false
+ *        }
+ *      }
+ *      ```
+ *    - No action is needed where Linkerd is the only Gateway API consumer, or where `linkerd.enabled = false`.
+ *    - `examples/` now pin `dasmeta/base` `0.3.32`, and the `namespaces-and-docker-auth` submodule defaults to chart `0.1.3`. Both chart releases default their generated External Secrets resources to `external-secrets.io/v1`; see the chart release notes for the operator requirement and the per-release override.
  *
  * ## How to run
  * ```hcl

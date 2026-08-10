@@ -29,7 +29,7 @@ resource "helm_release" "this_crds" {
   atomic           = var.atomic
   wait             = var.wait
 
-  values = [jsonencode(var.configs_crds)]
+  values = [jsonencode(local.default_configs_crds), jsonencode(var.configs_crds)]
 }
 
 # installs linkerd operator helm package
