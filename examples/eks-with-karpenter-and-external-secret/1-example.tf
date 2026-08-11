@@ -1,10 +1,10 @@
 module "this" {
-  # source  = "dasmeta/eks/aws"
-  # version = "2.25.7"
-  # cluster_version = "1.33" # at fist we set cluster version to 1.33 to have only components upgraded to new versions and then we can remove this to get the new 1.34
+  # Local source so this example exercises the in-repo module. Switch back to the registry
+  # source below once the external-secrets changes are released.
   source = "../.."
-  # external_secrets_chart_version = "0.16.2" # at first we upgrade to 0.16.x version to support v1 and v1beta1 api versions, then we need to upgrade secret_store module and apps helm charts values to use new api v1 version, then we can remove/comment out this to get the latest version
-  # source       = "/Users/tmuradyan/projects/dasmeta/terraform-aws-eks-2"
+  # source  = "dasmeta/eks/aws"
+  # version = "2.27.0"
+  # external_secrets_chart_version = "0.16.2" # 0.16.x version supports both v1 and v1beta1 api versions, then we need to upgrade secret_store module and apps helm charts values to use new api v1 version, then we can remove/comment out this to get the latest version
   cluster_name = local.cluster_name
 
   vpc = {
@@ -93,11 +93,17 @@ module "this" {
 
 module "secret_store" {
   source  = "dasmeta/modules/aws//modules/external-secret-store"
-  version = "2.18.1"
+  version = "3.0.0"
 
   name                         = "app/test"               # {{ .Values.product }}-{{ .Values.env }}
   external_secrets_api_version = "external-secrets.io/v1" # IMPORTANT to upgrade external secret api version as new eks module bring new external secret operator
   namespace                    = local.namespace
+
+  # The store creates its own least-privilege role scoped to secrets named app/test*, and
+  # trusts the controller's base role so the controller can assume it. store_role_name_prefix
+  # must match on both sides, otherwise the controller's sts:AssumeRole grant won't cover it.
+  controller_role_arn    = module.this.external_secrets.controller_role_arn
+  store_role_name_prefix = module.this.external_secrets.store_role_name_prefix
 
   depends_on = [module.this]
 }

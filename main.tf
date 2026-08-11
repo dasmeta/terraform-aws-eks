@@ -187,6 +187,25 @@
  *    2. Migrate External Secrets manifests to `v1` (operator still on the 0.16.2 bridge from Stage 1).
  *       - Goal: move every ExternalSecret/SecretStore/ClusterSecretStore-consuming config to the `v1` API while the operator still serves both APIs, so there is a safe rollback window if something doesn't reconcile.
  *       - Action (consumer-level, not this module): set `external_secrets_api_version = "external-secrets.io/v1"` on every `external-secret-store` module call, and update `externalSecretsApiVersion: external-secrets.io/v1` in the `values.yaml` of any chart that renders ExternalSecret/SecretStore manifests. Apply each affected stack.
+ *       - Known failure mode: `helm upgrade` on a chart that renders an ExternalSecret/SecretStore can fail with `UPGRADE FAILED: unable to build kubernetes objects from current release manifest: ... no matches for kind "ExternalSecret" in version "external-secrets.io/v1alpha1", ensure CRDs are installed first`, even though the upgrade itself is only changing the apiVersion forward. Helm computes upgrades via a three-way merge, which needs the REST mapping for whatever apiVersion is recorded in that release's *previous* stored manifest (still `v1alpha1` before this migration); once the CRD stops serving `v1alpha1`, that lookup fails and Helm refuses to proceed with the upgrade at all. This is a Helm release-history problem, not a live cluster or config problem, and it blocks any further `helm upgrade` of that release, not just this one. Fix with the [`helm-mapkubeapis`](https://github.com/helm/helm-mapkubeapis) plugin, which rewrites the deprecated apiVersion recorded in Helm's own release history (it does not touch any live object, so the running ExternalSecret and the Kubernetes Secret it owns are unaffected):
+ *         ```sh
+ *         helm plugin install https://github.com/helm/helm-mapkubeapis
+ *
+ *         cat > /tmp/eso-mapkubeapis.yaml <<EOF
+ *         mappings:
+ *           - deprecatedAPI: |
+ *               apiVersion: external-secrets.io/v1alpha1
+ *               kind: ExternalSecret
+ *             newAPI: |
+ *               apiVersion: external-secrets.io/v1
+ *               kind: ExternalSecret
+ *             deprecatedInVersion: "v1.0"
+ *             removedInVersion: "v1.0"
+ *         EOF
+ *
+ *         helm mapkubeapis <release-name> -n <namespace> --mapfile /tmp/eso-mapkubeapis.yaml
+ *         ```
+ *         `deprecatedInVersion`/`removedInVersion` normally hold the Kubernetes version an API was deprecated/removed in, used by the plugin's built-in core-API mappings; External Secrets is a third-party CRD with no such Kubernetes-version tie-in, and leaving these blank makes the plugin fail with `Failed to get the deprecated or removed Kubernetes version for API`. Setting both to a version trivially below any real cluster (e.g. `v1.0`) makes the plugin always treat the mapping as applicable. Retry the `helm upgrade` after running this; add a second `mappings` entry with `kind: SecretStore` (and `ClusterSecretStore` if used) if those hit the same error.
  *       - Verify: `kubectl get externalsecret,secretstore,clustersecretstore -A -o jsonpath='{.items[*].apiVersion}'` shows only `external-secrets.io/v1`; `kubectl get externalsecret -A` shows `SecretSynced`/`Ready=True` for all objects; the resulting Kubernetes Secret values are unchanged from before the migration.
  *       - Exit criteria: zero `external-secrets.io/v1beta1` objects remain in the cluster; every ExternalSecret is synced under `v1`.
  *    3. Complete the External Secrets Operator upgrade.
@@ -218,6 +237,59 @@
  *      ```
  *    - No action is needed where Linkerd is the only Gateway API consumer, or where `linkerd.enabled = false`.
  *    - `examples/` now pin `dasmeta/base` `0.3.32`, and the `namespaces-and-docker-auth` submodule defaults to chart `0.1.3`. Both chart releases default their generated External Secrets resources to `external-secrets.io/v1`; see the chart release notes for the operator requirement and the per-release override.
+ *
+ *  - from <2.28.0 to >=2.28.0 version, External Secrets moves off IAM users and static access keys onto EKS Pod Identity with IAM role chaining. **This is a two-repository change: the EKS module and every `external-secret-store` call must both be upgraded, in that order.** Read this whole entry before starting.
+ *    - What changes: the controller now runs with an EKS Pod Identity association instead of reading credentials from a Kubernetes Secret. It holds no Secrets Manager access itself; it may only `sts:AssumeRole` the per-store roles (`external-secrets-store-*`) created by the `external-secret-store` module, and each of those is scoped to its own `secret:<store-name>*` prefix. The IAM user, its access keys and the `<store>-awssm-secret` Kubernetes Secret are destroyed by this upgrade, which is the intent of the change. The `eks-pod-identity-agent` addon is now installed by default, since a Pod Identity association delivers nothing without it.
+ *    - The Helm release moves from the `terraform-module/release/helm` wrapper to a plain `helm_release`. The module carries a `moved` block for this, so the release is re-pointed in state rather than destroyed and recreated. Do not `terraform state rm` anything to "clean up" the old address; that is what causes an uninstall.
+ *
+ *    **Step 1 - upgrade the EKS module.** Bump the module version and apply. The controller role, its `sts:AssumeRole` grant on `external-secrets-store-*`, the Pod Identity association and the agent addon are all created here. Stores still authenticate with their old static keys at this point and keep working, so this step is safe on its own.
+ *
+ *    **Step 2 - upgrade every `external-secret-store` call** to `dasmeta/modules/aws//modules/external-secret-store` >= 2.20.0 and wire it to the EKS module's output. `controller_role_arn` is now required; `store_role_name_prefix` must match on both sides or the controller's wildcard `sts:AssumeRole` grant will not cover the store's role:
+ *      ```hcl
+ *      module "secret_store" {
+ *        source  = "dasmeta/modules/aws//modules/external-secret-store"
+ *        version = ">= 2.20.0"
+ *
+ *        name                         = "app/prod"
+ *        namespace                    = "prod"
+ *        external_secrets_api_version = "external-secrets.io/v1"
+ *
+ *        controller_role_arn    = module.eks.external_secrets.controller_role_arn
+ *        store_role_name_prefix = module.eks.external_secrets.store_role_name_prefix
+ *
+ *        depends_on = [module.eks]
+ *      }
+ *      ```
+ *      Removed inputs: `create_user`, `aws_access_key_id`, `aws_access_secret`, `aws_role_arn` and `controller`. Applying this destroys the store's IAM user, access key and `<store>-awssm-secret` Secret, and rewrites the `SecretStore` to use `spec.provider.aws.role`. The `SecretStore` object keeps its address, so it is updated in place rather than recreated.
+ *
+ *    **Step 3 - confirm the controller picked up its new identity.** EKS Pod Identity delivers credentials through environment variables (`AWS_CONTAINER_CREDENTIALS_FULL_URI` and `AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE`) injected into a pod **at admission time**, when the pod is created. Pods already running before the association existed never receive them, their AWS SDK falls back to the node instance role, and every store assume-role call fails with `AccessDenied`. Neither the association nor a Helm values change restarts those pods on its own, so the module stamps the controller's role ARN onto all three pod templates as an annotation; creating or changing the identity therefore rolls the deployments and the replacement pods get the credentials injected. If sync is still failing right after the apply, restart them by hand:
+ *      ```sh
+ *      kubectl rollout restart deploy -n kube-system external-secrets external-secrets-webhook external-secrets-cert-controller
+ *      kubectl rollout status  deploy -n kube-system external-secrets --timeout=180s
+ *      ```
+ *
+ *    **Validation - run this after Step 2/3 and treat it as the exit criteria.** Existing Kubernetes Secrets keep their last synced values when sync breaks, so a broken store looks healthy from the workload side; the checks below force the question rather than relying on pods looking fine:
+ *      ```sh
+ *      # 1. Every store and secret reports ready. Any False/SecretSyncedError here is a failure.
+ *      kubectl get clustersecretstore,secretstore -A
+ *      kubectl get externalsecret -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,READY:.status.conditions[0].status,REASON:.status.conditions[0].reason
+ *
+ *      # 2. No assume-role or permission errors in the controller.
+ *      kubectl logs -n kube-system deploy/external-secrets --tail=200 | grep -iE 'denied|assume|forbidden|error' || echo "clean"
+ *
+ *      # 3. The static-credential path is really gone (expect NotFound for each store).
+ *      kubectl get secret -A | grep awssm-secret || echo "no static key secrets remain - expected"
+ *
+ *      # 4. Prove a live re-sync actually works rather than trusting cached values: force one
+ *      #    ExternalSecret to refetch and confirm it goes Ready again.
+ *      kubectl annotate externalsecret <name> -n <ns> force-sync="$(date +%s)" --overwrite
+ *      kubectl get externalsecret <name> -n <ns> -w   # expect SecretSynced, Ready=True
+ *
+ *      # 5. End-to-end: change a value in Secrets Manager and confirm it lands in the Secret.
+ *      kubectl get secret <target-secret> -n <ns> -o jsonpath='{.data.<KEY>}' | base64 -d
+ *      ```
+ *      Step 4 is the one that matters most: a store whose credentials are broken keeps serving the previously synced Secret indefinitely, so only a forced refetch distinguishes "working" from "stale".
+ *    - If it still fails, check in this order: the `eks-pod-identity-agent` pods are running (`kubectl get pods -n kube-system -l app.kubernetes.io/name=eks-pod-identity-agent`); `store_role_name_prefix` matches on both the EKS module and every `external-secret-store` call; the store role's `secret:<name>*` scope actually covers the secret being read (a store named `app/prod` cannot read `app/production-extra` only by luck of prefix, but it also cannot read `other/prod`); and the controller pods were actually recreated after the association appeared (`kubectl get pod -n kube-system -l app.kubernetes.io/name=external-secrets -o jsonpath='{.items[*].spec.containers[*].env[?(@.name=="AWS_CONTAINER_CREDENTIALS_FULL_URI")].name}'` should print the variable name, not empty).
  *
  * ## How to run
  * ```hcl
@@ -526,10 +598,25 @@ module "metrics-server" {
 module "external-secrets" {
   source = "./modules/external-secrets"
 
-  count = var.create && var.enable_external_secrets ? 1 : 0
+  count = var.create && local.external_secrets_enabled ? 1 : 0
 
-  namespace     = var.external_secrets_namespace
-  chart_version = var.external_secrets_chart_version
+  cluster_name = var.cluster_name
+  namespace    = local.external_secrets_namespace
+  chart = {
+    name       = var.external_secrets.chart.name
+    repository = var.external_secrets.chart.repository
+    version    = local.external_secrets_chart_version
+  }
+  image                     = var.external_secrets.image
+  attachment_method         = var.external_secrets.iam.attachment_method
+  iam_role_name             = var.external_secrets.iam.role_name
+  store_role_name_prefix    = var.external_secrets.iam.store_role_name_prefix
+  service_account_name      = var.external_secrets.service_account_name
+  values                    = var.external_secrets.values
+  extra_values              = var.external_secrets.extra_values
+  region                    = local.region
+  oidc_provider_arn         = module.eks-cluster[0].oidc_provider_arn
+  resolve_oidc_from_cluster = false # oidc_provider_arn is always supplied above; avoids an unknown-at-plan count on first cluster creation
 
   depends_on = [module.eks-core-components-and-alb]
 }

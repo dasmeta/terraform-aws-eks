@@ -213,6 +213,38 @@ variable "cluster_endpoint_public_access" {
   default = true
 }
 
+variable "external_secrets" {
+  description = "External Secrets Operator configuration. The controller authenticates to AWS through EKS Pod Identity (default) or IRSA and holds no Secrets Manager access itself; it may only assume the per-store roles created by the external-secret-store module (role chaining), so no IAM users or static access keys are involved."
+  type = object({
+    enabled   = optional(bool, true)            # whether to install the operator at all
+    namespace = optional(string, "kube-system") # namespace the controller is installed into
+    chart = optional(object({
+      name       = optional(string, "external-secrets")                   # chart name, or a full https .tgz URL for a direct/private archive
+      repository = optional(string, "https://charts.external-secrets.io") # helm repo URL; ignored when name is a .tgz URL
+      version    = optional(string, "2.8.0")                              # chart version; 2.8.0 ships the external-secrets.io/v1 API
+    }), {})
+    image = optional(object({
+      registry   = optional(string, null) # registry host to prepend, e.g. a private mirror; unset keeps the chart default
+      repository = optional(string, null) # image repository path without the registry host; unset keeps the chart default
+      tag        = optional(string, null) # image tag; unset keeps the chart default
+    }), {})
+    iam = optional(object({
+      role_name              = optional(string, null)                       # override for the controller's base IAM role name; defaults to external-secrets-<cluster>-<region>
+      attachment_method      = optional(string, "pod_identity_association") # how the controller SA gets its role: pod_identity_association or service_account_role_annotation (IRSA)
+      store_role_name_prefix = optional(string, "external-secrets-store-")  # prefix of the per-store roles the controller may assume; must match the external-secret-store module
+    }), {})
+    service_account_name = optional(string, "external-secrets") # service account the controller runs as
+    values               = optional(any, {})                    # helm values map for the release
+    extra_values         = optional(any, {})                    # extra helm values merged last, highest precedence
+  })
+  default = {}
+
+  validation {
+    condition     = contains(["pod_identity_association", "service_account_role_annotation"], var.external_secrets.iam.attachment_method)
+    error_message = "external_secrets.iam.attachment_method must be pod_identity_association or service_account_role_annotation."
+  }
+}
+
 variable "enable_external_secrets" {
   type        = bool
   description = "Whether to enable external-secrets operator"
@@ -221,14 +253,14 @@ variable "enable_external_secrets" {
 
 variable "external_secrets_namespace" {
   type        = string
-  description = "The namespace of external-secret operator"
-  default     = "kube-system"
+  description = "Deprecated: use `external_secrets.namespace`. Kept for backward compatibility; when set it takes precedence. Defaults to null so the grouped variable applies."
+  default     = null
 }
 
 variable "external_secrets_chart_version" {
   type        = string
-  description = "External Secrets Operator Helm chart version"
-  default     = "2.8.0"
+  description = "Deprecated: use `external_secrets.chart.version`. Kept for backward compatibility (the staged upgrade runbook pins the 0.16.2 bridge release through this variable); when set it takes precedence. Defaults to null so the grouped variable applies."
+  default     = null
 }
 
 variable "cluster_enabled_log_types" {
@@ -250,7 +282,7 @@ variable "cluster_addons" {
 }
 
 variable "default_addons" {
-  description = "Allows to set/override default eks addons(like coredns, kube-proxy and vpc-cni) configurations. Ww have them here to have this core components be managed via addons instead of default managed component. For coredns you can pass only the keys you want to override (e.g. replicaCount) and the rest will use module defaults."
+  description = "Allows to set/override default eks addons(like coredns, kube-proxy, vpc-cni and eks-pod-identity-agent) configurations. Ww have them here to have this core components be managed via addons instead of default managed component. For coredns you can pass only the keys you want to override (e.g. replicaCount) and the rest will use module defaults."
   type = object({
     coredns = optional(object({
       most_recent          = optional(bool, true)
@@ -261,6 +293,14 @@ variable "default_addons" {
       configuration_values = optional(any, {})
     }), {})
     kube-proxy = optional(object({
+      most_recent          = optional(bool, true)
+      configuration_values = optional(any, {})
+    }), {})
+    # Runs the agent DaemonSet that delivers credentials to pods through EKS Pod Identity
+    # associations. Installed by default because Pod Identity is the preferred way to grant AWS
+    # permissions to workloads in this module; without the agent an association is created but
+    # never hands out credentials.
+    eks-pod-identity-agent = optional(object({
       most_recent          = optional(bool, true)
       configuration_values = optional(any, {})
     }), {})
