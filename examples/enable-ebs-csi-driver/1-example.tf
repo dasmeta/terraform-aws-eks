@@ -64,7 +64,7 @@ resource "helm_release" "http_echo_with_volumes" {
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
   namespace  = "default"
-  version    = "0.3.14"
+  version    = "0.3.32"
   wait       = true
 
   values = [file("${path.module}/http-echo-with-volumes.yaml")]
@@ -78,7 +78,7 @@ resource "helm_release" "nginx_with_volumes" {
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
   namespace  = "default"
-  version    = "0.3.14"
+  version    = "0.3.32"
   wait       = true
 
   values = [file("${path.module}/nginx-with-volumes.yaml")]

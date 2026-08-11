@@ -121,7 +121,7 @@ resource "helm_release" "http_echo_on_demand" {
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
   namespace  = "default"
-  version    = "0.2.10"
+  version    = "0.3.32"
   wait       = false
 
   values = [file("${path.module}/http-echo-on-demand.yaml")]
@@ -134,7 +134,7 @@ resource "helm_release" "http_echo" {
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
   namespace  = "default"
-  version    = "0.2.10"
+  version    = "0.3.32"
   wait       = false
 
   values = [file("${path.module}/http-echo.yaml")]

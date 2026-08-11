@@ -80,7 +80,7 @@ variable "configs" {
 variable "configs_crds" {
   type        = any
   default     = {}
-  description = "Configurations to pass and override defaults for the linkerd-crds Helm chart"
+  description = "Configurations to pass and override defaults for the linkerd-crds Helm chart. The module defaults installGatewayAPI to true (the chart itself ships it as false); set installGatewayAPI = false here where another component already owns the Gateway API CRDs in the cluster."
 }
 
 variable "configs_viz" {

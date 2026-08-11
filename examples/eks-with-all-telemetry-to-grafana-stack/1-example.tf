@@ -117,7 +117,7 @@ resource "helm_release" "http_echo" {
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
   namespace  = "default"
-  version    = "0.3.13"
+  version    = "0.3.32"
   wait       = true
 
   values = [file("${path.module}/http-echo-eks-with-all-telemetry-to-grafana-stack.yaml")]

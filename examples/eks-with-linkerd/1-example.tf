@@ -54,9 +54,8 @@ module "this" {
 
   linkerd = {
     enabled = true # enabled by default
-    configs_crds = {
-      installGatewayAPI = true
-    }
+    # configs_crds.installGatewayAPI now defaults to true in the module, so it no longer
+    # needs setting here. Set it to false if another component owns the Gateway API CRDs.
   }
 
 }
@@ -66,7 +65,7 @@ resource "helm_release" "http_echo" {
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
   namespace  = "default"
-  version    = "0.3.9"
+  version    = "0.3.32"
   wait       = true
 
   values = [file("${path.module}/http-echo-linkerd-eks.yaml")]

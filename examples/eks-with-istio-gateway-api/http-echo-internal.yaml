@@ -1,4 +1,4 @@
-# helm diff upgrade --install -n default http-echo-internal dasmeta/base --version 0.3.18 -f ./http-echo.yaml -f ./http-echo-internal.yaml
+# helm diff upgrade --install -n default http-echo-internal dasmeta/base --version 0.3.32 -f ./http-echo.yaml -f ./http-echo-internal.yaml
 # this file is used to override the http-echo.yaml file for the internal gateway
 gatewayApi:
   # HTTPRoute: Route internal traffic to the service with 403 for /forbidden path

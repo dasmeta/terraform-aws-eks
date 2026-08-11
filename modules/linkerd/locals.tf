@@ -1,8 +1,17 @@
 # Module-level defaults for each chart. These are passed to helm_release as the
-# first entry of its values[] list, with the user-supplied var.configs/
-# var.configs_viz passed after them - Helm deep-merges the list itself, in
-# order, with later entries winning, so no Terraform-side merge is needed.
+# first entry of its values[] list, with the user-supplied var.configs_crds/
+# var.configs/var.configs_viz passed after them - Helm deep-merges the list
+# itself, in order, with later entries winning, so no Terraform-side merge is
+# needed.
 locals {
+  default_configs_crds = {
+    # The linkerd-crds chart ships this as false. Enable it by default so the Gateway API
+    # HTTPRoute/GRPCRoute CRDs that linkerd's route-based policy relies on are present.
+    # Set linkerd.configs_crds.installGatewayAPI = false where another component already
+    # owns the Gateway API CRDs in the cluster.
+    installGatewayAPI = true
+  }
+
   default_configs = {
     identityTrustAnchorsPEM = module.identity_certificates_and_keys.identity.trustAnchorsPEM
     identity = {

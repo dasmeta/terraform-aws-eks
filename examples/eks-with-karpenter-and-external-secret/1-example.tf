@@ -123,7 +123,7 @@ resource "helm_release" "http_echo" {
   name       = "http-echo"
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
-  version    = "0.3.4"
+  version    = "0.3.32"
   namespace  = local.namespace
   wait       = false
 
