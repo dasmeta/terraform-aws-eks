@@ -225,6 +225,20 @@
  *       - Action: set `cluster_version = "1.34"` (or remove the pin entirely, 1.34 is the module default). Apply.
  *       - Verify: `aws eks describe-cluster --name <cluster> --query cluster.version` returns `1.34`; `kubectl get nodes -o wide` shows nodes on a `1.34.x` kubelet version; `aws eks describe-addon` reports coredns/vpc-cni/kube-proxy/EBS/S3/ADOT as `ACTIVE`/healthy; all tooling verified in earlier stages is still healthy post-upgrade.
  *       - Exit criteria: cluster and all node groups report 1.34; all addons `ACTIVE`; no `CrashLoopBackOff` across kube-system or tooling namespaces. Upgrade complete.
+ *  - from version >= 2.30.0, the AWS Load Balancer Controller's IAM identity is wired before its pods start. **No configuration change is required; expect the controller to roll once on the first apply.**
+ *    - The problem this fixes: on a fresh install the controller could start before its IAM policy attachment (or, in `pod_identity_association` mode, before its Pod Identity association) existed. The controller receives credentials only at pod start - IRSA binds the annotated service account into the projected token at pod creation, Pod Identity injects the credential environment variables at admission - so a pod that started too early never recovered. The symptom was an Ingress stuck reporting `AccessDenied` on calls such as `elasticloadbalancing:DescribeLoadBalancers` while the policy was visibly attached to the role, cleared only by restarting the controller pods.
+ *    - What changes: the role, the policy attachment and the Pod Identity association are now all created before the Helm release; the association no longer depends on the release; a short wait absorbs IAM/STS eventual consistency; and the identity is stamped onto the controller pod template so a later identity change rolls the deployment instead of leaving stale credentials in a running pod.
+ *    - On upgrade: the added pod annotation changes the pod template, so the controller deployment rolls once. This is brief and self-healing, and it also clears any controller currently stuck on bad credentials. No resource is replaced and no input is removed.
+ *    - New provider requirement: the submodule now declares `hashicorp/time ~> 0.9` for the propagation wait. Run `terraform init -upgrade` to refresh your lock file. The provider needs no configuration.
+ *    - The wait defaults to 15 seconds on a fresh install and does not recur on applies that leave the identity unchanged. To opt out entirely:
+ *      ```terraform
+ *      alb_load_balancer_controller = {
+ *        iam = {
+ *          propagation_delay = "0s"
+ *        }
+ *      }
+ *      ```
+ *
  *  - from version >= 2.28.0, the linkerd-crds chart installs the Gateway API CRDs by default, and the dasmeta chart pins used across `examples/` are refreshed.
  *    - `linkerd.configs_crds.installGatewayAPI` now defaults to `true`. The upstream linkerd-crds chart ships it as `false`, so on an existing cluster this apply **creates the Gateway API CRDs** (`httproutes` and `grpcroutes`, plus `tlsroutes`/`tcproutes` depending on the chart's `enable*Routes` values, all under `gateway.networking.k8s.io`).
  *    - Action is required only if something else in the cluster already owns those CRDs - an Istio or Gateway API controller install, or a separate `gateway-api` chart. Two components managing the same CRDs will fight over them. In that case set the value off explicitly:

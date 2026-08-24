@@ -105,6 +105,7 @@ variable "alb_load_balancer_controller" {
       role_name             = optional(string, null)                              # Optional IAM role name override
       attachment_method     = optional(string, "service_account_role_annotation") # IAM role attachment mode: service_account_role_annotation or pod_identity_association; set null to manage the association externally
       use_descriptive_names = optional(bool, false)                               # When true, generate descriptive names instead of legacy cluster-based defaults
+      propagation_delay     = optional(string, "15s")                             # How long to wait after the role/policy/association are created before installing the chart, so the first controller pod does not start against not-yet-effective IAM. Set "0s" to skip.
     }), {})
     configs = optional(any, {}) # Allows to pass additional helm chart configs
   })

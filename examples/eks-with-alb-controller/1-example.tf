@@ -33,13 +33,7 @@ module "this" {
   }
 
   alb_load_balancer_controller = {
-    enabled = true
-    chart = {
-      version = "3.3.0"
-    }
-    iam = {
-      attachment_method = "service_account_role_annotation"
-    }
+    enabled = true # enabled by default, we set it here for explicitness
     configs = {
       replicaCount = 1
     }
