@@ -77,6 +77,7 @@ variable "iam" {
     role_name             = optional(string, null)                              # Optional IAM role name override
     attachment_method     = optional(string, "service_account_role_annotation") # IAM role attachment mode: service_account_role_annotation or pod_identity_association; set null to manage the association externally
     use_descriptive_names = optional(bool, false)                               # When true, generate descriptive names instead of legacy cluster-based defaults
+    propagation_delay     = optional(string, "15s")                             # How long to wait after the role/policy/association are created before installing the chart, so the first controller pod does not start against not-yet-effective IAM. Set "0s" to skip.
   })
   default     = {}
   description = "Optional IAM naming controls. Explicit names win when set. When use_descriptive_names is true, names are generated as aws-load-balancer-controller-{cluster_name} and aws-load-balancer-controller-{cluster_name}_iam_role. Otherwise the legacy cluster_name-based defaults are used. Enable by default in new-cluster use cases when possible."
@@ -87,6 +88,11 @@ variable "iam" {
       var.iam.attachment_method
     )
     error_message = "iam.attachment_method must be service_account_role_annotation, pod_identity_association, or null for an externally managed association."
+  }
+
+  validation {
+    condition     = can(regex("^([0-9]+(\\.[0-9]+)?(ns|us|ms|s|m|h))+$", var.iam.propagation_delay))
+    error_message = "iam.propagation_delay must be a Go duration string such as \"15s\", \"1m\" or \"0s\"."
   }
 }
 

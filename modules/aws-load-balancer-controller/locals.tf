@@ -33,10 +33,28 @@ locals {
     } : {}
   )
 
+  # Credentials reach the controller only at pod start - IRSA binds the annotated service account
+  # into the pod's projected token at creation, Pod Identity injects them at admission. A pod that
+  # was already running when the identity wiring landed keeps whatever it started with and fails
+  # every ELB call until something restarts it; neither the IAM change nor the association rolls
+  # it. Stamping the identity onto the pod template makes any change to the role or its policy
+  # attachment roll the deployment, so the replacement pods pick the credentials up. Both values
+  # are stable once created, so this does not churn on later applies. Hashed only to keep the
+  # annotation short - it is not secret. The `checksum/` prefix follows the convention Helm charts
+  # already use for this purpose (`checksum/config`, `checksum/secret`), so it stays vendor neutral.
+  identity_annotation = {
+    "checksum/aws-identity" = sha1(join(",", [
+      aws_iam_role.aws-load-balancer-role.arn,
+      aws_iam_role_policy_attachment.AWSLoadBalancerControllerIAMPolicy.id,
+      coalesce(local.attachment_method, "external"),
+    ]))
+  }
+
   default_values = merge(
     {
       clusterName    = var.cluster_name
       serviceAccount = local.service_account_values
+      podAnnotations = local.identity_annotation
       enableWaf      = var.enable_waf
       enableWafv2    = var.enable_waf
       vpcId          = var.vpc_id
