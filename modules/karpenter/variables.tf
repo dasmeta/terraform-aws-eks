@@ -130,22 +130,22 @@ variable "resource_configs_defaults" {
         {
           key      = "karpenter.k8s.aws/instance-cpu"
           operator = "Lt"
-          values   = ["9"] # <=8 core cpu nodes
+          values   = ["17"] # <=17 core cpu nodes
         },
         {
           key      = "karpenter.k8s.aws/instance-memory"
           operator = "Lt"
-          values   = ["33000"] # <=32 Gb memory nodes
+          values   = ["65000"] # <=64 Gb memory nodes
         },
         {
           key      = "karpenter.k8s.aws/instance-cpu"
           operator = "Gt"
-          values   = ["1"] # > core cpu nodes
+          values   = ["7"] # > core cpu nodes
         },
         {
           key      = "karpenter.k8s.aws/instance-memory"
           operator = "Gt"
-          values   = ["2000"] #  >2Gb Gb memory nodes as k8s struggles to start small ones
+          values   = ["15000"] #  >15 Gb memory nodes
         },
         {
           key      = "karpenter.k8s.aws/instance-generation"
