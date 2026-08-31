@@ -266,6 +266,21 @@
  *    - **Two things deliberately did NOT change**, both for the same reason - they would bypass the pacing this release adds:
  *      - `expireAfter` stays `Never`. Node expiry is not gated by disruption budgets, so any finite value would replace nodes unpaced and outside the protected window, and switching an existing fleet to a finite value would expire every older node at once. AMI patching is handled by budget-paced drift via the alias instead.
  *      - Capacity buffers (new in Karpenter 1.14) are not adopted. They add another CRD on top of a five-minor-version upgrade whose whole purpose is reducing risk. Revisit once this baseline is proven.
+ *    - Recommended monitoring, because these defaults reduce the chance of the failure but do not make it observable:
+ *      - **CloudWatch `ApproximateAgeOfOldestMessage` on the Karpenter interruption SQS queue.** This is the single
+ *        best leading indicator and it has an unambiguous threshold: a spot interruption notice gives 120 seconds,
+ *        so any sustained age above that means a drain WILL be missed. In one production incident this reached 179s
+ *        while the controller was OOMKilling, and nodes were reclaimed before draining began. Alert above ~60s.
+ *      - Karpenter controller restart count and `OOMKilled` terminations. With the corrected resources these should
+ *        be flat; any restarts at all mean the memory limit needs raising for that cluster's size.
+ *      - Pending pods by reason, NodeClaim lifecycle duration, and node registration time.
+ *    - Known limitation of the default disruption window: it protects 06:00-18:00 UTC, which ends at 20:00 in central
+ *      European summer time. A recorded incident saw voluntary `Underutilized` eviction at 19:17 UTC (21:17 CEST),
+ *      outside that window. If your traffic runs later, extend `karpenter.disruption_windows` accordingly; the default
+ *      is deliberately not stretched to cover every setup, because a wider window means less consolidation and higher spend.
+ *    - `karpenter.configs.replicas` stays at 2 by default and should stay there. A single replica has no failover during
+ *      any controller restart. A production cluster running a single replica with the old limits had the controller
+ *      OOMKilling every ~6 minutes; the interruption queue went unconsumed and nodes were reclaimed undrained.
  *    - Rollback: pin back to `2.29.x`. No state migration is performed in either direction, but rolling back reinstates the controller limits that caused the original OOMKills.
  *    - Recommended order: apply to dev or stage first, confirm the Karpenter deployment shows `250m`/`512Mi` requests with no cpu limit and `system-cluster-critical` priority, confirm `kubectl get nodepool -o yaml` shows the expected `disruption.budgets` entries, then watch one AMI roll complete before promoting to production.
  *

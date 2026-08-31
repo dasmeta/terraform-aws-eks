@@ -52,10 +52,14 @@ module "this" {
   karpenter = {
     enabled = true
     configs = {
-      # A single replica is deliberate for this smaller example. Two replicas need a node in each of two
-      # availability zones, because the karpenter chart combines required hostname anti-affinity with a
-      # DoNotSchedule zone spread; asking for two on a cluster that cannot host them used to leave the second
-      # replica silently Pending. The module now fails the plan when 2+ replicas are requested with <2 subnets.
+      # A single replica here is a constraint of this small example, NOT a production pattern.
+      # Two replicas need a node in each of two availability zones, because the karpenter chart combines
+      # required hostname anti-affinity with a DoNotSchedule zone spread; asking for two on a cluster that
+      # cannot host them used to leave the second replica silently Pending, and the module now fails the plan
+      # when 2+ replicas are requested with <2 subnets.
+      # In production keep the default of 2: a single replica has no failover during any controller restart,
+      # and a real incident showed a single-replica controller OOMKilling every ~6 minutes while spot
+      # interruption messages went unconsumed for longer than the 120s notice window.
       replicas = 1
     }
 
