@@ -68,10 +68,36 @@ locals {
     for name, pc in local.priority_class_map : name
     if tonumber(pc.value) == local.highest_priority_class_value
   ]
-  karpenter_priority_class_name = try(local.highest_priority_class_names[0], "high")
+  # Karpenter runs at system-cluster-critical (2,000,000,000), the upstream chart default. An earlier revision
+  # substituted the priority-class submodule's highest class (1,000,000), which demoted karpenter below every
+  # genuinely cluster-critical component and forfeited kubelet critical-pod protection -- so under node pressure
+  # the component responsible for ADDING capacity became a preemption candidate. Override via
+  # var.karpenter.configs.priorityClassName if a setup genuinely needs a different class.
+  karpenter_priority_class_name = "system-cluster-critical"
   karpenter_default_configs = {
     replicas          = 2
     priorityClassName = local.karpenter_priority_class_name
   }
   karpenter_configs = merge(local.karpenter_default_configs, try(var.karpenter.configs, {}))
+
+  # Karpenter node AMI family is derived from the DECLARED managed node group ami_type rather than sampled from a
+  # running instance, so the selection is a pure function of configuration and cannot change on its own.
+  karpenter_node_ami_type = try(var.node_groups_default.ami_type, "AL2023_x86_64_STANDARD")
+  karpenter_ami_family = (
+    startswith(local.karpenter_node_ami_type, "AL2023") ? "al2023" :
+    startswith(local.karpenter_node_ami_type, "BOTTLEROCKET") ? "bottlerocket" :
+    startswith(local.karpenter_node_ami_type, "AL2") ? "al2" :
+    "al2023"
+  )
+  karpenter_ami_alias = try(var.karpenter.ami_alias, null) != null ? var.karpenter.ami_alias : "${local.karpenter_ami_family}@latest"
+
+  # Kept here rather than relying on the submodule default so the root module documents the same window shape.
+  karpenter_default_disruption_windows = [
+    {
+      schedule = "0 6 * * mon-fri" # 06:00 UTC weekdays, roughly 08:00 in central Europe
+      duration = "12h"             # through 18:00 UTC, roughly 20:00 in central Europe
+      reasons  = ["Drifted", "Underutilized"]
+      nodes    = "0"
+    }
+  ]
 }

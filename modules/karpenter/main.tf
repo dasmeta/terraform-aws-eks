@@ -64,6 +64,16 @@ module "this" {
       sid       = "AllowUnscopedInstanceProfileListAction"
       actions   = ["iam:ListInstanceProfiles"]
       resources = ["*"]
+    },
+    # Required by karpenter >= 1.12 for the interruption controller's EC2 instance-status health checks,
+    # which is the capability that lets karpenter act on unhealthy/terminating capacity. The pinned upstream
+    # module version does not include this action in its AllowRegionalReadActions statement, so without this
+    # the new code path fails with AccessDenied and the capability is silently inactive.
+    # TODO: re-check whether this is granted upstream when the eks module is upgraded to >= v21.
+    {
+      sid       = "AllowInstanceStatusRead"
+      actions   = ["ec2:DescribeInstanceStatus"]
+      resources = ["*"]
     }
   ]
 }
@@ -84,6 +94,18 @@ resource "helm_release" "this_crds" {
 
 # installs karpenter operator helm package
 resource "helm_release" "this" {
+  # The upstream chart requires each karpenter replica to sit on a distinct node in a distinct availability
+  # zone (required hostname podAntiAffinity + DoNotSchedule zone topologySpread + a nodeAffinity excluding
+  # karpenter's own nodes). An unsatisfiable request does not fail: the extra replica simply stays Pending
+  # forever, so the setup looks highly available while it is not. Subnet count is knowable here, so we fail
+  # on it. Node count and their zone spread are not knowable at plan time and are documented instead.
+  lifecycle {
+    precondition {
+      condition     = try(var.configs.replicas, 2) <= 1 || length(var.subnet_ids) >= 2
+      error_message = "karpenter is configured with ${try(var.configs.replicas, 2)} replicas but only ${length(var.subnet_ids)} subnet(s) were provided. Each replica needs a separate node in a separate availability zone, so 2+ replicas require 2+ subnets. Either provide subnets in at least 2 availability zones, or set karpenter.configs.replicas = 1."
+    }
+  }
+
   name             = "karpenter"
   repository       = "oci://public.ecr.aws/karpenter"
   chart            = "karpenter"
@@ -108,16 +130,7 @@ resource "helm_release" "this" {
         interruptionQueue = module.this.queue_name
       }
       controller = {
-        resources = {
-          requests = {
-            cpu    = "100m"
-            memory = "128Mi"
-          }
-          limits = {
-            cpu    = "200m"
-            memory = "256Mi"
-          }
-        }
+        resources = local.controller_resources
       }
     }),
     jsonencode(var.configs)
@@ -145,7 +158,7 @@ resource "helm_release" "karpenter_nodes" {
           default = local.defaultEc2NodeClass,
           gpu     = local.defaultEc2NodeClassGpu
         }
-        nodePools               = local.nodePools
+        nodePools               = local.allNodePools
         karpenterServiceAccount = module.this.service_account
         karpenterNamespace      = var.namespace
       }

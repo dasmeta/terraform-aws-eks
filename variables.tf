@@ -855,11 +855,23 @@ variable "karpenter" {
     configs                   = optional(any, {})                               # karpenter chart configs, merged on top of module defaults (replicas=2 and highest predefined priorityClassName). Available options: https://github.com/aws/karpenter-provider-aws/blob/v1.0.8/charts/karpenter/values.yaml
     resource_configs          = optional(any, { nodePools = { general = {} } }) # karpenter resources creation configs, available options can be fount here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources
     resource_configs_defaults = optional(any, {})                               # the default used for karpenter node pool creation, the available values to override/set can be found in karpenter submodule corresponding variable modules/karpenter/values.tf
+    controller_resources      = optional(any, null)                             # resources for the karpenter controller container; defaults to requests 250m/512Mi with a 1Gi memory limit and deliberately no cpu limit, see modules/karpenter/variables.tf
+    ami_alias                 = optional(string, null)                          # declarative node AMI selection in `family@version` form, e.g. "al2023@latest" or a pinned "al2023@v20240807"; defaults to the family implied by node_groups_default.ami_type with @latest
+    disruption_windows        = optional(any, null)                             # time windows suppressing voluntary node disruption, rendered as NodePool disruption budgets; defaults to 06:00-18:00 UTC Mon-Fri blocking Drifted and Underutilized. Schedules are UTC only
+    termination_grace_period  = optional(string, null)                          # upper bound on node drain before remaining pods are removed; defaults to 24h as a stuck-node safety net
+    protected_node_pool       = optional(any, null)                             # opt-in tainted on-demand node pool for workloads that must not be moved by spot reclamation; disabled by default
   })
   default = {
     enabled = true
   }
-  description = "Allows to create/deploy/configure karpenter operator and its resources to have custom node auto-calling. By default, Karpenter configs include replicas=2 and priorityClassName set to the highest predefined priority class."
+  description = <<-EOT
+    Allows to create/deploy/configure karpenter operator and its resources to have custom node auto-scaling.
+
+    Defaults include replicas=2, priorityClassName=system-cluster-critical, Balanced consolidation with a 15m
+    settle time, declarative AMI selection via alias, and a 06:00-18:00 UTC Mon-Fri window during which
+    voluntary consolidation is suppressed. Disruption windows are evaluated in UTC only and should be
+    overridden for setups outside central Europe.
+  EOT
 }
 
 variable "keda" {
