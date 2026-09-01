@@ -252,6 +252,9 @@
  *    - No action is needed where Linkerd is the only Gateway API consumer, or where `linkerd.enabled = false`.
  *    - `examples/` now pin `dasmeta/base` `0.3.32`, and the `namespaces-and-docker-auth` submodule defaults to chart `0.1.3`. Both chart releases default their generated External Secrets resources to `external-secrets.io/v1`; see the chart release notes for the operator requirement and the per-release override.
  *
+ *    For configuring a cluster end to end -- assessment, upgrade order, region/timezone-specific disruption
+ *    windows, workload and third-party chart configuration, and the disruption risk of each step -- see
+ *    `docs/karpenter-stability-guide.md`.
  *  - from <2.30.0 to >=2.30.0 version, Karpenter gets a stability baseline. **Behaviour changes on upgrade with no configuration change; read this before applying to production.** No state migration is required.
  *    - Why: production 502/504 bursts occurred when spot nodes were reclaimed while the Karpenter controller was unavailable, so interruption warnings went unprocessed and nodes were never drained. A fleet-wide review tied ~35 incidents to a small set of causes, several of which were defects in this module.
  *    - Controller resources: requests move from `100m`/`128Mi` to `250m`/`512Mi`, the memory limit from `256Mi` to `1Gi`, and **the cpu limit is removed entirely**. The old `200m`/`256Mi` limits were diagnosed as causing cpu throttling and OOMKills during scale-up. The cpu limit is dropped rather than raised on purpose: throttling this controller during a scale-up or spot-interruption storm is the failure being prevented. Override with `karpenter.controller_resources` if you need a cpu limit back.
