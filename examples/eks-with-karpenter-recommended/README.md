@@ -29,7 +29,10 @@ Each of these is a failure seen in production, and each is addressed somewhere i
    drain at all. Nothing else in this file helps when that happens. See `controller_resources` in
    `1-example.tf`.
 2. **A single controller replica has no failover.** Any restart — rollout, drain, OOM — is a gap in
-   interruption handling. Keep `replicas = 2`, which needs 2 nodes in 2 availability zones.
+   interruption handling. Keep `replicas = 2`, which needs **2 managed-node-group nodes in 2 availability
+   zones**. Karpenter-managed nodes do not count: the chart's `karpenter.sh/nodepool DoesNotExist` affinity
+   excludes them. One production cluster ran 8 nodes across 3 zones and still could not schedule a second
+   replica, because only 1 of the 8 came from a managed node group.
 3. **A service with no PodDisruptionBudget can lose every replica at once.** `rollingUpdate.maxUnavailable`
    does nothing here; only a PDB gates the eviction API during a node drain.
 4. **A PodDisruptionBudget that permits zero evictions is worse than none.** It blocks consolidation, blocks
@@ -69,6 +72,10 @@ never delay node expiry.
 ## Verifying a cluster against this
 
 ```sh
+# can this cluster even host 2 controller replicas? count MANAGED-node-group nodes and their zones --
+# karpenter-provisioned nodes are not eligible, so a large cluster can still fail this
+kubectl get nodes -L topology.kubernetes.io/zone,karpenter.sh/nodepool
+
 # controller sizing and replica count -- 256Mi or replicas 1 means exposed
 kubectl -n karpenter get deploy karpenter \
   -o jsonpath='{.spec.replicas}{"  "}{.spec.template.spec.containers[0].resources}{"\n"}'
@@ -88,3 +95,26 @@ kubectl get pdb -A -o json \
 The single best leading indicator that the controller is not keeping up is the interruption queue's
 `ApproximateAgeOfOldestMessage` in CloudWatch. Sustained above the 120 second spot notice means a drain
 **will** be missed. Alert above roughly 60 seconds.
+
+```sh
+aws cloudwatch get-metric-statistics --namespace AWS/SQS \
+  --metric-name ApproximateAgeOfOldestMessage \
+  --dimensions Name=QueueName,Value=Karpenter-<cluster-name> \
+  --start-time $(date -u -v-7d +%Y-%m-%dT%H:%M:%SZ) --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
+  --period 300 --statistics Maximum --region <region> --output table
+```
+
+A healthy cluster reports `0.0` for every datapoint: messages are consumed as fast as they arrive. Note the
+metric is only published when the queue has activity, so a handful of datapoints across several days is
+normal and means that many interruption or rebalance events occurred. Also check a window that actually
+contains a known incident before concluding a cluster is fine — a window starting after the event only shows
+the recovered state.
+
+### One more failure shape worth checking
+
+A budget of `nodes: "0"` with no `schedule` or `duration` is **always active**, so it does not reduce churn —
+it stops every voluntary disruption permanently. Paired with `expireAfter: Never` it means nodes are never
+replaced at all, so AMI patching stops too, because drift remediation is itself voluntary disruption. One
+production cluster carried it on four of five node pools and had nodes 33 to 102 days old still running the
+previous kubelet minor version. Use `disruption_windows` instead: blocked during traffic hours, permitted
+outside them.

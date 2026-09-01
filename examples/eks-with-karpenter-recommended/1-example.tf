@@ -12,6 +12,10 @@ module "this" {
 
   cluster_name = local.cluster_name
 
+  # The subnets must span at least 2 availability zones, otherwise the system node group cannot place its 2
+  # nodes in 2 zones and karpenter's second replica can never schedule. The module fails the plan when 2+
+  # karpenter replicas are requested with fewer than 2 subnets, but it cannot see how those subnets map to
+  # zones, so confirm the spread yourself.
   vpc = {
     link = {
       id                 = data.aws_vpcs.ids.ids[0]
@@ -20,12 +24,24 @@ module "this" {
   }
 
   # The system node group hosts karpenter itself plus the other cluster-critical addons.
-  # Set explicitly: karpenter's own chart requires each of its 2 replicas to sit on a SEPARATE node in a
-  # SEPARATE availability zone (required hostname anti-affinity + DoNotSchedule zone spread + a nodeAffinity
-  # excluding karpenter's own nodes). With fewer than 2 nodes across 2 AZs the second replica stays Pending
-  # forever and the cluster only looks highly available. A single-replica controller has no failover during
-  # any restart, which in one production incident meant spot interruption messages went unconsumed past the
-  # 120s notice window and nodes were reclaimed undrained.
+  #
+  # Set explicitly, and this is the single most important sizing decision here: karpenter's own chart requires
+  # each of its 2 replicas to sit on a SEPARATE node in a SEPARATE availability zone. Three chart defaults
+  # combine to force it -- required hostname podAntiAffinity, a DoNotSchedule zone topologySpread, and a
+  # nodeAffinity of `karpenter.sh/nodepool DoesNotExist`.
+  #
+  # That last one is the trap: KARPENTER-MANAGED NODES DO NOT COUNT. Only nodes from a managed node group are
+  # eligible to host the controller. A production cluster was observed running 8 nodes across 3 availability
+  # zones and still could not schedule a second replica, because 7 of them were karpenter-provisioned and only
+  # 1 was from a managed node group. `kubectl get nodes` looked comfortably highly available; the controller
+  # was not. So size THIS node group for 2 in 2 zones -- total cluster node count is irrelevant.
+  #
+  # The cost of getting it wrong is not theoretical. A single-replica controller has no failover during any
+  # restart, rollout or drain, and in one production incident that gap meant spot interruption messages went
+  # unconsumed for 179 seconds -- past the 120 second notice -- so nodes were reclaimed before any drain began.
+  #
+  # Verify after apply (expect 2+ rows in 2+ distinct zones):
+  #   kubectl get nodes -L topology.kubernetes.io/zone,karpenter.sh/nodepool | grep -v 'karpenter.sh/nodepool'
   node_groups = {
     system = {
       min_size     = 2
@@ -54,9 +70,11 @@ module "this" {
     enabled = true
 
     # configs = {
-    #   replicas          = 2                         # DEFAULT and RECOMMENDED. Do not lower to 1 in production:
-    #                                                 # a single replica has no failover during any controller
-    #                                                 # restart, rollout or node drain.
+    #   replicas          = 2                         # DEFAULT and RECOMMENDED, and the reason the system node
+    #                                                 # group above is sized 2-across-2-zones. Do not lower to 1
+    #                                                 # in production: a single replica has no failover during any
+    #                                                 # controller restart, rollout or node drain. If a cluster
+    #                                                 # cannot host 2, fix the node group rather than dropping to 1.
     #   priorityClassName = "system-cluster-critical" # DEFAULT and RECOMMENDED. Keeps karpenter from being
     #                                                 # preempted ahead of other cluster-critical components.
     # }
