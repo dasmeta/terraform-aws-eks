@@ -114,8 +114,13 @@ in full before applying. This document does not repeat it.
 ### 1.2 Never rely on an in-cluster hotfix
 
 If someone previously patched controller resources directly in the cluster, **the next `terraform apply`
-reverts it**. This has already happened: a cluster hotfixed in June was found back on the failing values in
-August, and had an incident. Move the measured values into Terraform:
+reverts it**. Helm owns that Deployment: a `kubectl patch` or `kubectl edit` changes the live object but not
+the release manifest, so the next `helm upgrade` the module performs restores the module's values.
+
+The wider problem is that the corrected values were applied to one cluster in June 2026 and never landed in
+the module. Every other cluster therefore kept the failing defaults. Two months later a different cluster was
+found still on `200m`/`256Mi`, with the controller OOMKilling roughly every six minutes during an incident.
+Move the measured values into Terraform:
 
 ```hcl
 karpenter = {
