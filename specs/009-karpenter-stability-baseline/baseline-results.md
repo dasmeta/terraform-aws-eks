@@ -114,4 +114,16 @@ Mocking required typed overrides for `aws_iam_policy_document`, `aws_partition`,
 
 ### Defect found while implementing
 
-The example files passed `terraform validate` while carrying `resource_configs_defaults.limits` at the top level, where the submodule expects it under `.default`. It validated only because the root variable is typed `any`, deferring the check to plan time. Both Karpenter examples would have failed on a real plan. Corrected under the touch-and-fix rule.
+Both Karpenter examples carried `resource_configs_defaults.limits` at the top level, where the submodule expects it under `.default`.
+
+The first assessment of this was wrong. It was assumed the mis-nesting would fail at plan time. It does not. Terraform's object type conversion **silently drops** attributes the target type does not declare, so the top-level `limits` was discarded on the way into the submodule and the node pools fell back to the module default of `cpu = 1000` -- a ceiling 90x higher than the `cpu = 11` the examples asked for, with no error at validate, plan or apply.
+
+Verified directly:
+
+```
+variable with type object({ default = optional(object({ limits = optional(any, { cpu = 1000 }) }), {}) })
+input  { limits = { cpu = 11 } }
+output effective_limits = { cpu = 1000 }
+```
+
+Corrected in both examples under the touch-and-fix rule, and a validation was added to the root `karpenter` variable so the same mistake now fails loudly instead of being discarded. The validation has to live at the root, because by the time the value reaches the submodule the offending key has already been dropped.

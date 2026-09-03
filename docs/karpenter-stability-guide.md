@@ -213,7 +213,33 @@ most-restrictive-wins, so an always-on `nodes: "0"` keeps winning and the window
 > replacement to begin. That is the point, but it means the first apply after removal is the busiest.
 > Do it outside traffic hours, with the window configured first so it is bounded.
 
-### 2.3 Protected capacity
+### 2.3 A configuration trap worth knowing
+
+Terraform **silently drops** object attributes that the target type does not declare. There is no error at
+validate, plan or apply. If you write:
+
+```hcl
+resource_configs_defaults = {
+  limits = { cpu = 11 }        # WRONG -- must be nested under `default`
+}
+```
+
+the `limits` key is discarded and the module uses its own default of `cpu = 1000`. Two examples in this
+repository carried exactly this and had been running a ceiling 90x higher than intended. Correct form:
+
+```hcl
+resource_configs_defaults = {
+  default = {
+    limits = { cpu = 11 }
+  }
+}
+```
+
+The module now rejects unexpected top-level keys here, so this specific mistake fails loudly. The general
+lesson still applies to any `any`-typed input: after changing one, confirm the value actually took effect
+rather than assuming a clean apply means it did.
+
+### 2.4 Protected capacity
 
 Enable it if the cluster runs an ingress controller, monitoring, or any single-replica or stateful workload:
 

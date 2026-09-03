@@ -252,6 +252,9 @@ Those include:
    - No action is needed where Linkerd is the only Gateway API consumer, or where `linkerd.enabled = false`.
    - `examples/` now pin `dasmeta/base` `0.3.32`, and the `namespaces-and-docker-auth` submodule defaults to chart `0.1.3`. Both chart releases default their generated External Secrets resources to `external-secrets.io/v1`; see the chart release notes for the operator requirement and the per-release override.
 
+   For configuring a cluster end to end -- assessment, upgrade order, region/timezone-specific disruption
+   windows, workload and third-party chart configuration, and the disruption risk of each step -- see
+   `docs/karpenter-stability-guide.md`.
  - from <2.30.0 to >=2.30.0 version, Karpenter gets a stability baseline. **Behaviour changes on upgrade with no configuration change; read this before applying to production.** No state migration is required.
    - Why: production 502/504 bursts occurred when spot nodes were reclaimed while the Karpenter controller was unavailable, so interruption warnings went unprocessed and nodes were never drained. A fleet-wide review tied ~35 incidents to a small set of causes, several of which were defects in this module.
    - Controller resources: requests move from `100m`/`128Mi` to `250m`/`512Mi`, the memory limit from `256Mi` to `1Gi`, and **the cpu limit is removed entirely**. The old `200m`/`256Mi` limits were diagnosed as causing cpu throttling and OOMKills during scale-up. The cpu limit is dropped rather than raised on purpose: throttling this controller during a scale-up or spot-interruption storm is the failure being prevented. Override with `karpenter.controller_resources` if you need a cpu limit back.
@@ -266,6 +269,16 @@ Those include:
    - **Two things deliberately did NOT change**, both for the same reason - they would bypass the pacing this release adds:
      - `expireAfter` stays `Never`. Node expiry is not gated by disruption budgets, so any finite value would replace nodes unpaced and outside the protected window, and switching an existing fleet to a finite value would expire every older node at once. AMI patching is handled by budget-paced drift via the alias instead.
      - Capacity buffers (new in Karpenter 1.14) are not adopted. They add another CRD on top of a five-minor-version upgrade whose whole purpose is reducing risk. Revisit once this baseline is proven.
+   - **If you previously set `budgets = [{ nodes = "0" }]` as a mitigation, remove it when adopting the windows.**
+     A budget of `nodes: "0"` with no `schedule`/`duration` is always active, so it does not reduce churn -- it
+     stops ALL voluntary disruption permanently. Observed on a production cluster: four of five node pools carried
+     it, and with `expireAfter: Never` alongside it nothing ever replaced a node voluntarily. Nodes had reached
+     33-102 days old and were still running the previous kubelet minor version after the control plane had moved
+     on, because AMI drift remediation is voluntary disruption and was therefore blocked too. The disruption
+     windows in this release are the supported way to express the same intent: blocked during your traffic hours,
+     permitted outside them. Note the module CONCATENATES window budgets with whatever budgets you already set,
+     so an existing always-on `nodes: "0"` keeps winning (budgets resolve most-restrictive-wins) and must be
+     removed for the windows to have any effect.
    - Recommended monitoring, because these defaults reduce the chance of the failure but do not make it observable:
      - **CloudWatch `ApproximateAgeOfOldestMessage` on the Karpenter interruption SQS queue.** This is the single
        best leading indicator and it has an unambiguous threshold: a spot interruption notice gives 120 seconds,

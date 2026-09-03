@@ -864,6 +864,19 @@ variable "karpenter" {
   default = {
     enabled = true
   }
+
+  # Terraform object type conversion SILENTLY DROPS attributes the target type does not declare. The submodule
+  # types resource_configs_defaults as an object with only `default` and `gpu`, so anything placed at the top
+  # level is discarded on the way in and the module falls back to its own defaults -- with no error at plan or
+  # apply. Two examples in this repository carried `limits` at the top level and had been silently running the
+  # default cpu ceiling of 1000 instead of the 11 they asked for. This validation turns that into a loud failure.
+  validation {
+    condition = alltrue([
+      for key in keys(try(var.karpenter.resource_configs_defaults, {})) : contains(["default", "gpu"], key)
+    ])
+    error_message = "karpenter.resource_configs_defaults accepts only the keys `default` and `gpu`. Any other key is silently dropped by terraform and never takes effect. Nest your settings, e.g. resource_configs_defaults = { default = { limits = { cpu = 11 } } }."
+  }
+
   description = <<-EOT
     Allows to create/deploy/configure karpenter operator and its resources to have custom node auto-scaling.
 
