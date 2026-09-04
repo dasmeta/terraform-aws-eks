@@ -77,12 +77,18 @@ locals {
           terminationGracePeriod = try(value.template.spec.terminationGracePeriod, var.termination_grace_period)
         })
       })
+      # Budgets: a pool that declares its own budgets OWNS them completely and the module's disruption
+      # windows are not appended. Appending would be worse than useless -- karpenter resolves multiple
+      # budgets most-restrictive-wins, so a hand-tuned window (one production cluster already runs
+      # 12:00 UTC for 16h, every day, matched to its own timezone) would silently gain a second, narrower
+      # module window on top of it and the operator's intent would be quietly overridden.
+      # Only pools that express no opinion get the module default plus its windows.
       disruption = merge(
         var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].disruption,
         try(value.disruption, {}),
         {
-          budgets = concat(
-            try(value.disruption.budgets, var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].disruption.budgets),
+          budgets = try(value.disruption.budgets, null) != null ? value.disruption.budgets : concat(
+            var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].disruption.budgets,
             local.disruption_window_budgets,
           )
         }

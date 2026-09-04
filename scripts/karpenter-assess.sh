@@ -120,15 +120,18 @@ kubectl get sts -A -o json 2>/dev/null | jq -r '.items[] | select((.spec.replica
 
 if [ -n "$QUEUE" ]; then
   hr "12. INTERRUPTION QUEUE BACKLOG (>120s means drains are being missed)"
+  # CloudWatch caps a single call at 1440 datapoints. 30 days at a 3600s period is 720, comfortably under.
+  # A wide period is fine here because the statistic is Maximum: a 300s spike still shows in its hour.
   aws cloudwatch get-metric-statistics --namespace AWS/SQS \
     --metric-name ApproximateAgeOfOldestMessage \
     --dimensions "Name=QueueName,Value=${QUEUE}" \
-    --start-time "$(date -u -v-14d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%SZ)" \
+    --start-time "$(date -u -v-30d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '30 days ago' +%Y-%m-%dT%H:%M:%SZ)" \
     --end-time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    --period 300 --statistics Maximum --region "$REGION" \
+    --period 3600 --statistics Maximum --region "$REGION" \
     --query 'sort_by(Datapoints,&Timestamp)[?Maximum>`0`].[Timestamp,Maximum]' --output text 2>/dev/null \
     | sed 's/^/  /' | tail -20 || echo "  query failed (check credentials, queue name, region)"
-  echo "  (no rows above 0 means the controller kept up for every event in the window)"
+  echo "  (no rows means the controller kept up for every event in the 30 day window)"
+  echo "  ANY value above 120 is a MISSED DRAIN: the spot interruption notice is only 120s."
 else
   hr "12. INTERRUPTION QUEUE BACKLOG -- SKIPPED"
   echo "  re-run with: --queue Karpenter-<cluster-name> --region <region>"

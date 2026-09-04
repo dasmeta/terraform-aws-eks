@@ -308,6 +308,11 @@ variable "disruption_windows" {
 
     These budgets gate VOLUNTARY disruption only. They never delay spot interruption handling, and they never
     delay node expiry. Set to `[]` to disable windowing entirely.
+
+    OVERRIDE SEMANTICS: a node pool that declares its own `disruption.budgets` in var.resource_configs owns
+    them completely and these windows are NOT appended to it. Karpenter resolves multiple budgets
+    most-restrictive-wins, so appending would silently narrow a hand-tuned window rather than defer to it.
+    Only pools that express no budget opinion receive the module default plus these windows.
   EOT
 }
 

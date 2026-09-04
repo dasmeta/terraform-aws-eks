@@ -246,7 +246,10 @@ run "custom_pools_with_correctly_nested_defaults" {
   }
 }
 
-run "pool_overriding_its_own_budgets_still_gets_windows_appended" {
+# A pool that declares its own budgets OWNS them: the module's windows are not appended. Appending would
+# narrow a hand-tuned window rather than defer to it, because karpenter resolves budgets
+# most-restrictive-wins. One production cluster already runs its own 16h daily window tuned to its timezone.
+run "pool_declaring_its_own_budgets_keeps_them" {
   command = plan
   module { source = "./modules/karpenter" }
   variables {
@@ -254,10 +257,25 @@ run "pool_overriding_its_own_budgets_still_gets_windows_appended" {
     resource_configs = {
       nodePools = {
         general = {
-          disruption = { budgets = [{ nodes = "20%" }] }
+          disruption = {
+            budgets = [
+              { nodes = "10%" },
+              { nodes = "0", schedule = "0 12 * * *", duration = "16h", reasons = ["Drifted", "Underutilized"] },
+            ]
+          }
         }
       }
     }
+  }
+}
+
+# A pool with no budget opinion still receives the module default plus the configured windows.
+run "pool_without_budget_opinion_gets_module_windows" {
+  command = plan
+  module { source = "./modules/karpenter" }
+  variables {
+    subnet_ids       = ["subnet-a", "subnet-b"]
+    resource_configs = { nodePools = { general = { weight = 1 } } }
   }
 }
 
