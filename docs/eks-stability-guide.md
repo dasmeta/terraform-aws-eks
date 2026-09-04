@@ -1,24 +1,55 @@
-# Karpenter Stability Guide
+# EKS Stability and Spot Cost Guide
 
-**Audience**: delivery and support engineers, and the AI agents working on their behalf.
-**Purpose**: configure Karpenter, the `dasmeta/base` chart, and third-party charts so a spot-backed EKS
-cluster stops causing service disruption.
+**Who this is for**: delivery and support engineers, and the AI agents working on their behalf.
+
+**What it is for**: running a spot-backed EKS cluster that is cheap *and* does not drop traffic. Those two
+goals pull against each other, and most of this document is about where the line sits.
+
 **Scope**: one cluster at a time, in the order given. The order matters — several steps are unsafe before the
 one preceding them.
 
-Every recommendation here traces to a production incident. Where a step can cause disruption, the risk is
-stated on the step rather than buried in a footnote.
+Every recommendation traces to a production incident. Where a step can cause disruption, the risk is stated
+on the step rather than buried in a footnote.
 
 ---
 
 ## How to use this document
 
-Work top to bottom. Each phase has an **entry gate** — do not start it until the gate passes. Each step
-states what changes, why, what can go wrong, and how to verify.
+Work top to bottom. Each phase has an **entry gate** — do not start it until the gate passes. Each step says
+what changes, why, what can go wrong, and how to verify.
 
-If you are an AI agent: do not skip the assessment phase and do not batch phases together. The assessment
-output determines which later steps apply, and several steps are destructive if their precondition is unmet.
-Report findings and ask before applying anything in Phase 2 or later.
+Start with the two scanners. They tell you which of the later steps actually apply to the cluster in front of
+you, and neither changes anything:
+
+```sh
+./scripts/eks-assess.sh                       # live cluster; needs only a kube context and an AWS session
+./scripts/eks-config-lint.sh path/to/eks.yaml # setup config; needs no access at all
+```
+
+### If you are an AI agent
+
+- Run the assessment **first** and report what it found before proposing any change. The output determines
+  which later steps apply.
+- Do not batch phases. Several steps are destructive if their precondition is unmet.
+- Ask before applying anything from Phase 2 onward.
+- Never infer a cluster's state from its config file, or its config from its live state. They drift, and the
+  drift is often the finding. One cluster in this fleet has a config declaring one controller replica while
+  running two.
+- When you report a finding, give the evidence (the command output), not a summary of it.
+
+### The shape of the problem
+
+Almost every incident in this fleet reduces to one of five things:
+
+1. **The node autoscaler is unavailable when capacity is reclaimed.** Nothing drains, and every reclaimed node
+   becomes an abrupt kill. No other setting compensates.
+2. **A workload has no PodDisruptionBudget**, so one node drain removes every replica at once.
+3. **A workload has a PodDisruptionBudget that permits zero evictions**, which blocks drains entirely and
+   fails cluster upgrades — while presenting as the autoscaler being stuck.
+4. **A stateful or single-replica workload sits on reclaimable capacity**, where nothing can protect it.
+5. **The instance shape is wrong for the workload**, so nodes are interrupted more often than they need to be.
+
+Everything below is a way of preventing one of those.
 
 ---
 
@@ -28,9 +59,21 @@ Report findings and ask before applying anything in Phase 2 or later.
 
 Collect all of it before changing anything. Later phases branch on these answers.
 
-**Fastest path**: `./scripts/eks-assess.sh --queue Karpenter-<cluster> --region <region>` runs every
-check below in one pass and is strictly read-only. The individual commands are kept here so you can run any
-one of them on its own, and so the script is auditable rather than a black box.
+**Fastest path**, both read-only and both zero-argument:
+
+```sh
+./scripts/eks-assess.sh                        # live cluster
+./scripts/eks-config-lint.sh <env>/eks.yaml    # the setup config, no cluster access needed
+```
+
+The assessment discovers cluster, region, account and interruption queue from the kube context and the
+autoscaler deployment, so an AWS session and a kube context are all it needs. The linter reads a config file
+and flags the same problems before they reach a cluster, so it works in CI and against any setup repository.
+
+Run **both**. They disagree when config has drifted from live, and that disagreement is itself a finding.
+
+The individual commands are kept below so you can run any one on its own, and so the scripts are auditable
+rather than a black box.
 
 ```sh
 # 0.1 Controller sizing, replica count, restarts
@@ -305,6 +348,16 @@ livenessProbe:            # keep shallow and slower than readiness -- an aggress
 Defaults you do not need to set: `pdb` (derived), `spread` (on, node-level, soft), `defaultLifecycle.preStop`
 (5s sleep so the pod IP leaves the load balancer before the container stops).
 
+### 3.7 Resource requests are not optional
+
+The autoscaler provisions capacity from pod **requests**. A pod with none contributes nothing to that
+calculation, so the cluster is under-provisioned by exactly the amount those pods actually use. The symptom is
+pods pending after every disruption and recovery taking far longer than it should — which reads as an
+autoscaler problem and is not one.
+
+Section E6 of the assessment lists workloads missing requests. Set at least `cpu` and `memory` requests on
+every container. Limits are a separate decision; requests are what scheduling and provisioning depend on.
+
 ### 3.4 Single-replica services
 
 A single-replica service cannot be protected by a PDB. Either raise it to 2, or move it to protected capacity
@@ -389,6 +442,76 @@ Aggregate alert queries by workload identity (`namespace`, `deployment`) rather 
 firing after recovery.
 
 ---
+
+## Spot cost optimisation without losing stability
+
+Spot capacity is the point of this setup. The goal is not to use less of it, but to make its interruptions
+survivable and less frequent.
+
+### What actually reduces interruptions
+
+**Instance flexibility is the biggest lever.** AWS reclaims from the pools under most pressure. The wider the
+set of instance types a pool will accept, the more likely a replacement is available and the less often any
+one type is reclaimed. Narrow requirements are the single most common cause of avoidable interruption.
+
+**Avoid burstable instances for sustained workloads.** The `t` family is CPU-credit based: once credits are
+exhausted it throttles to a fraction of its advertised vCPU, which surfaces as latency that looks like an
+application fault. It also occupies the most contended spot pools. Because the autoscaler picks the *cheapest*
+instance satisfying the constraints, a `t3.2xlarge` was very often what it picked before the default excluded
+that family. Cheap per hour, expensive in incidents.
+
+**Match the instance shape to the workload.** Section F2 of the assessment reports CPU and memory reservation
+per node. If CPU is consistently far higher than memory, nodes run out of CPU while paid-for memory sits idle:
+
+| Reservation pattern | Instance category | Memory per core |
+| --- | --- | --- |
+| CPU much higher than memory | `["c"]` | 1:2 |
+| roughly balanced | `["c", "m"]` | 1:2 and 1:4 |
+| memory much higher than CPU | `["m", "r"]` | 1:4 and 1:8 |
+
+The module default is `["c", "m", "r"]` — deliberately wide, because flexibility beats precision until you
+have measured. Narrow it once F2 gives you a clear answer.
+
+### What does not reduce interruptions
+
+- **Disruption budgets and windows.** They gate *voluntary* disruption only. Reclamation is involuntary and is
+  never delayed by them.
+- **`karpenter.sh/do-not-disrupt`.** Same: voluntary only.
+- **PodDisruptionBudgets.** They gate the eviction API. A reclaimed instance does not use it.
+
+Those three protect against consolidation and upgrades. Nothing protects a workload from reclamation except
+**not being on reclaimable capacity**.
+
+### Where to spend on-demand
+
+On-demand is the only real protection against reclamation, so spend it narrowly and deliberately:
+
+| Workload | Placement | Why |
+| --- | --- | --- |
+| Node autoscaler controller | managed node group | If it is reclaimed while reclaiming, nothing drains |
+| Ingress controllers | protected on-demand | Reclaiming one takes out everything behind it |
+| Databases, single-replica stateful | protected on-demand | ReadWriteOnce volumes reattach slowly from a node that is already gone |
+| Monitoring (metrics store, its database) | protected on-demand | Losing it during churn removes the visibility you need to diagnose the churn |
+| Everything else | spot | This is the majority, and where the saving is |
+
+Enable the protected pool with `karpenter.protected_node_pool.enabled = true`, then opt workloads in with
+**both** a toleration and a node selector — see 3.5. The toleration alone only makes the capacity eligible; it
+does not keep the pod off spot.
+
+### The system node group
+
+The autoscaler controller cannot run on nodes the autoscaler created — its chart sets a
+`karpenter.sh/nodepool DoesNotExist` affinity. So a managed node group is required, and it needs:
+
+- **2 nodes minimum, in 2 availability zones.** The chart also sets required hostname anti-affinity and a
+  `DoNotSchedule` zone spread, so 2 replicas need 2 eligible nodes in 2 zones. Total cluster node count is
+  irrelevant. One cluster in this fleet runs 8 nodes across 3 zones and still cannot schedule a second
+  replica, because 7 are autoscaler-provisioned and only 1 is eligible.
+- **Small instances.** These nodes host the controller and a handful of system addons, nothing else. Two small
+  on-demand nodes is the correct shape and a negligible cost next to what spot saves elsewhere.
+- **Not `t3.small`.** Once the controller, CoreDNS, the load balancer controller and a service mesh are
+  resident, 2 GiB is not enough and pods pend for plain resource starvation — which then looks like an
+  autoscaler problem. `t3.medium` or larger.
 
 ## Quick reference: symptom to cause
 

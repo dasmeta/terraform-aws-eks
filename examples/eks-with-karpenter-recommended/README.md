@@ -11,7 +11,7 @@ When adapting it: delete every commented block first. If the result still says w
 the defaults are the recommendation.
 
 > For applying this to an EXISTING cluster rather than starting fresh, follow
-> [`docs/karpenter-stability-guide.md`](../../docs/karpenter-stability-guide.md). It covers the
+> [`docs/eks-stability-guide.md`](../../docs/eks-stability-guide.md). It covers the
 > assessment checks, the order to apply changes in, the disruption risk of each step, and how to pick a
 > disruption window for your region. This example is the destination; that guide is the route.
 
