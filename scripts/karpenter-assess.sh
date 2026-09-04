@@ -48,11 +48,16 @@ printf 'pods_total       : %s\n' "$(kubectl get pods -A --no-headers 2>/dev/null
 printf 'nodepools        : %s\n' "$(kubectl get nodepool --no-headers 2>/dev/null | wc -l | tr -d ' ')"
 
 hr "3. CONTROLLER-ELIGIBLE NODES (managed node group only; karpenter nodes cannot host it)"
-kubectl get nodes -L topology.kubernetes.io/zone,karpenter.sh/nodepool --no-headers 2>/dev/null \
-  | awk '{ if ($(NF)=="" || $(NF)=="<none>") print "  ELIGIBLE  zone=" $(NF-1) "  " $1 }'
+# NOTE: `kubectl get -L` pads a missing label with an empty trailing field, which awk collapses when
+# splitting on whitespace, so $(NF) landed on the zone column and this check silently matched nothing.
+# Select on the label via jq instead, which does not depend on column position.
+kubectl get nodes -o json 2>/dev/null | jq -r '.items[]
+  | select((.metadata.labels["karpenter.sh/nodepool"] // "") == "")
+  | "  ELIGIBLE  zone=\(.metadata.labels["topology.kubernetes.io/zone"] // "unknown")  \(.metadata.name)"'
 echo "-- distinct zones among eligible nodes (need >= 2 for karpenter replicas=2):"
-kubectl get nodes -L topology.kubernetes.io/zone,karpenter.sh/nodepool --no-headers 2>/dev/null \
-  | awk '{ if ($(NF)=="" || $(NF)=="<none>") print $(NF-1) }' | sort -u | sed 's/^/  /'
+kubectl get nodes -o json 2>/dev/null | jq -r '[.items[]
+  | select((.metadata.labels["karpenter.sh/nodepool"] // "") == "")
+  | .metadata.labels["topology.kubernetes.io/zone"] // "unknown"] | unique | .[]' | sed 's/^/  /'
 
 hr "4. AMI SELECTION (an id: means replacement can trigger with no config change)"
 kubectl get ec2nodeclass -o json 2>/dev/null | jq -r '.items[] | "\(.metadata.name): amiFamily=\(.spec.amiFamily // "unset") terms=\(.spec.amiSelectorTerms)"'
