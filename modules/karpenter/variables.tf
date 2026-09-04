@@ -160,9 +160,21 @@ variable "resource_configs_defaults" {
           values   = ["2000"] #  >2Gb Gb memory nodes as k8s struggles to start small ones
         },
         {
+          # Exclude the burstable "t" family. Two independent reasons, both seen in this fleet:
+          #  1. t instances are CPU-credit based. Under sustained load they throttle to a fraction of their
+          #     advertised vCPU, which surfaces as latency and timeouts that look like application faults.
+          #  2. they sit in the most contended spot pools, so they are reclaimed noticeably more often.
+          # Karpenter picks the cheapest instance that satisfies the constraints, and without this a
+          # t3.2xlarge is very often that instance -- which is how a "cheap" default becomes an availability
+          # problem. Override this requirement to pin specific families when a workload genuinely wants them.
+          key      = "karpenter.k8s.aws/instance-category"
+          operator = "In"
+          values   = ["c", "m", "r"] # compute (1:2), general purpose (1:4), memory optimised (1:8)
+        },
+        {
           key      = "karpenter.k8s.aws/instance-generation"
           operator = "Gt"
-          values   = ["2"] # generation of ec2 instances >2 (like t3a.medium) are more performance and effectiveness
+          values   = ["4"] # gen 5+ only: better price/performance, and more distinct spot pools to fall back on
         },
         {
           key      = "kubernetes.io/arch"

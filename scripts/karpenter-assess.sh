@@ -118,6 +118,33 @@ hr "11. STATEFULSETS WITH RWO STORAGE (slow reattach on eviction)"
 kubectl get sts -A -o json 2>/dev/null | jq -r '.items[] | select((.spec.replicas // 0) <= 1)
   | "  SINGLETON  \(.metadata.namespace)/\(.metadata.name)  replicas=\(.spec.replicas)"' | head -20
 
+hr "13. INSTANCE TYPE MIX (burstable t-family throttles under sustained load and has high interruption rates)"
+kubectl get nodes -L node.kubernetes.io/instance-type,karpenter.sh/capacity-type,karpenter.sh/nodepool -o json 2>/dev/null | jq -r '
+  [.items[] | {
+     type: (.metadata.labels["node.kubernetes.io/instance-type"] // "unknown"),
+     cap:  (.metadata.labels["karpenter.sh/capacity-type"] // "managed")
+   }]
+  | group_by(.type + "/" + .cap)
+  | map({k: (.[0].type + "  " + .[0].cap), n: length})
+  | sort_by(-.n)[] | "  \(.n)x  \(.k)"'
+echo "-- family split (t = burstable; c = compute 1:2; m = general 1:4; r = memory 1:8):"
+kubectl get nodes -o json 2>/dev/null | jq -r '
+  [.items[] | (.metadata.labels["node.kubernetes.io/instance-type"] // "unknown") | split(".")[0] | .[0:1]]
+  | group_by(.) | map({f: .[0], n: length}) | sort_by(-.n)[] | "  \(.n)x  family=\(.f)"'
+
+hr "14. CPU vs MEMORY RESERVATION BALANCE (a large gap means the wrong instance shape is being chosen)"
+echo "  node                                          cpu_req   mem_req"
+for n in $(kubectl get nodes -o name 2>/dev/null | sed 's|node/||'); do
+  line=$(kubectl describe node "$n" 2>/dev/null | awk '
+    /Allocated resources/{f=1}
+    f && $1=="cpu"{c=$3}
+    f && $1=="memory"{m=$3; exit}
+    END{print c, m}')
+  printf "  %-44s %s\n" "$n" "$line"
+done
+echo "  (percentages are of allocatable. cpu% far above mem% means nodes run out of CPU while memory sits idle,"
+echo "   so a lower memory-per-core shape -- c family at 1:2 -- fits better than t/m at 1:4)"
+
 if [ -n "$QUEUE" ]; then
   hr "12. INTERRUPTION QUEUE BACKLOG (>120s means drains are being missed)"
   # CloudWatch caps a single call at 1440 datapoints. 30 days at a 3600s period is 720, comfortably under.
