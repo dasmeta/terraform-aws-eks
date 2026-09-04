@@ -4,11 +4,11 @@
 # 1-environments/<env>/ directory). READ-ONLY: reads the file, contacts nothing.
 #
 # Catches the misconfigurations that have caused production incidents, before they reach a cluster.
-# Complements karpenter-assess.sh, which inspects a live cluster. This one needs no access at all,
+# Complements eks-assess.sh, which inspects a live cluster. This one needs no access at all,
 # so it can run in CI or be pointed at any client repo.
 #
 # Usage:
-#   ./scripts/karpenter-config-lint.sh <path-to-eks.yaml> [more.yaml ...]
+#   ./scripts/eks-config-lint.sh <path-to-eks.yaml> [more.yaml ...]
 #
 # Exit codes: 0 = no findings, 1 = findings, 2 = usage error.
 # Requires: yq (v4).
@@ -37,7 +37,7 @@ for FILE in "$@"; do
     echo "      ${parse_err}"
     if printf '%s' "$parse_err" | grep -q "unknown anchor"; then
       echo "      This file uses a YAML anchor defined elsewhere. Concatenate the defining file first, e.g."
-      echo "        cat <dir>/0-globals.yaml \"$FILE\" | ./scripts/karpenter-config-lint.sh /dev/stdin"
+      echo "        cat <dir>/0-globals.yaml \"$FILE\" | ./scripts/eks-config-lint.sh /dev/stdin"
       echo "      or lint the rendered output instead of the source."
     fi
     echo

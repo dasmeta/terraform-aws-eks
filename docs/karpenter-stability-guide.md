@@ -28,7 +28,7 @@ Report findings and ask before applying anything in Phase 2 or later.
 
 Collect all of it before changing anything. Later phases branch on these answers.
 
-**Fastest path**: `./scripts/karpenter-assess.sh --queue Karpenter-<cluster> --region <region>` runs every
+**Fastest path**: `./scripts/eks-assess.sh --queue Karpenter-<cluster> --region <region>` runs every
 check below in one pass and is strictly read-only. The individual commands are kept here so you can run any
 one of them on its own, and so the script is auditable rather than a black box.
 
