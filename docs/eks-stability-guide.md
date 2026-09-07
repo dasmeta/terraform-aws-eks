@@ -112,11 +112,13 @@ kubectl get pods -A -o json | jq -r '.items[]|select(.spec.nodeName!=null)|"\(.m
   | grep -Ff /tmp/spot.txt | grep -E 'mysql|postgres|prometheus|grafana|redis|elastic|kafka|kube-state-metrics|ingress'
 
 # 0.10 Is the interruption queue keeping up?
+# CloudWatch caps one call at 1440 datapoints: 30 days at 3600s is 720, well under. A wide period is safe
+# because the statistic is Maximum, so a 300s spike still shows in its hour.
 aws cloudwatch get-metric-statistics --namespace AWS/SQS \
   --metric-name ApproximateAgeOfOldestMessage \
   --dimensions Name=QueueName,Value=Karpenter-<cluster-name> \
-  --start-time $(date -u -v-7d +%Y-%m-%dT%H:%M:%SZ) --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
-  --period 300 --statistics Maximum --region <region> --output table
+  --start-time $(date -u -v-30d +%Y-%m-%dT%H:%M:%SZ) --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
+  --period 3600 --statistics Maximum --region <region> --output table
 ```
 
 ### Reading the results
@@ -189,11 +191,45 @@ them**. Inheriting the default would reduce them.
 | AMI selection moves to `alias` | **One paced node roll** if the alias resolves to a different image than nodes currently run | Pin `ami_alias` to the current AMI version to defer it, then move the pin deliberately later |
 | Karpenter `1.9` to `1.14` | CRD chart upgraded first; historically has needed manual `kubectl patch` in some setups | Apply in a non-production cluster first |
 | Consolidation to `Balanced`/15m | Less churn, no disruption | None |
+| System node group tainted `CriticalAddonsOnly` | **Rolling replacement of the managed node group** | Maintenance window; see 1.4 |
+| System instance type `t3.large` → `t3.medium` | Same rolling replacement | Apply in the SAME change as the taint so the group is replaced once, not twice |
 | Disruption windows | Consolidation pauses during the window | Confirm the window matches local traffic — Phase 2 |
 
 Apply to development or staging first, confirm Phase 0 checks now read healthy, then promote.
 
 ---
+
+### 1.4 The system node group taint
+
+From `2.30.0` the managed node groups are tainted `CriticalAddonsOnly=true:NoSchedule` by default whenever
+Karpenter is enabled.
+
+**Why it is a default rather than a recommendation.** These nodes exist to host the Karpenter controller,
+CoreDNS and the CSI controllers. Without the taint, application pods schedule onto them and compete with the
+very controller that provisions their capacity — on a two-node group that is how the controller ends up
+starved, which is the first link in the incident chain this guide exists to break. It was already the
+documented recommendation and was being forgotten in practice.
+
+**What stays on system nodes**: the Karpenter controller, the EKS CoreDNS addon and the EBS CSI controller,
+all of which tolerate `CriticalAddonsOnly` out of the box. **What moves to Karpenter capacity**: ingress
+controllers, cert-manager, external-dns, KEDA, service mesh. That is the intent, not a side effect.
+
+**Two safeguards worth knowing:**
+
+- It is applied **only when Karpenter is enabled**. Without Karpenter there is nowhere else for workloads to
+  run, so tainting the only node groups would leave the cluster unable to schedule anything.
+- A node group that declares its own `taints` is left exactly as written.
+
+> **Disruption note**: adding a taint is a node group update, so it causes a **rolling replacement** of the
+> managed node group. Do it in a maintenance window. `NoSchedule` does not evict running pods, so application
+> pods currently on system nodes stay until they are next rescheduled and then migrate — the change is
+> gradual, but the node replacement itself is not.
+
+Opt out where the isolation is not worth the capacity, typically development and test:
+
+```hcl
+node_groups_system_taint = { enabled = false }
+```
 
 ## Phase 2 — Configure for the cluster's region and timezone
 
@@ -248,7 +284,7 @@ karpenter = {
 
 ### 2.2 Remove any always-on `nodes: "0"` budget
 
-If Phase 0 check 0.5 showed a budget of `nodes: "0"` with **no** `schedule` or `duration`, it is always
+If assessment section D2 showed a budget of `nodes: "0"` with **no** `schedule` or `duration`, it is always
 active. That does not reduce churn — it stops all voluntary disruption permanently, including AMI drift
 remediation. One cluster carried it on four of five pools and had nodes 33 to 102 days old still running the
 previous kubelet minor version.
@@ -348,22 +384,22 @@ livenessProbe:            # keep shallow and slower than readiness -- an aggress
 Defaults you do not need to set: `pdb` (derived), `spread` (on, node-level, soft), `defaultLifecycle.preStop`
 (5s sleep so the pod IP leaves the load balancer before the container stops).
 
-### 3.7 Resource requests are not optional
+### 3.4 Resource requests are not optional
 
 The autoscaler provisions capacity from pod **requests**. A pod with none contributes nothing to that
 calculation, so the cluster is under-provisioned by exactly the amount those pods actually use. The symptom is
 pods pending after every disruption and recovery taking far longer than it should — which reads as an
 autoscaler problem and is not one.
 
-Section E6 of the assessment lists workloads missing requests. Set at least `cpu` and `memory` requests on
+Assessment section E6 lists workloads missing requests. Set at least `cpu` and `memory` requests on
 every container. Limits are a separate decision; requests are what scheduling and provisioning depend on.
 
-### 3.4 Single-replica services
+### 3.5 Single-replica services
 
 A single-replica service cannot be protected by a PDB. Either raise it to 2, or move it to protected capacity
-(3.5). There is no third option — this is a genuine gap, not a configuration oversight.
+(3.6). There is no third option — this is a genuine gap, not a configuration oversight.
 
-### 3.5 Pinning a workload to protected capacity
+### 3.6 Pinning a workload to protected capacity
 
 Both parts are required:
 
@@ -380,7 +416,7 @@ nodeSelector:                                 # is what actually keeps it OFF sp
 
 With only the toleration the pod can still land on spot and the protection is silently absent.
 
-### 3.6 `do-not-disrupt` is a last resort
+### 3.7 `do-not-disrupt` is a last resort
 
 ```yaml
 podAnnotations:
@@ -409,8 +445,8 @@ node could ever complete.
 
 Check and fix, in this order:
 
-1. Any database or stateful pod on spot — move to protected capacity (3.5).
-2. Any PDB with `disruptionsAllowed: 0` — Phase 0 check 0.7.
+1. Any database or stateful pod on spot — move to protected capacity (3.6).
+2. Any PDB with `disruptionsAllowed: 0` — assessment section E1.
 3. Prometheus with RWO storage and a single replica — slow volume reattach on eviction causes monitoring gaps
    during exactly the incidents you need visibility into.
 4. `kube-state-metrics` — when it is evicted, alerts go stale and incidents look worse or resolve falsely.
@@ -460,8 +496,7 @@ application fault. It also occupies the most contended spot pools. Because the a
 instance satisfying the constraints, a `t3.2xlarge` was very often what it picked before the default excluded
 that family. Cheap per hour, expensive in incidents.
 
-**Match the instance shape to the workload.** Section F2 of the assessment reports CPU and memory reservation
-per node. If CPU is consistently far higher than memory, nodes run out of CPU while paid-for memory sits idle:
+**Match the instance shape to the workload.** Assessment section F2 reports CPU and memory reservation per node. If CPU is consistently far higher than memory, nodes run out of CPU while paid-for memory sits idle:
 
 | Reservation pattern | Instance category | Memory per core |
 | --- | --- | --- |
@@ -495,7 +530,7 @@ On-demand is the only real protection against reclamation, so spend it narrowly 
 | Everything else | spot | This is the majority, and where the saving is |
 
 Enable the protected pool with `karpenter.protected_node_pool.enabled = true`, then opt workloads in with
-**both** a toleration and a node selector — see 3.5. The toleration alone only makes the capacity eligible; it
+**both** a toleration and a node selector — see 3.6. The toleration alone only makes the capacity eligible; it
 does not keep the pod off spot.
 
 ### The system node group
@@ -507,25 +542,44 @@ The autoscaler controller cannot run on nodes the autoscaler created — its cha
   `DoNotSchedule` zone spread, so 2 replicas need 2 eligible nodes in 2 zones. Total cluster node count is
   irrelevant. One cluster in this fleet runs 8 nodes across 3 zones and still cannot schedule a second
   replica, because 7 are autoscaler-provisioned and only 1 is eligible.
-- **Small instances.** These nodes host the controller and a handful of system addons, nothing else. Two small
-  on-demand nodes is the correct shape and a negligible cost next to what spot saves elsewhere.
-- **Not `t3.small`.** Once the controller, CoreDNS, the load balancer controller and a service mesh are
-  resident, 2 GiB is not enough and pods pend for plain resource starvation — which then looks like an
-  autoscaler problem. `t3.medium` or larger.
+- **Small instances, and burstable is correct here.** These nodes carry a small, steady load — one controller
+  replica, one CoreDNS, a CSI controller, the DaemonSets. That is exactly the profile burstable instances
+  suit, and it is the opposite of the sustained-high load that makes them a poor choice for application
+  nodes. The default is `t3.medium`.
+- **Know where the default runs out.** Measured controller CPU scales at roughly **3m per cluster node**
+  (45m at 7 nodes, 115m at 26, 350m at 112). `t3.medium` sustains 400m before credits deplete and the other
+  system pods take ~250m, so the default holds to roughly **50 cluster nodes**. Past that, or on any sign of
+  credit exhaustion, move to non-burstable:
+
+  ```hcl
+  node_groups_default = { instance_types = ["c6a.large", "c6i.large"] }
+  ```
+
+- **Never `t3.small`**, at any cluster size. Two hard limits that do not depend on load: the VPC CNI allows
+  only **11 pods** on it — `(3 ENIs × (4 IPs − 1)) + 2` — and the DaemonSets alone take about 5; and its
+  ~1.5 GiB allocatable cannot hold the controller's memory limit alongside CoreDNS and the CSI controller.
+  `t3.medium` gives 17 pods and 4 GiB, which fits with headroom.
 
 ## Quick reference: symptom to cause
 
+Check numbers refer to `./scripts/eks-assess.sh` sections.
+
 | Symptom | Likely cause | Check |
 | --- | --- | --- |
-| Node stuck `Deleting` / drain never finishes | A PDB permitting zero evictions | 0.7 |
-| Node group upgrade fails on pod eviction | Same | 0.7 |
-| 502/504 burst during node replacement | No PDB, or `preStop` too short | 0.8, 3.3 |
-| Service drops to zero replicas briefly | No PDB on a multi-replica service | 0.8 |
-| Nodes far older than expected, stale kubelet | Always-on `nodes: "0"` plus `expireAfter: Never` | 0.5, 2.2 |
-| Every node replaced at once, unprompted | AMI selected by `id` from a sampled instance | 0.4 |
-| Spot reclaim with no drain at all | Controller unavailable — OOMKilled or single replica restarting | 0.1, 0.10 |
-| Monitoring gaps during incidents | Prometheus or `kube-state-metrics` evicted | 0.9, 4.1 |
-| Karpenter preempted under node pressure | Priority class demoted from `system-cluster-critical` | 0.2 |
+| Node stuck `Deleting` / drain never finishes | A PDB permitting zero evictions | E1 |
+| Node group upgrade fails on pod eviction | Same | E1 |
+| 502/504 burst during node replacement | No PDB, or `preStop` too short | E2, guide 3.3 |
+| Service drops to zero replicas briefly | No PDB on a multi-replica service | E2 |
+| Nodes far older than expected, stale kubelet | Always-on `nodes: "0"` plus `expireAfter: Never` | D2, D3, guide 2.2 |
+| Every node replaced at once, unprompted | AMI selected by `id` from a sampled instance | D1 |
+| Spot reclaim with no drain at all | Controller unavailable — OOMKilled or single replica restarting | C1, G1 |
+| Second controller replica stuck Pending | Fewer than 2 managed-node-group nodes, or not in 2 zones | C3 |
+| Pods pending for minutes after every disruption | Workloads with no resource requests | E6, guide 3.4 |
+| Latency spikes with no application cause | Burstable instances throttling once credits are exhausted | F1 |
+| Nodes exhaust CPU while memory sits idle | Instance shape wrong for the workload | F2 |
+| Monitoring gaps during incidents | Metrics store or `kube-state-metrics` evicted | E4, guide 4.1 |
+| Karpenter preempted under node pressure | Priority class demoted from `system-cluster-critical` | C1 |
+| Name resolution breaks during a drain | CoreDNS has no PodDisruptionBudget | B1 |
 
 ---
 
