@@ -47,24 +47,30 @@ module "this" {
       min_size     = 2
       desired_size = 2
       max_size     = 3
-      taints = {
-        # Keeps the system node group for cluster-critical workloads only. Karpenter tolerates this by default.
-        addons = {
-          key    = "CriticalAddonsOnly"
-          value  = "true"
-          effect = "NO_SCHEDULE"
-        },
-      }
+      # taints = {                              # DEFAULT when karpenter is enabled, and RECOMMENDED.
+      #   system = {                            # Reserves this group for cluster-critical components so
+      #     key    = "CriticalAddonsOnly"        # application pods do not compete with the karpenter
+      #     value  = "true"                      # controller on two small nodes. Karpenter, the coredns
+      #     effect = "NO_SCHEDULE"               # addon and the EBS CSI controller all tolerate this key.
+      #   }                                      # Disable with node_groups_system_taint.enabled = false,
+      # }                                        # which suits dev/test clusters.
     }
   }
 
-  # Set explicitly: t3.small (2 vCPU / 2 GiB) is too tight once karpenter x2, coredns x2, the ALB controller,
-  # external-dns and linkerd are all resident -- pods start pending for plain resource starvation, which then
-  # looks like a karpenter problem. t3.medium is the smallest size that behaves.
-  node_groups_default = {
-    instance_types = ["t3.medium"]
-    # ami_type = "AL2023_x86_64_STANDARD" # DEFAULT. Also determines the karpenter node AMI alias family.
-  }
+  # node_groups_default = {
+  #   instance_types = ["t3.medium", "t3a.medium"]            # DEFAULT and RECOMMENDED up to ~50 cluster nodes.
+  #   capacity_type  = "ON_DEMAND"                            # DEFAULT
+  #   ami_type       = "AL2023_x86_64_STANDARD"               # DEFAULT. Also determines the karpenter AMI alias family.
+  #   disk_size      = 50                                     # DEFAULT
+  # }
+  #
+  # Burstable is the right choice HERE, unlike for application nodes: system node load is low and steady
+  # (one karpenter replica, one coredns, a CSI controller, the DaemonSets), which is exactly the profile
+  # burstable instances suit. t3.medium sustains 400m and the system pods take ~250m plus roughly 3m per
+  # cluster node of karpenter, so it holds to about 50 nodes. Past that use ["c6a.large", "c6i.large"].
+  #
+  # t3.small does NOT work at any size: 11 pods max via the VPC CNI, of which DaemonSets take ~5, and 2 GiB
+  # cannot hold the karpenter memory limit plus coredns and the CSI controller.
 
   karpenter = {
     enabled = true

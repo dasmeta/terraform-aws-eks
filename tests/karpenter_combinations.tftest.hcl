@@ -366,3 +366,10 @@ run "correctly_nested_gpu_and_default_together" {
     }
   }
 }
+
+# ---------------------------------------------------------------------------
+# The system taint is computed in the ROOT module, so it is exercised there rather than against the
+# karpenter submodule. These runs guard the type-consistency trap found while implementing it: a ternary
+# between `{ system = {...} }` and `{}` is rejected by terraform as inconsistent types, and it is rejected
+# at PLAN time rather than at validate -- so the failure reaches consumers rather than CI.
+# ---------------------------------------------------------------------------

@@ -22,14 +22,43 @@ variable "worker_groups" {
 }
 
 variable "node_groups" {
-  description = "Map of EKS managed node group definitions to create"
+  description = <<-EOT
+    Map of EKS managed node group definitions to create.
+
+    These nodes exist to host the cluster's own control components -- the karpenter controller, coredns, CSI
+    controllers -- not application workloads. Karpenter provisions everything else, and by default this group
+    is tainted so applications land there instead (see var.node_groups_system_taint).
+
+    Defaults are sized for that job:
+      - min/desired 2, spread across availability zones. The karpenter chart requires each of its 2 replicas
+        on a SEPARATE node in a SEPARATE zone, and karpenter-provisioned nodes are ineligible to host it, so
+        fewer than 2 nodes here makes a highly available controller impossible regardless of cluster size.
+      - t3.medium as a cost-appropriate default for the common case. See the sizing note below; the one type
+        that does NOT work is t3.small.
+      - max 4, since the group does not scale with application load once tainted.
+
+    SIZING. System nodes carry a small, steady load: one karpenter replica, one coredns, a CSI controller and
+    the DaemonSets. Measured karpenter controller CPU across a real fleet scales at roughly 3m per cluster
+    node (45m at 7 nodes, 115m at 26, 350m at 112). t3.medium sustains 400m before credits are consumed, and
+    the rest of the system pods take ~250m, so the default holds comfortably to roughly 50 cluster nodes.
+
+    Above that, or if you observe CPU credit exhaustion on these nodes, move to a non-burstable type:
+
+      node_groups_default = { instance_types = ["c6a.large", "c6i.large"] }
+
+    Do NOT use t3.small. It fails on two hard limits regardless of load: the VPC CNI allows only 11 pods on it
+    ((3 ENIs x (4 IPs - 1)) + 2), and the DaemonSets alone take about 5 of those; and its 2 GiB leaves roughly
+    1.5 GiB allocatable, which cannot hold the karpenter memory limit plus coredns, the CSI controller and the
+    DaemonSets. t3.medium gives 17 pods and 4 GiB, which fits with headroom.
+  EOT
   type        = any
   default = {
     default = {
       min_size                     = 2
       max_size                     = 4
       desired_size                 = 2
-      instance_types               = ["t3.large"]
+      instance_types               = ["t3.medium", "t3a.medium"]
+      capacity_type                = "ON_DEMAND"
       ami_type                     = "AL2023_x86_64_STANDARD"
       iam_role_additional_policies = { CloudWatchAgentServerPolicy = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy" }
     }
@@ -51,14 +80,47 @@ variable "node_security_group_additional_rules" {
 }
 
 variable "node_groups_default" {
-  description = "Map of EKS managed node group default configurations"
+  description = <<-EOT
+    Map of EKS managed node group default configurations, applied to every entry in var.node_groups.
+    See var.node_groups for the instance sizing rationale and when to move off the default type.
+  EOT
   type        = any
   default = {
     disk_size                    = 50
-    instance_types               = ["t3.large"]
+    instance_types               = ["t3.medium", "t3a.medium"]
+    capacity_type                = "ON_DEMAND"
     iam_role_additional_policies = { CloudWatchAgentServerPolicy = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy" }
     ami_type                     = "AL2023_x86_64_STANDARD"
   }
+}
+
+variable "node_groups_system_taint" {
+  type = object({
+    enabled = optional(bool, true)                   # whether to taint managed node groups so only cluster-critical components run there
+    key     = optional(string, "CriticalAddonsOnly") # the conventional key; karpenter, coredns and the EBS CSI controller all tolerate it out of the box
+    value   = optional(string, "true")               # taint value
+    effect  = optional(string, "NO_SCHEDULE")        # NO_SCHEDULE keeps new pods off without evicting anything already running
+  })
+  default     = {}
+  description = <<-EOT
+    Reserves the EKS managed node groups for cluster-critical components by tainting them, so application
+    workloads are provisioned by karpenter onto dedicated capacity instead of crowding onto the small system
+    nodes. This is the setting most often forgotten in production setups, and forgetting it is how application
+    pods end up starving the karpenter controller on a 2-node group.
+
+    ONLY APPLIED WHEN KARPENTER IS ENABLED. Without karpenter there is nowhere else for workloads to run, so
+    tainting the only node groups would leave the cluster unable to schedule anything.
+
+    It is also skipped for any node group that already declares its own `taints`, so an explicit choice always
+    wins.
+
+    Components that tolerate this key by default and therefore stay on system nodes: the karpenter controller,
+    the EKS coredns addon, and the EBS CSI controller. Everything else -- ingress controllers, cert-manager,
+    external-dns, keda, service mesh -- moves to karpenter-provisioned capacity, which is the intent.
+
+    Set enabled = false for development or test clusters where the isolation is not worth the extra capacity,
+    or where karpenter is enabled but you want workloads to be able to fall back onto the system group.
+  EOT
 }
 
 variable "workers_group_defaults" {

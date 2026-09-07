@@ -291,6 +291,39 @@
  *      permitted outside them. Note the module CONCATENATES window budgets with whatever budgets you already set,
  *      so an existing always-on `nodes: "0"` keeps winning (budgets resolve most-restrictive-wins) and must be
  *      removed for the windows to have any effect.
+ *    - **The managed node groups are now tainted `CriticalAddonsOnly=true:NoSchedule` by default, and their
+ *      instance type is no longer burstable.** Both are node group changes, so both cause a ROLLING NODE
+ *      REPLACEMENT of the managed group on the apply that introduces them. Do it in a maintenance window, and
+ *      do both in the same apply so the group is replaced once rather than twice.
+ *      - Why the taint: these nodes exist to host the karpenter controller, coredns and the CSI controllers.
+ *        Without the taint, application pods schedule onto them and compete with the controller that
+ *        provisions their capacity -- on a 2-node group that is how the controller ends up starved. This is
+ *        the setting most often forgotten in production setups, which is why it is now a default rather than
+ *        a documented recommendation.
+ *      - What tolerates it and therefore stays: the karpenter controller, the EKS coredns addon, and the EBS
+ *        CSI controller, all of which tolerate `CriticalAddonsOnly` out of the box. Everything else --
+ *        ingress controllers, cert-manager, external-dns, keda, service mesh -- moves onto
+ *        karpenter-provisioned capacity. That is the intent, not a side effect.
+ *      - `NoSchedule` does not evict anything already running, so application pods currently on system nodes
+ *        stay until they are next rescheduled and then migrate. The change is gradual.
+ *      - **It is applied only when karpenter is enabled.** With karpenter off there is nowhere else for
+ *        workloads to run, so tainting the only node groups would leave the cluster unable to schedule
+ *        anything. Any node group that declares its own `taints` is left exactly as written.
+ *      - Opt out with `node_groups_system_taint = { enabled = false }`, which is the right choice for
+ *        development or test clusters where the isolation is not worth the extra capacity.
+ *    - The system node group instance type changes from `t3.large` to `t3.medium`. Same family, one size down:
+ *      these nodes carry a small steady load -- one karpenter replica, one coredns, a CSI controller and the
+ *      DaemonSets -- and `t3.large` was simply larger than that needs. Burstable is appropriate here precisely
+ *      because the load is low and steady, which is the opposite of the sustained-high profile that makes
+ *      burstable a poor choice for application nodes.
+ *      - Sizing rule: measured karpenter controller CPU scales at roughly 3m per cluster node across a real
+ *        fleet (45m at 7 nodes, 115m at 26, 350m at 112). `t3.medium` sustains 400m before credits are
+ *        consumed and the other system pods take ~250m, so the default holds to roughly 50 cluster nodes.
+ *        Beyond that, or on any sign of credit exhaustion, move to a non-burstable type:
+ *        `node_groups_default = { instance_types = ["c6a.large", "c6i.large"] }`.
+ *      - `t3.small` is NOT a valid choice at any cluster size. The VPC CNI allows only 11 pods on it, and the
+ *        DaemonSets alone take about 5; and its ~1.5 GiB allocatable cannot hold the karpenter memory limit
+ *        alongside coredns, the CSI controller and the DaemonSets.
  *    - Recommended monitoring, because these defaults reduce the chance of the failure but do not make it observable:
  *      - **CloudWatch `ApproximateAgeOfOldestMessage` on the Karpenter interruption SQS queue.** This is the single
  *        best leading indicator and it has an unambiguous threshold: a spot interruption notice gives 120 seconds,
@@ -602,7 +635,7 @@ module "eks-cluster" {
   subnets      = local.subnet_ids
 
   users                                = var.users
-  node_groups                          = var.node_groups
+  node_groups                          = local.node_groups
   node_groups_default                  = var.node_groups_default
   worker_groups                        = var.worker_groups
   workers_group_defaults               = var.workers_group_defaults

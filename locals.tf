@@ -80,6 +80,36 @@ locals {
   }
   karpenter_configs = merge(local.karpenter_default_configs, try(var.karpenter.configs, {}))
 
+  # Reserve the managed node groups for cluster-critical components. Application workloads are then provisioned
+  # by karpenter onto dedicated capacity instead of crowding onto the small system nodes, where they compete
+  # with the very controller that provisions their capacity.
+  #
+  # Gated on karpenter being enabled: without it there is nowhere else for workloads to run, so tainting the
+  # only node groups would leave the cluster unable to schedule anything at all.
+  #
+  # A node group that declares its own `taints` is left exactly as the operator wrote it.
+  node_groups_taint_enabled = var.karpenter.enabled && var.node_groups_system_taint.enabled
+
+  # Built through a for-expression over a conditional list rather than a ternary on the object itself.
+  # A ternary would have to unify `{ system = {...} }` with `{}`, which terraform rejects as inconsistent
+  # types -- and it rejects it at plan time, not at validate, so the failure would reach consumers.
+  # This yields map(object({key,value,effect})) in both the enabled and disabled cases.
+  node_groups_system_taint = {
+    for name in(local.node_groups_taint_enabled ? ["system"] : []) : name => {
+      key    = var.node_groups_system_taint.key
+      value  = var.node_groups_system_taint.value
+      effect = var.node_groups_system_taint.effect
+    }
+  }
+
+  # A node group that declares its own taints keeps them exactly as written; the rest receive the system
+  # taint, or an empty map when tainting is off.
+  node_groups = {
+    for name, config in var.node_groups : name => merge(config, {
+      taints = try(config.taints, local.node_groups_system_taint)
+    })
+  }
+
   # Karpenter node AMI family is derived from the DECLARED managed node group ami_type rather than sampled from a
   # running instance, so the selection is a pure function of configuration and cannot change on its own.
   karpenter_node_ami_type = try(var.node_groups_default.ami_type, "AL2023_x86_64_STANDARD")
