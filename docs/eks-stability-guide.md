@@ -189,6 +189,11 @@ them**. Inheriting the default would reduce them.
 | --- | --- | --- |
 | Controller resources, priority | Controller pod restarts once | None needed; seconds of controller downtime, no workload impact |
 | AMI selection moves to `alias` | **One paced node roll** if the alias resolves to a different image than nodes currently run | Pin `ami_alias` to the current AMI version to defer it, then move the pin deliberately later |
+| Karpenter `1.9` to `1.14` | CRD chart upgraded first; historically has needed manual `kubectl patch` in some setups | Apply in a non-production cluster first |
+| Consolidation to `Balanced`/15m | Less churn, no disruption | None |
+| System node group tainted `CriticalAddonsOnly` | **Rolling replacement of the managed node group** | Maintenance window; see 1.4 |
+| System instance type `t3.large` → `t3.medium` | Same rolling replacement | Apply in the SAME change as the taint so the group is replaced once, not twice |
+| Disruption windows | Consolidation pauses during the window | Confirm the window matches local traffic — Phase 2 |
 
 **What `@latest` means after the upgrade.** Node replacement becomes **continuous and unattended** — it is not
 tied to running Terraform. Karpenter resolves the alias itself and re-checks AMI data roughly every minute
@@ -203,15 +208,8 @@ drifted every node at once when it did — rarer, but far less controlled.
 If your change control requires a human to schedule node replacement, pin the version instead
 (`ami_alias = "al2023@v20240807"`) and put a recurring task in place to move the pin. Pinning stops patching
 until someone acts, so it is a trade, not a free safety improvement.
-| Karpenter `1.9` to `1.14` | CRD chart upgraded first; historically has needed manual `kubectl patch` in some setups | Apply in a non-production cluster first |
-| Consolidation to `Balanced`/15m | Less churn, no disruption | None |
-| System node group tainted `CriticalAddonsOnly` | **Rolling replacement of the managed node group** | Maintenance window; see 1.4 |
-| System instance type `t3.large` → `t3.medium` | Same rolling replacement | Apply in the SAME change as the taint so the group is replaced once, not twice |
-| Disruption windows | Consolidation pauses during the window | Confirm the window matches local traffic — Phase 2 |
 
 Apply to development or staging first, confirm Phase 0 checks now read healthy, then promote.
-
----
 
 ### 1.4 The system node group taint
 
@@ -303,8 +301,10 @@ active. That does not reduce churn — it stops all voluntary disruption permane
 remediation. One cluster carried it on four of five pools and had nodes 33 to 102 days old still running the
 previous kubelet minor version.
 
-**Remove it.** The module concatenates window budgets with existing ones, and budgets resolve
-most-restrictive-wins, so an always-on `nodes: "0"` keeps winning and the windows do nothing.
+**Remove it.** A node pool that declares its own `budgets` owns them completely — the module's disruption
+windows are deliberately *not* appended to it, so that a hand-tuned window is never silently narrowed by a
+second one. The consequence here is that a pool carrying an always-on `nodes: "0"` gets no window at all: the
+block stays, and configuring `disruption_windows` changes nothing until the block is gone.
 
 > **Disruption note**: removing it lets consolidation and drift remediation resume, so expect node
 > replacement to begin. That is the point, but it means the first apply after removal is the busiest.
@@ -430,6 +430,17 @@ nodeSelector:                                 # is what actually keeps it OFF sp
 
 With only the toleration the pod can still land on spot and the protection is silently absent.
 
+### 3.7 `do-not-disrupt` is a last resort
+
+```yaml
+podAnnotations:
+  karpenter.sh/do-not-disrupt: "true"
+```
+
+Use only for a workload that genuinely cannot move and has no HA story — a single-writer database, a
+long-running job that cannot resume. The node then stops receiving AMI patches and stops being consolidated,
+and you must disrupt it by hand during upgrades. Prefer replicas plus a PDB.
+
 ### 3.8 Protections are absolute, and that is deliberate
 
 A node hosting a pod with a blocking PodDisruptionBudget or the `karpenter.sh/do-not-disrupt` annotation is
@@ -460,17 +471,6 @@ to act. That is a scheduling problem, not an automation problem:
 
 Do not reach for `termination_grace_period` to make this go away. It does not solve the problem, it just
 moves the outage to a time nobody chose.
-
-### 3.7 `do-not-disrupt` is a last resort
-
-```yaml
-podAnnotations:
-  karpenter.sh/do-not-disrupt: "true"
-```
-
-Use only for a workload that genuinely cannot move and has no HA story — a single-writer database, a
-long-running job that cannot resume. The node then stops receiving AMI patches and stops being consolidated,
-and you must disrupt it by hand during upgrades. Prefer replicas plus a PDB.
 
 ---
 
