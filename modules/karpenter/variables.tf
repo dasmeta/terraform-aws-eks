@@ -288,11 +288,23 @@ variable "ami_alias" {
     Declarative AMI selection for the default EC2NodeClass, in `family@version` form
     (for example `al2023@latest` or a pinned `al2023@v20240807`). The ami family implies `amiFamily`,
     so that field is not set separately for the default node class.
-    Using `@latest` means a new AMI release marks nodes drifted, which is paced by the disruption budgets
-    and suppressed during `var.disruption_windows`. Pin the version to stop drift entirely, at the cost of
-    nodes not receiving AMI patches until the pin is moved.
-    This replaces the previous behaviour of deriving the AMI from an arbitrary running instance, which made
-    node replacement possible without any configuration change.
+
+    IMPORTANT -- `@latest` means node replacement is CONTINUOUS AND UNATTENDED, not something that happens
+    when you run terraform. Karpenter resolves the alias itself and re-checks AMI data on its own interval
+    (chart default `amiRefreshInterval: 1m`). When AWS publishes a new EKS-optimised AMI -- typically every
+    few weeks, sooner for CVEs -- karpenter marks existing nodes Drifted within about a minute and begins
+    replacing them. Terraform's only role is setting this string; everything after that is karpenter.
+
+    That replacement is voluntary disruption, so it IS paced by the node pool disruption budgets and IS
+    suppressed during `var.disruption_windows`. It rolls a fraction of nodes at a time, outside your
+    protected hours, rather than all at once.
+
+    Pin to a specific version (`al2023@v20240807`) to stop drift entirely. Nodes then receive no AMI patches
+    until someone moves the pin, so this trades unattended security patching for change control. Choose it
+    when node replacement must be scheduled by a human, and put a recurring task in place to move the pin.
+
+    This replaces deriving the AMI from an arbitrary running instance, which changed only on apply but chose
+    unpredictably and drifted every node at once when it did.
   EOT
 }
 

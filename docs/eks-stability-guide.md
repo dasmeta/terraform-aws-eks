@@ -189,6 +189,20 @@ them**. Inheriting the default would reduce them.
 | --- | --- | --- |
 | Controller resources, priority | Controller pod restarts once | None needed; seconds of controller downtime, no workload impact |
 | AMI selection moves to `alias` | **One paced node roll** if the alias resolves to a different image than nodes currently run | Pin `ami_alias` to the current AMI version to defer it, then move the pin deliberately later |
+
+**What `@latest` means after the upgrade.** Node replacement becomes **continuous and unattended** — it is not
+tied to running Terraform. Karpenter resolves the alias itself and re-checks AMI data roughly every minute
+(`amiRefreshInterval`, chart default `1m`). When AWS publishes a new EKS-optimised AMI, typically every few
+weeks and sooner for CVEs, Karpenter marks nodes `Drifted` within about a minute and starts replacing them.
+
+This is intended: it is how nodes receive OS and kernel patches without anyone remembering to act. It is safe
+because drift is *voluntary* disruption, so the disruption budget paces it and the protected window keeps it
+out of your traffic hours. The old behaviour changed only on apply, but chose the image unpredictably and
+drifted every node at once when it did — rarer, but far less controlled.
+
+If your change control requires a human to schedule node replacement, pin the version instead
+(`ami_alias = "al2023@v20240807"`) and put a recurring task in place to move the pin. Pinning stops patching
+until someone acts, so it is a trade, not a free safety improvement.
 | Karpenter `1.9` to `1.14` | CRD chart upgraded first; historically has needed manual `kubectl patch` in some setups | Apply in a non-production cluster first |
 | Consolidation to `Balanced`/15m | Less churn, no disruption | None |
 | System node group tainted `CriticalAddonsOnly` | **Rolling replacement of the managed node group** | Maintenance window; see 1.4 |
