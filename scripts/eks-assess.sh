@@ -155,6 +155,37 @@ kubectl get nodes -o json 2>/dev/null | jq -r --arg now "$(date -u +%s)" '
   .items[] | ((($now | tonumber) - (.metadata.creationTimestamp | fromdate)) / 86400 | floor) as $age
   | "  \($age)d  \(.metadata.name)  \(.status.nodeInfo.kubeletVersion)"' | sort -rn | head -10
 
+hr "D4. NODES HELD BACK FROM REPLACEMENT (drifted, but correctly blocked -- needs a human)"
+echo "  These nodes want to be replaced (usually a newer AMI) but karpenter is honouring a protection on"
+echo "  them. That is the intended behaviour, NOT a fault. They will keep an older AMI until someone moves"
+echo "  the workload deliberately -- typically cool the workload down, replace the node, bring it back."
+echo
+drifted=$(kubectl get nodeclaims -o json 2>/dev/null | jq -r '.items[]
+  | select((.status.conditions // [])[] | select(.type == "Drifted" and .status == "True"))
+  | "\(.status.nodeName // .metadata.name)"' 2>/dev/null)
+if [ -z "$drifted" ]; then
+  echo "  no drifted nodes"
+else
+  for n in $drifted; do
+    echo "  DRIFTED  $n"
+    # pods asking not to be moved
+    kubectl get pods -A --field-selector "spec.nodeName=$n" -o json 2>/dev/null | jq -r '.items[]
+      | select(.metadata.annotations["karpenter.sh/do-not-disrupt"] == "true")
+      | "      holds it: \(.metadata.namespace)/\(.metadata.name)  (karpenter.sh/do-not-disrupt)"'
+    # budgets that currently permit nothing, for workloads on this node
+    kubectl get pods -A --field-selector "spec.nodeName=$n" -o json 2>/dev/null \
+      | jq -r '.items[] | .metadata.namespace' | sort -u | while read -r ns; do
+        kubectl -n "$ns" get pdb -o json 2>/dev/null | jq -r --arg ns "$ns" '.items[]
+          | select(.status.disruptionsAllowed == 0)
+          | "      holds it: \($ns)/\(.metadata.name)  (PDB allows 0 evictions)"'
+      done
+  done
+  echo
+  echo "  If a node appears here for longer than your patching tolerance, act on it -- it is not going to"
+  echo "  resolve on its own. A PDB permitting 0 evictions (section E1) is a defect and should be fixed;"
+  echo "  a do-not-disrupt annotation is a deliberate choice and needs the workload's own replacement flow."
+fi
+
 hr "E1. ZERO-EVICTION PDBs (block drains AND fail node group upgrades)"
 found=$(kubectl get pdb -A -o json 2>/dev/null | jq -r '.items[] | select(.status.disruptionsAllowed == 0)
   | "  BLOCKING  \(.metadata.namespace)/\(.metadata.name)  allowed=0 expected=\(.status.expectedPods) current=\(.status.currentHealthy)"')

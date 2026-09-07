@@ -430,6 +430,37 @@ nodeSelector:                                 # is what actually keeps it OFF sp
 
 With only the toleration the pod can still land on spot and the protection is silently absent.
 
+### 3.8 Protections are absolute, and that is deliberate
+
+A node hosting a pod with a blocking PodDisruptionBudget or the `karpenter.sh/do-not-disrupt` annotation is
+**never replaced** by voluntary disruption. It keeps its older AMI until a human moves the workload. That is
+the intended behaviour, not a fault to be worked around.
+
+The module leaves `termination_grace_period` unset for exactly this reason. Setting it does more than bound a
+drain that has already begun — Karpenter's docs state that a node with `do-not-disrupt` pods is
+"conditionally excluded from Drift" and "if the Node's owning NodeClaim has a `terminationGracePeriod`
+configured, it will still be eligible for disruption via drift", after which pods are force-deleted including
+"pods with blocking pod disruption budgets or the `karpenter.sh/do-not-disrupt` annotation".
+
+In other words, setting it silently converts both protections from a guarantee into a delay. A single-writer
+database annotated `do-not-disrupt` would be killed partway through an AMI roll — the opposite of what the
+annotation promises. A workload marked always-up should stay up, and running an older AMI for a few days is
+the cheaper problem.
+
+**The trade-off this creates, and how to handle it.** Those nodes stop receiving AMI patches, so somebody has
+to act. That is a scheduling problem, not an automation problem:
+
+1. **Assessment section D4** lists every node that is drifted but held back, and names what is holding it —
+   a `do-not-disrupt` pod, or a PDB currently permitting zero evictions.
+2. **A PDB permitting zero evictions is a defect.** Fix it (section 3.2); it was never protecting anything.
+3. **A `do-not-disrupt` annotation is a deliberate choice.** It needs that workload's own replacement flow —
+   typically cool the workload down, replace the node, bring it back. Run it on your schedule.
+4. **Watch how long nodes sit in D4.** Past your patching tolerance it needs escalating. It will not resolve
+   on its own, and that is by design.
+
+Do not reach for `termination_grace_period` to make this go away. It does not solve the problem, it just
+moves the outage to a time nobody chose.
+
 ### 3.7 `do-not-disrupt` is a last resort
 
 ```yaml
@@ -486,6 +517,7 @@ Alert on these, in priority order:
 | Deployment ready replicas below desired | > 2 min | Catches both eviction storms and blocked drains |
 | Pending pods by reason | > 5 min | Distinguishes "no capacity" from "cannot schedule" |
 | Node registration time | > 5 min | Slow registration extends every recovery |
+| Nodes drifted but not replaced | > your patching tolerance | A protection is correctly holding the node; it needs a human with the workload's replacement flow. Assessment section D4 names what is holding it |
 
 Aggregate alert queries by workload identity (`namespace`, `deployment`) rather than scrape-target labels
 (`instance`, `pod`, `endpoint`). Stale `kube-state-metrics` series during node churn otherwise keep alerts
@@ -594,6 +626,7 @@ Check numbers refer to `./scripts/eks-assess.sh` sections.
 | Monitoring gaps during incidents | Metrics store or `kube-state-metrics` evicted | E4, guide 4.1 |
 | Karpenter preempted under node pressure | Priority class demoted from `system-cluster-critical` | C1 |
 | Name resolution breaks during a drain | CoreDNS has no PodDisruptionBudget | B1 |
+| A node keeps an old AMI while others roll | A PDB or `do-not-disrupt` is correctly holding it | D4, guide 3.8 |
 
 ---
 

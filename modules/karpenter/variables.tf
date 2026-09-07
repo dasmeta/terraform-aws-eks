@@ -342,13 +342,35 @@ variable "disruption_windows" {
 
 variable "termination_grace_period" {
   type        = string
-  default     = "24h"
+  default     = null
   description = <<-EOT
-    Upper bound on how long a node may take to drain before karpenter removes the remaining pods and terminates it.
-    Without it, a single pod that refuses to terminate keeps a node draining indefinitely and blocks the capacity change.
-    Deliberately long: this is a stuck-node safety net, not a shutdown budget. Once it expires karpenter deletes
-    remaining pods REGARDLESS of their PodDisruptionBudgets, so a short value becomes a source of disruption itself.
-    Set to null to leave it unset.
+    Upper bound on how long a node may take to drain before karpenter removes the remaining pods and
+    terminates it. Unset by default, and that default is deliberate.
+
+    READ THIS BEFORE SETTING IT. Configuring a terminationGracePeriod does not merely bound a drain that has
+    already started -- it changes what karpenter is willing to disrupt in the first place. Karpenter's
+    documentation is explicit: nodes with active `karpenter.sh/do-not-disrupt` pods are "conditionally
+    excluded from Drift", and "if the Node's owning NodeClaim has a terminationGracePeriod configured, it
+    will still be eligible for disruption via drift". Once the period elapses, pods are force-deleted, and
+    that "includes pods with blocking pod disruption budgets or the karpenter.sh/do-not-disrupt annotation".
+
+    So setting this converts both protections from absolute into a delay:
+
+      unset  -> a node hosting a do-not-disrupt pod or a blocking PDB is NEVER drifted. It keeps its old AMI
+                until a human moves the workload.
+      set    -> that node IS drifted, and the protected pods are force-deleted when the period expires.
+
+    Leaving it unset is the safer position: a workload marked always-up stays up, and the node simply keeps
+    an older AMI until someone handles it deliberately -- often with a prepared flow that cools the workload
+    down, replaces the node and brings it back. Losing that workload to an unattended AMI roll is worse than
+    running an older AMI for a few days.
+
+    The cost is that a node with a genuinely broken budget can stay Deleting indefinitely. Fix the budget
+    rather than setting this: the base chart refuses to render a zero-eviction PDB, and section E1 of
+    `scripts/eks-assess.sh` lists any that already exist.
+
+    Set it only on a cluster with a known stuck-node problem you cannot fix at source, and understand that you
+    are trading away the guarantee that do-not-disrupt and PDBs are honoured.
   EOT
 }
 

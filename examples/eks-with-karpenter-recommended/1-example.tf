@@ -118,11 +118,14 @@ module "this" {
     # if your traffic runs later. These budgets gate VOLUNTARY disruption only; they never delay spot
     # interruption handling, and never delay node expiry.
 
-    # termination_grace_period = "24h"                # DEFAULT and RECOMMENDED. Bounds how long a node may drain
-    #                                                 # before remaining pods are removed, so one pod that refuses
-    #                                                 # to terminate cannot wedge a node forever. Deliberately long:
-    #                                                 # once it expires karpenter removes pods REGARDLESS of their
-    #                                                 # PodDisruptionBudgets, so a short value causes disruption.
+    # termination_grace_period = "24h"   # UNSET BY DEFAULT, and leaving it unset is the recommendation.
+    #
+    # Setting it does more than bound a drain already underway. Karpenter treats a node hosting
+    # `do-not-disrupt` pods as only "conditionally excluded from Drift": with a terminationGracePeriod
+    # configured that node BECOMES eligible for drift, and when the period elapses pods are force-deleted --
+    # including those with blocking PodDisruptionBudgets or the do-not-disrupt annotation.
+    # So it silently turns both protections into a delay. A workload marked always-up should stay up; its
+    # node keeps an older AMI until a human moves it, which assessment section D4 surfaces.
 
     # Set explicitly: protected on-demand capacity is OFF by default because it costs real money. Turn it on for
     # any cluster running ingress controllers, monitoring, or single-replica/stateful services -- those are the

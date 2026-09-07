@@ -920,7 +920,7 @@ variable "karpenter" {
     controller_resources      = optional(any, null)                             # resources for the karpenter controller container; defaults to requests 250m/512Mi with a 1Gi memory limit and deliberately no cpu limit, see modules/karpenter/variables.tf
     ami_alias                 = optional(string, null)                          # declarative node AMI selection in `family@version` form, e.g. "al2023@latest" or a pinned "al2023@v20240807"; defaults to the family implied by node_groups_default.ami_type with @latest
     disruption_windows        = optional(any, null)                             # time windows suppressing voluntary node disruption, rendered as NodePool disruption budgets; defaults to 06:00-18:00 UTC Mon-Fri blocking Drifted and Underutilized. Schedules are UTC only
-    termination_grace_period  = optional(string, null)                          # upper bound on node drain before remaining pods are removed; defaults to 24h as a stuck-node safety net
+    termination_grace_period  = optional(string, null)                          # upper bound on node drain before pods are force-removed. UNSET by default on purpose: setting it makes nodes hosting blocking PDBs or do-not-disrupt pods eligible for drift and force-deletes those pods, turning both protections into a delay
     protected_node_pool       = optional(any, null)                             # opt-in tainted on-demand node pool for workloads that must not be moved by spot reclamation; disabled by default
   })
   default = {

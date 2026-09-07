@@ -105,9 +105,12 @@ locals {
       weight = var.protected_node_pool.weight
       template = {
         spec = {
-          nodeClassRef           = local.nodePoolDefaultNodeClassRef
-          expireAfter            = "Never"
-          terminationGracePeriod = var.termination_grace_period
+          nodeClassRef = local.nodePoolDefaultNodeClassRef
+          expireAfter  = "Never"
+          # No terminationGracePeriod here, deliberately. Setting one makes a node ELIGIBLE for drift even
+          # when it hosts pods with blocking PodDisruptionBudgets or the karpenter.sh/do-not-disrupt
+          # annotation, and force-deletes those pods once it elapses. This pool exists precisely so those
+          # protections hold absolutely, so granting an override here would defeat its purpose.
           taints = [
             {
               key    = var.protected_node_pool.taint_key
