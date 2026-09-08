@@ -76,42 +76,45 @@ The individual commands are kept below so you can run any one on its own, and so
 rather than a black box.
 
 ```sh
-# 0.1 Controller sizing, replica count, restarts
+# C1 -- controller sizing, replica count, restarts, priority and version
 kubectl -n karpenter get deploy karpenter \
-  -o jsonpath='{.spec.replicas}{"  "}{.spec.template.spec.containers[0].resources}{"\n"}'
-kubectl -n karpenter get pod -l app.kubernetes.io/name=karpenter \
-  -o jsonpath='{range .items[*]}{.status.containerStatuses[0].lastState.terminated.reason}{"\n"}{end}'
+  -o jsonpath='{.spec.replicas}{"  "}{.spec.template.spec.containers[0].image}{"  "}{.spec.template.spec.containers[0].resources}{"\n"}'
+kubectl -n karpenter get pod -l app.kubernetes.io/name=karpenter -o json \
+  | jq -r '.items[] | "restarts=\(.status.containerStatuses[0].restartCount) lastTerminated=\(.status.containerStatuses[0].lastState.terminated.reason // "none") priority=\(.spec.priorityClassName)"'
 
-# 0.2 Controller priority
-kubectl -n karpenter get pod -l app.kubernetes.io/name=karpenter \
-  -o jsonpath='{.items[*].spec.priorityClassName}{"\n"}'
-
-# 0.3 Karpenter version
-kubectl -n karpenter get deploy karpenter -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
-
-# 0.4 AMI selection
-kubectl get ec2nodeclass -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.spec.amiSelectorTerms}{"\n"}{end}'
-
-# 0.5 Disruption posture per node pool
-kubectl get nodepool -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.spec.disruption}{"  expireAfter="}{.spec.template.spec.expireAfter}{"\n"}{end}'
-
-# 0.6 Controller-eligible nodes: managed node group only, and their zones
+# C3 -- controller-eligible nodes: managed node group only, and their zones
 kubectl get nodes -L topology.kubernetes.io/zone,karpenter.sh/nodepool
 
-# 0.7 Budgets that permit nothing
+# D1 -- AMI selection
+kubectl get ec2nodeclass -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.spec.amiSelectorTerms}{"\n"}{end}'
+
+# D2 -- disruption posture per node pool
+kubectl get nodepool -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.spec.disruption}{"  expireAfter="}{.spec.template.spec.expireAfter}{"\n"}{end}'
+
+# D4 -- nodes drifted but correctly held back by a protection
+kubectl get nodeclaims -o json | jq -r '.items[]
+  | select((.status.conditions // [])[] | select(.type == "Drifted" and .status == "True"))
+  | .status.nodeName // .metadata.name'
+
+# E1 -- budgets that permit nothing
 kubectl get pdb -A -o json \
   | jq -r '.items[]|"\(.metadata.namespace)/\(.metadata.name) allowed=\(.status.disruptionsAllowed) expected=\(.status.expectedPods)"' \
   | grep 'allowed=0'
 
-# 0.8 Multi-replica workloads with no PDB
+# E2 -- multi-replica workloads, to compare against which namespaces have any PDB
 kubectl get deploy -A -o json | jq -r '.items[]|select(.spec.replicas>=2)|"\(.metadata.namespace)/\(.metadata.name)"' | sort
 
-# 0.9 Stateful and singleton workloads sitting on spot capacity
+# E4 -- stateful and singleton workloads sitting on spot capacity
 kubectl get nodes -l karpenter.sh/capacity-type=spot -o name | sed 's|node/||' > /tmp/spot.txt
 kubectl get pods -A -o json | jq -r '.items[]|select(.spec.nodeName!=null)|"\(.metadata.namespace)/\(.metadata.name) \(.spec.nodeName)"' \
   | grep -Ff /tmp/spot.txt | grep -E 'mysql|postgres|prometheus|grafana|redis|elastic|kafka|kube-state-metrics|ingress'
 
-# 0.10 Is the interruption queue keeping up?
+# F1 -- instance family mix (t = burstable)
+kubectl get nodes -o json | jq -r '
+  [.items[] | (.metadata.labels["node.kubernetes.io/instance-type"] // "unknown")]
+  | group_by(.) | map({t: .[0], n: length}) | sort_by(-.n)[] | "\(.n)x \(.t)"'
+
+# G1 -- is the interruption queue keeping up?
 # CloudWatch caps one call at 1440 datapoints: 30 days at 3600s is 720, well under. A wide period is safe
 # because the statistic is Maximum, so a 300s spike still shows in its hour.
 aws cloudwatch get-metric-statistics --namespace AWS/SQS \
@@ -123,25 +126,33 @@ aws cloudwatch get-metric-statistics --namespace AWS/SQS \
 
 ### Reading the results
 
+Identifiers match the section headings printed by `./scripts/eks-assess.sh`, so a finding can be traced
+straight back to the check that produced it.
+
 | Check | Healthy | Exposed |
 | --- | --- | --- |
-| 0.1 | memory limit >= `1Gi`, `replicas: 2`, no `OOMKilled` | `256Mi`, or `replicas: 1`, or any OOMKill |
-| 0.2 | `system-cluster-critical` | `high` or any custom class |
-| 0.3 | `1.14.x` | `1.9.x` or older |
-| 0.4 | `alias: al2023@...` | `id: ami-...` — replacement can trigger with no config change |
-| 0.5 | `Balanced`, a scheduled budget | `WhenEmptyOrUnderutilized` with a short `consolidateAfter`, or an always-on `nodes: "0"` |
-| 0.6 | 2+ nodes with an EMPTY `NODEPOOL` column, in 2+ zones | fewer than 2 — see the trap below |
-| 0.7 | no output | any row — that workload blocks node drains and node group upgrades |
-| 0.8 | every entry has a PDB | entries with none lose all replicas to one drain |
-| 0.9 | no output | stateful or singleton workloads on reclaimable capacity |
-| 0.10 | every datapoint `0.0` | sustained above ~60s; above 120s means drains are being missed |
+| C1 | memory limit >= `1Gi`, `replicas: 2`, no `OOMKilled`, `system-cluster-critical`, image `1.14.x` | `256Mi`, or `replicas: 1`, or any OOMKill, or priority `high`, or `1.9.x` |
+| C3 | 2+ nodes with an EMPTY `NODEPOOL` column, in 2+ zones | fewer than 2 — see the trap below |
+| D1 | `alias: al2023@...` | `id: ami-...` — replacement can trigger with no config change |
+| D2 | `Balanced`, a scheduled budget | `WhenEmptyOrUnderutilized` with a short `consolidateAfter`, or an always-on `nodes: "0"` |
+| D4 | no output, or nodes cleared within your patching tolerance | nodes held for longer — a human needs to run that workload's replacement flow (3.8) |
+| E1 | no output | any row — that workload blocks node drains and node group upgrades |
+| E2 | every entry has a PDB | entries with none lose all replicas to one drain |
+| E4 | no output | stateful or singleton workloads on reclaimable capacity |
+| F1 | `c`, `m` or `r` families | `t` families — burstable, throttles under sustained load, higher interruption rate |
+| G1 | every datapoint `0.0` | sustained above ~60s; above 120s means drains are being missed |
 
-**The trap in 0.6**: Karpenter-managed nodes cannot host the Karpenter controller. The chart sets a
+The full script covers more than this list: cluster and addon baseline (A1–A3, B1–B2), controller sizing
+context (C2), node age (D3), PDBs the base chart guard will reject (E3), singleton StatefulSets (E5),
+workloads with no resource requests (E6), single-replica deployments (E7), and CPU-versus-memory reservation
+balance (F2). The commands above are the ones most often run on their own.
+
+**The trap in C3**: Karpenter-managed nodes cannot host the Karpenter controller. The chart sets a
 `karpenter.sh/nodepool DoesNotExist` node affinity, so only managed-node-group nodes are eligible. A cluster
 with 8 nodes across 3 zones was observed unable to schedule a second replica because 7 were Karpenter-provisioned.
 Count rows where the `NODEPOOL` column is **empty**, not total nodes.
 
-**Reading 0.10**: the metric publishes only when the queue has activity, so a handful of datapoints across
+**Reading G1**: the metric publishes only when the queue has activity, so a handful of datapoints across
 several days is normal. An all-zero result means messages are consumed as fast as they arrive. Check a window
 that actually contains a known incident before concluding a cluster is fine — a window starting after the
 event shows only the recovered state.
