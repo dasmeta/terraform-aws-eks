@@ -180,16 +180,17 @@ module "this" {
               }
             }
             spec = {
+              # Declare ONLY what differs from the class defaults. Requirements merge by KEY: a default is
+              # kept unless this pool declares the same key, in which case the pool's version replaces it.
+              # So capacity-type here narrows the default ["spot", "on-demand"] down to on-demand, while
+              # everything else -- instance category, generation, cpu and memory ranges, architecture --
+              # is inherited untouched. Re-stating a default would not just be noise: it would pin this
+              # pool to today's value and silently stop it following the module if that default ever moves.
               requirements = [
                 {
                   key      = "karpenter.sh/capacity-type"
                   operator = "In"
                   values   = ["on-demand"] # not subject to reclamation, which is the whole point
-                },
-                {
-                  key      = "kubernetes.io/arch"
-                  operator = "In"
-                  values   = ["amd64"]
                 },
               ]
               # Workloads opt in by tolerating this taint AND selecting on-demand -- see http-echo-critical.yaml.

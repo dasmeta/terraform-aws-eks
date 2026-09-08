@@ -205,9 +205,9 @@ run "protected_pool_via_standard_config" {
           template = {
             metadata = { labels = { nodetype = "protected" } }
             spec = {
+              # only capacity-type differs from the class defaults; everything else is inherited
               requirements = [
                 { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
-                { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
               ]
               taints = [{ key = "dasmeta.io/protected", value = "true", effect = "NoSchedule" }]
             }

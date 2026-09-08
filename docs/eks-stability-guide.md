@@ -406,6 +406,12 @@ workloads will then share, so the isolation is quietly lost.
 **It declares its own `budgets`**, which is what keeps the protection window off this pool. That is
 deliberate: it should only ever lose a genuinely empty node, at any hour.
 
+**Declare only what differs.** Requirements merge by *key*: a class default is kept unless the pool declares
+the same key, in which case the pool's version replaces it. `capacity-type` above narrows the default
+`["spot", "on-demand"]` to on-demand; instance category, generation, CPU and memory ranges and architecture
+are all inherited. Re-stating a default is not just noise — it pins the pool to today's value, so it silently
+stops following the module if that default ever changes.
+
 Everything else is an ordinary node pool — adjust the taint key, add labels, point it at a different node
 class. Nothing about it is special-cased.
 
