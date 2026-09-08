@@ -119,15 +119,23 @@ locals {
     startswith(local.karpenter_node_ami_type, "AL2") ? "al2" :
     "al2023"
   )
-  karpenter_ami_alias = try(var.karpenter.ami_alias, null) != null ? var.karpenter.ami_alias : "${local.karpenter_ami_family}@latest"
+  karpenter_ami_alias = "${local.karpenter_ami_family}@latest"
 
-  # Kept here rather than relying on the submodule default so the root module documents the same window shape.
-  karpenter_default_disruption_windows = [
+  # The consumer's defaults bucket wins; the derived alias only fills the gap when they left it unset.
+  # Written as a nested merge rather than a whole-object replacement so that setting any single field
+  # keeps its siblings on the module defaults.
+  karpenter_resource_configs_defaults = merge(
+    try(var.karpenter.resource_configs_defaults, {}),
     {
-      schedule = "0 6 * * mon-fri" # 06:00 UTC weekdays, roughly 08:00 in central Europe
-      duration = "12h"             # through 18:00 UTC, roughly 20:00 in central Europe
-      reasons  = ["Drifted", "Underutilized"]
-      nodes    = "0"
+      default = merge(
+        try(var.karpenter.resource_configs_defaults.default, {}),
+        {
+          nodeClass = merge(
+            { amiAlias = local.karpenter_ami_alias },
+            try(var.karpenter.resource_configs_defaults.default.nodeClass, {}),
+          )
+        }
+      )
     }
-  ]
+  )
 }

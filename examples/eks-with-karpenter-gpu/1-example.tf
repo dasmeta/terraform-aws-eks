@@ -72,13 +72,15 @@ module "this" {
       replicas = 1
     }
     resource_configs_defaults = { # this is optional param, look into karpenter submodule to get available defaults
-      limits = {
-        cpu = 11 # the default is 10 and we can add limit restrictions on memory also
+      default = {                 # NOTE: must be nested under `default` or `gpu`; a top-level key here is
+        limits = {                # silently dropped by terraform and never takes effect
+          cpu = 11                # the module default is 1000
+        }
       }
     }
     resource_configs = {
       nodePools = {
-        general = { weight = 1 } # by default it use linux amd64 cpu<=8, memory<=32Gi, >2 generation and  ["spot", "on-demand"] type nodes so that it tries to get spot at first and if no then on-demand
+        general = { weight = 1 } # by default linux amd64, cpu 2-32, memory 2-128Gi, generation > 4, categories c/m/r, spot first then on-demand
         on-demand = {
           # weight = 0 # by default the weight is 0 and this is lowest priority, we can schedule pod in this not
           template = {

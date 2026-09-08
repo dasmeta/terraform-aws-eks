@@ -126,8 +126,8 @@ run "ami_alias_al2" {
   command = plan
   module { source = "./modules/karpenter" }
   variables {
-    subnet_ids = ["subnet-a", "subnet-b"]
-    ami_alias  = "al2@latest"
+    subnet_ids                = ["subnet-a", "subnet-b"]
+    resource_configs_defaults = { default = { nodeClass = { amiAlias = "al2@latest" } } }
   }
 }
 
@@ -135,8 +135,8 @@ run "ami_alias_bottlerocket_pinned" {
   command = plan
   module { source = "./modules/karpenter" }
   variables {
-    subnet_ids = ["subnet-a", "subnet-b"]
-    ami_alias  = "bottlerocket@v1.20.4"
+    subnet_ids                = ["subnet-a", "subnet-b"]
+    resource_configs_defaults = { default = { nodeClass = { amiAlias = "bottlerocket@v1.20.4" } } }
   }
 }
 
@@ -151,10 +151,17 @@ run "two_windows_compose" {
     subnet_ids = ["subnet-a", "subnet-b"]
     # Two windows, e.g. a business-hours block plus a nightly batch-window block.
     # Karpenter resolves multiple budgets most-restrictive-wins.
-    disruption_windows = [
-      { schedule = "0 6 * * mon-fri", duration = "12h", reasons = ["Drifted", "Underutilized"], nodes = "0" },
-      { schedule = "0 22 * * *", duration = "4h", reasons = ["Underutilized"], nodes = "0" },
-    ]
+    resource_configs_defaults = {
+      default = {
+        disruption = {
+          budgets = [
+            { nodes = "10%" },
+            { nodes = "0", schedule = "0 6 * * mon-fri", duration = "12h", reasons = ["Drifted", "Underutilized"] },
+            { nodes = "0", schedule = "0 22 * * *", duration = "4h", reasons = ["Underutilized"] },
+          ]
+        }
+      }
+    }
   }
 }
 
@@ -164,9 +171,9 @@ run "window_blocking_empty_too" {
   variables {
     subnet_ids = ["subnet-a", "subnet-b"]
     # Blocking Empty as well is legal but forgoes free savings; it must still render.
-    disruption_windows = [
-      { schedule = "0 6 * * mon-fri", duration = "13h", reasons = ["Drifted", "Underutilized", "Empty"], nodes = "0" },
-    ]
+    resource_configs_defaults = {
+      default = { disruption = { budgets = [{ nodes = "0", schedule = "0 6 * * mon-fri", duration = "13h", reasons = ["Drifted", "Underutilized", "Empty"] }] } }
+    }
   }
 }
 
@@ -174,8 +181,8 @@ run "window_permitting_some_disruption" {
   command = plan
   module { source = "./modules/karpenter" }
   variables {
-    subnet_ids         = ["subnet-a", "subnet-b"]
-    disruption_windows = [{ schedule = "0 6 * * mon-fri", duration = "12h", reasons = ["Underutilized"], nodes = "5%" }]
+    subnet_ids                = ["subnet-a", "subnet-b"]
+    resource_configs_defaults = { default = { disruption = { budgets = [{ nodes = "5%", schedule = "0 6 * * mon-fri", duration = "12h", reasons = ["Underutilized"] }] } } }
   }
 }
 
@@ -221,8 +228,8 @@ run "protected_pool_with_windows_disabled" {
   command = plan
   module { source = "./modules/karpenter" }
   variables {
-    subnet_ids         = ["subnet-a", "subnet-b"]
-    disruption_windows = []
+    subnet_ids                = ["subnet-a", "subnet-b"]
+    resource_configs_defaults = { default = { disruption = { budgets = [{ nodes = "10%" }] } } }
     resource_configs = {
       nodePools = {
         protected = {
@@ -348,26 +355,44 @@ run "termination_grace_period_can_be_unset" {
   command = plan
   module { source = "./modules/karpenter" }
   variables {
-    subnet_ids               = ["subnet-a", "subnet-b"]
-    termination_grace_period = null
+    subnet_ids                = ["subnet-a", "subnet-b"]
+    resource_configs_defaults = { default = { terminationGracePeriod = null } }
   }
 }
 
 run "everything_at_once" {
   command = plan
   module { source = "./modules/karpenter" }
-  # The full recommended shape, to catch interactions no single-axis run would.
+  # The full recommended shape in one bucket, to catch interactions no single-axis run would.
   variables {
-    subnet_ids               = ["subnet-a", "subnet-b", "subnet-c"]
-    configs                  = { replicas = 2 }
-    ami_alias                = "al2023@v20240807"
-    termination_grace_period = "12h"
-    controller_resources     = { requests = { cpu = "500m", memory = "1Gi" }, limits = { memory = "2Gi" } }
-    disruption_windows = [
-      { schedule = "0 12 * * mon-fri", duration = "13h", reasons = ["Drifted", "Underutilized"], nodes = "0" },
-    ]
-    resource_configs_defaults = { default = { limits = { cpu = 500 } } }
-    resource_configs          = { nodePools = { general = { weight = 1 } } }
+    subnet_ids           = ["subnet-a", "subnet-b", "subnet-c"]
+    configs              = { replicas = 2 }
+    controller_resources = { requests = { cpu = "500m", memory = "1Gi" }, limits = { memory = "2Gi" } }
+    resource_configs_defaults = {
+      default = {
+        nodeClass              = { amiAlias = "al2023@v20240807" }
+        terminationGracePeriod = "12h"
+        limits                 = { cpu = 500 }
+        disruption = {
+          budgets = [
+            { nodes = "10%" },
+            { nodes = "0", schedule = "0 12 * * mon-fri", duration = "13h", reasons = ["Drifted", "Underutilized"] },
+          ]
+        }
+      }
+    }
+    resource_configs = { nodePools = { general = { weight = 1 } } }
+  }
+}
+
+# Setting ONE nested field must leave its siblings on the module defaults. This is the property that
+# replaced three separate top-level inputs, so it is asserted rather than assumed.
+run "one_nested_field_keeps_sibling_defaults" {
+  command = plan
+  module { source = "./modules/karpenter" }
+  variables {
+    subnet_ids                = ["subnet-a", "subnet-b"]
+    resource_configs_defaults = { default = { disruption = { consolidateAfter = "30m" } } }
   }
 }
 

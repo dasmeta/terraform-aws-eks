@@ -121,5 +121,5 @@ A budget of `nodes: "0"` with no `schedule` or `duration` is **always active**, 
 it stops every voluntary disruption permanently. Paired with `expireAfter: Never` it means nodes are never
 replaced at all, so AMI patching stops too, because drift remediation is itself voluntary disruption. One
 production cluster carried it on four of five node pools and had nodes 33 to 102 days old still running the
-previous kubelet minor version. Use `disruption_windows` instead: blocked during traffic hours, permitted
+previous kubelet minor version. Use a scheduled budget entry instead: blocked during traffic hours, permitted
 outside them.

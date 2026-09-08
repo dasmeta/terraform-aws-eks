@@ -113,16 +113,24 @@ variable "resource_configs" {
 variable "resource_configs_defaults" {
   type = object({
     default = optional(object({
-      nodeClass = optional(any, {
-        amiFamily          = null # if not specified the value will be identified based on eks managed nodes ami id, the valid values are for example "AL2", "AL2023"
-        detailedMonitoring = true
-        metadataOptions = {
+      nodeClass = optional(object({
+        amiAlias = optional(string, null) # null means "derive from the managed node group ami_type at the root module"
+        # Declarative AMI selection in `family@version` form. `@latest` means node replacement is CONTINUOUS
+        # AND UNATTENDED: karpenter re-checks AMI data about every minute and starts a paced roll when AWS
+        # publishes a new image, with no terraform run involved. That is how nodes receive OS and kernel
+        # patches unattended, and it is safe because drift is voluntary disruption so budgets and windows
+        # apply. Pin a version (e.g. "al2023@v20240807") to stop drift, at the cost of no patching until the
+        # pin moves.
+        amiSelectorTerms   = optional(any, null)    # full override of AMI selection; when set, amiAlias is ignored
+        amiFamily          = optional(string, null) # only needed when amiSelectorTerms is used without an alias
+        detailedMonitoring = optional(bool, true)   # 1-minute EC2 metrics rather than 5-minute
+        metadataOptions = optional(any, {
           httpEndpoint            = "enabled"
           httpProtocolIPv6        = "disabled"
-          httpPutResponseHopLimit = 2 # This is changed to disable IMDS access from containers not on the host network
+          httpPutResponseHopLimit = 2 # blocks IMDS access from containers not on the host network
           httpTokens              = "required"
-        }
-        blockDeviceMappings = [
+        })
+        blockDeviceMappings = optional(any, [
           {
             deviceName = "/dev/xvda"
             ebs = {
@@ -131,42 +139,43 @@ variable "resource_configs_defaults" {
               encrypted  = true
             }
           }
-        ]
-      })
-      nodeClassRef = optional(any, {
-        group = "karpenter.k8s.aws"
-        kind  = "EC2NodeClass"
-        name  = "default"
-      }),
-      requirements = optional(any, [
+        ])
+      }), {})
+
+      nodeClassRef = optional(object({
+        group = optional(string, "karpenter.k8s.aws") # CRD group of the node class
+        kind  = optional(string, "EC2NodeClass")      # CRD kind of the node class
+        name  = optional(string, "default")           # which node class pools of this type reference
+      }), {})
+
+      requirements = optional(any, [ # free-form: passed straight to the NodePool CRD, so not typed
         {
           key      = "karpenter.k8s.aws/instance-cpu"
           operator = "Lt"
-          values   = ["33"] # <=32 core cpu nodes, widened from 9 to deepen the spot candidate pool and lower interruption rate
+          values   = ["33"] # <=32 core cpu nodes, widened to deepen the spot candidate pool
         },
         {
           key      = "karpenter.k8s.aws/instance-memory"
           operator = "Lt"
-          values   = ["131073"] # <=128 Gb memory nodes, widened from 33000 to deepen the spot candidate pool
+          values   = ["131073"] # <=128 Gb memory nodes, widened to deepen the spot candidate pool
         },
         {
           key      = "karpenter.k8s.aws/instance-cpu"
           operator = "Gt"
-          values   = ["1"] # > core cpu nodes
+          values   = ["1"] # >1 core, k8s struggles on single-core nodes
         },
         {
           key      = "karpenter.k8s.aws/instance-memory"
           operator = "Gt"
-          values   = ["2000"] #  >2Gb Gb memory nodes as k8s struggles to start small ones
+          values   = ["2000"] # >2Gb, k8s struggles to start smaller ones
         },
         {
           # Exclude the burstable "t" family. Two independent reasons, both seen in this fleet:
-          #  1. t instances are CPU-credit based. Under sustained load they throttle to a fraction of their
-          #     advertised vCPU, which surfaces as latency and timeouts that look like application faults.
-          #  2. they sit in the most contended spot pools, so they are reclaimed noticeably more often.
-          # Karpenter picks the cheapest instance that satisfies the constraints, and without this a
-          # t3.2xlarge is very often that instance -- which is how a "cheap" default becomes an availability
-          # problem. Override this requirement to pin specific families when a workload genuinely wants them.
+          #  1. t instances are CPU-credit based, so under sustained load they throttle to a fraction of
+          #     their advertised vCPU, surfacing as latency that looks like an application fault.
+          #  2. they sit in the most contended spot pools and are reclaimed noticeably more often.
+          # Karpenter picks the CHEAPEST instance satisfying the constraints, and without this a t3.2xlarge
+          # very often was that instance -- which is how a cheap default becomes an availability problem.
           key      = "karpenter.k8s.aws/instance-category"
           operator = "In"
           values   = ["c", "m", "r"] # compute (1:2), general purpose (1:4), memory optimised (1:8)
@@ -174,42 +183,74 @@ variable "resource_configs_defaults" {
         {
           key      = "karpenter.k8s.aws/instance-generation"
           operator = "Gt"
-          values   = ["4"] # gen 5+ only: better price/performance, and more distinct spot pools to fall back on
+          values   = ["4"] # gen 5+: better price/performance and more distinct spot pools to fall back on
         },
         {
           key      = "kubernetes.io/arch"
           operator = "In"
-          values   = ["amd64"] # amd64 linux is main platform arch we will use
+          values   = ["amd64"] # amd64 linux is the platform arch in use
         },
         {
           key      = "karpenter.sh/capacity-type"
           operator = "In"
-          values   = ["spot", "on-demand"] # both spot and on-demand nodes, it will look at first available spot and if no then on-demand
+          values   = ["spot", "on-demand"] # spot first, on-demand when no spot is available
         }
       ])
-      disruption = optional(any, {
-        consolidationPolicy = "Balanced" # weighs cost saving against disruption instead of consolidating whenever anything cheaper exists
-        consolidateAfter    = "15m"      # raised from 3m: a brief utilization dip used to be enough to trigger node removal
-        budgets = [
-          { nodes : "10%" } # allows karpenter to only deprovision/disrupt/recreate 10% of nodes at a time for consolidation/cost-optimization, to have more stable workloads
-        ]
-      }),
-      limits = optional(any, {
-        cpu = 1000
-      })
+
+      # Upper bound on node drain before remaining pods are force-removed. UNSET on purpose: setting it makes
+      # a node hosting blocking PodDisruptionBudgets or karpenter.sh/do-not-disrupt pods ELIGIBLE for drift,
+      # and force-deletes those pods when it elapses -- turning both protections into a delay rather than a
+      # guarantee. Leave unset so a workload marked always-up stays up; its node keeps an older AMI until a
+      # human moves it, which assessment section D4 surfaces.
+      terminationGracePeriod = optional(string, null)
+
+      # How long a node may live before being replaced on age. Left as "Never" deliberately: expiry is NOT
+      # gated by disruption budgets, so a finite value replaces nodes unpaced and outside any window. AMI
+      # drift, which IS budget-paced, handles patching instead.
+      expireAfter = optional(string, "Never")
+
+      disruption = optional(object({
+        consolidationPolicy = optional(string, "Balanced") # weighs cost saving against disruption instead of consolidating whenever anything cheaper exists
+        consolidateAfter    = optional(string, "15m")      # how long a node must be a candidate before it is acted on
+        # Voluntary disruption budgets, passed straight to the CRD. Entries carrying `schedule` and
+        # `duration` are protection windows: `nodes = "0"` blocks the listed reasons while the window is
+        # open. IMPORTANT -- karpenter evaluates schedules in UTC ONLY and has no timezone support, so the
+        # default below suits central Europe and should be re-cut for other regions. Multiple budgets
+        # resolve most-restrictive-wins. These gate VOLUNTARY disruption only: they never delay spot
+        # interruption handling, and never delay node expiry.
+        budgets = optional(any, [
+          { nodes = "10%" }, # never disrupt more than a tenth of the pool at once
+          {
+            nodes    = "0"                          # block the reasons below entirely while the window is open
+            schedule = "0 6 * * mon-fri"            # opens 06:00 UTC on weekdays (about 08:00 in central Europe)
+            duration = "12h"                        # through 18:00 UTC
+            reasons  = ["Drifted", "Underutilized"] # "Empty" stays allowed: removing an empty node disrupts nothing
+          },
+        ])
+      }), {})
+
+      limits = optional(any, { cpu = 1000 }) # ceiling on total capacity this pool may provision
     }), {})
+
     gpu = optional(object({
-      nodeClass = optional(any, {
-        amiFamily          = null # if not specified the value will be identified based on eks managed nodes ami id, the valid values are for example "AL2", "AL2023"
-        ami_name           = "amazon-eks-gpu-node-1.32-v20251120"
-        detailedMonitoring = true
-        metadataOptions = {
+      nodeClass = optional(object({
+        amiAlias = optional(string, "al2023@latest") # GPU node classes track the AL2023 GPU image
+        # Declarative AMI selection in `family@version` form. `@latest` means node replacement is CONTINUOUS
+        # AND UNATTENDED: karpenter re-checks AMI data about every minute and starts a paced roll when AWS
+        # publishes a new image, with no terraform run involved. That is how nodes receive OS and kernel
+        # patches unattended, and it is safe because drift is voluntary disruption so budgets and windows
+        # apply. Pin a version (e.g. "al2023@v20240807") to stop drift, at the cost of no patching until the
+        # pin moves.
+        amiSelectorTerms   = optional(any, null)    # full override of AMI selection; when set, amiAlias is ignored
+        amiFamily          = optional(string, null) # only needed when amiSelectorTerms is used without an alias
+        detailedMonitoring = optional(bool, true)   # 1-minute EC2 metrics rather than 5-minute
+        metadataOptions = optional(any, {
           httpEndpoint            = "enabled"
           httpProtocolIPv6        = "disabled"
-          httpPutResponseHopLimit = 2 # This is changed to disable IMDS access from containers not on the host network
+          httpPutResponseHopLimit = 2 # blocks IMDS access from containers not on the host network
           httpTokens              = "required"
-        }
-        blockDeviceMappings = [
+        })
+        blockDeviceMappings = optional(any, [
           {
             deviceName = "/dev/xvda"
             ebs = {
@@ -218,39 +259,72 @@ variable "resource_configs_defaults" {
               encrypted  = true
             }
           }
-        ]
-      })
-      nodeClassRef = optional(any, {
-        group = "karpenter.k8s.aws"
-        kind  = "EC2NodeClass"
-        name  = "gpu"
-      }),
-      requirements = optional(any, [
+        ])
+      }), {})
+
+      nodeClassRef = optional(object({
+        group = optional(string, "karpenter.k8s.aws") # CRD group of the node class
+        kind  = optional(string, "EC2NodeClass")      # CRD kind of the node class
+        name  = optional(string, "gpu")               # which node class pools of this type reference
+      }), {})
+
+      requirements = optional(any, [ # free-form: passed straight to the NodePool CRD, so not typed
         {
           key      = "kubernetes.io/arch"
           operator = "In"
-          values   = ["amd64"] # amd64 linux is main platform arch we will use
+          values   = ["amd64"]
         },
         {
           key      = "karpenter.sh/capacity-type"
           operator = "In"
-          values   = ["spot", "on-demand"] # both spot and on-demand nodes, it will look at first available spot and if no then on-demand
+          values   = ["spot", "on-demand"]
         }
       ])
-      disruption = optional(any, {
-        consolidationPolicy = "WhenEmpty"
-        consolidateAfter    = "1m" # the frequency how often karpenter will check and colocate/disrupt nodes
-        budgets = [
-          { nodes : "10%" } # allows karpenter to only deprovision/disrupt/recreate 10% of nodes at a time for consolidation/cost-optimization, to have more stable workloads
-        ]
-      }),
-      limits = optional(any, {
-        cpu = 1000
-      })
+
+      # Upper bound on node drain before remaining pods are force-removed. UNSET on purpose: setting it makes
+      # a node hosting blocking PodDisruptionBudgets or karpenter.sh/do-not-disrupt pods ELIGIBLE for drift,
+      # and force-deletes those pods when it elapses -- turning both protections into a delay rather than a
+      # guarantee. Leave unset so a workload marked always-up stays up; its node keeps an older AMI until a
+      # human moves it, which assessment section D4 surfaces.
+      terminationGracePeriod = optional(string, null)
+
+      # How long a node may live before being replaced on age. Left as "Never" deliberately: expiry is NOT
+      # gated by disruption budgets, so a finite value replaces nodes unpaced and outside any window. AMI
+      # drift, which IS budget-paced, handles patching instead.
+      expireAfter = optional(string, "Never")
+
+      disruption = optional(object({
+        consolidationPolicy = optional(string, "WhenEmpty") # weighs cost saving against disruption instead of consolidating whenever anything cheaper exists
+        # GPU nodes take minutes to become useful -- instance boot, driver initialisation and a container
+        # image that is frequently tens of gigabytes. Tearing one down a minute after a job ends means the
+        # next job pays that cost again, so a short value here trades real money for job latency. Note this
+        # is NOT a stability trade: the policy above is WhenEmpty, and an empty node has nothing to disrupt.
+        consolidateAfter = optional(string, "10m")
+        # Voluntary disruption budgets, passed straight to the CRD. Entries carrying `schedule` and
+        # `duration` are protection windows: `nodes = "0"` blocks the listed reasons while the window is
+        # open. IMPORTANT -- karpenter evaluates schedules in UTC ONLY and has no timezone support, so the
+        # default below suits central Europe and should be re-cut for other regions. Multiple budgets
+        # resolve most-restrictive-wins. These gate VOLUNTARY disruption only: they never delay spot
+        # interruption handling, and never delay node expiry.
+        budgets = optional(any, [{ nodes = "10%" }])
+      }), {})
+
+      limits = optional(any, { cpu = 1000 }) # ceiling on total capacity this pool may provision
     }), {})
   })
   default     = {}
-  description = "Configurations to pass and override default ones for karpenter-nodes chart. Check the helm chart available configs here: https://github.com/dasmeta/helm/tree/karpenter-nodes-0.1.0/charts/karpenter-nodes"
+  description = <<-EOT
+    Defaults applied to every karpenter node pool and node class, in two buckets: `default` for ordinary
+    workloads and `gpu` for GPU node classes.
+
+    Every field is individually optional, so setting one leaves its siblings on their defaults -- overriding
+    `disruption.consolidateAfter` keeps `consolidationPolicy` and the protection window rather than dropping
+    them.
+
+    NOTE: only the keys `default` and `gpu` are accepted here. Terraform silently drops object attributes a
+    type does not declare, so anything placed at the top level never takes effect. The root module validates
+    against that; see the corresponding validation on var.karpenter.
+  EOT
 }
 
 variable "tags" {
@@ -281,95 +355,3 @@ variable "controller_resources" {
   EOT
 }
 
-variable "ami_alias" {
-  type        = string
-  default     = "al2023@latest"
-  description = <<-EOT
-    Declarative AMI selection for the default EC2NodeClass, in `family@version` form
-    (for example `al2023@latest` or a pinned `al2023@v20240807`). The ami family implies `amiFamily`,
-    so that field is not set separately for the default node class.
-
-    IMPORTANT -- `@latest` means node replacement is CONTINUOUS AND UNATTENDED, not something that happens
-    when you run terraform. Karpenter resolves the alias itself and re-checks AMI data on its own interval
-    (chart default `amiRefreshInterval: 1m`). When AWS publishes a new EKS-optimised AMI -- typically every
-    few weeks, sooner for CVEs -- karpenter marks existing nodes Drifted within about a minute and begins
-    replacing them. Terraform's only role is setting this string; everything after that is karpenter.
-
-    That replacement is voluntary disruption, so it IS paced by the node pool disruption budgets and IS
-    suppressed during `var.disruption_windows`. It rolls a fraction of nodes at a time, outside your
-    protected hours, rather than all at once.
-
-    Pin to a specific version (`al2023@v20240807`) to stop drift entirely. Nodes then receive no AMI patches
-    until someone moves the pin, so this trades unattended security patching for change control. Choose it
-    when node replacement must be scheduled by a human, and put a recurring task in place to move the pin.
-
-    This replaces deriving the AMI from an arbitrary running instance, which changed only on apply but chose
-    unpredictably and drifted every node at once when it did.
-  EOT
-}
-
-variable "disruption_windows" {
-  type = list(object({
-    schedule = string                                               # cron expression for when the window OPENS, interpreted in UTC only (karpenter does not support timezones)
-    duration = string                                               # how long the window stays open, compound duration such as "12h" or "10h30m"
-    reasons  = optional(list(string), ["Drifted", "Underutilized"]) # which voluntary disruption reasons are blocked; "Empty" is deliberately not blocked by default since removing an empty node disrupts nothing
-    nodes    = optional(string, "0")                                # how many nodes may be disrupted while the window is open; "0" blocks the listed reasons entirely
-  }))
-  default = [
-    {
-      schedule = "0 6 * * mon-fri" # 06:00 UTC weekdays, roughly 08:00 in central Europe
-      duration = "12h"             # through 18:00 UTC, roughly 20:00 in central Europe
-      reasons  = ["Drifted", "Underutilized"]
-      nodes    = "0"
-    }
-  ]
-  description = <<-EOT
-    Time windows during which voluntary node disruption is suppressed, rendered as NodePool disruption budgets.
-    The default protects ordinary European business hours.
-
-    IMPORTANT: karpenter evaluates these schedules in UTC only and does not support timezones, so this default
-    is offset by an hour across European daylight saving and is wrong for other regions. Override it per setup.
-
-    These budgets gate VOLUNTARY disruption only. They never delay spot interruption handling, and they never
-    delay node expiry. Set to `[]` to disable windowing entirely.
-
-    OVERRIDE SEMANTICS: a node pool that declares its own `disruption.budgets` in var.resource_configs owns
-    them completely and these windows are NOT appended to it. Karpenter resolves multiple budgets
-    most-restrictive-wins, so appending would silently narrow a hand-tuned window rather than defer to it.
-    Only pools that express no budget opinion receive the module default plus these windows.
-  EOT
-}
-
-variable "termination_grace_period" {
-  type        = string
-  default     = null
-  description = <<-EOT
-    Upper bound on how long a node may take to drain before karpenter removes the remaining pods and
-    terminates it. Unset by default, and that default is deliberate.
-
-    READ THIS BEFORE SETTING IT. Configuring a terminationGracePeriod does not merely bound a drain that has
-    already started -- it changes what karpenter is willing to disrupt in the first place. Karpenter's
-    documentation is explicit: nodes with active `karpenter.sh/do-not-disrupt` pods are "conditionally
-    excluded from Drift", and "if the Node's owning NodeClaim has a terminationGracePeriod configured, it
-    will still be eligible for disruption via drift". Once the period elapses, pods are force-deleted, and
-    that "includes pods with blocking pod disruption budgets or the karpenter.sh/do-not-disrupt annotation".
-
-    So setting this converts both protections from absolute into a delay:
-
-      unset  -> a node hosting a do-not-disrupt pod or a blocking PDB is NEVER drifted. It keeps its old AMI
-                until a human moves the workload.
-      set    -> that node IS drifted, and the protected pods are force-deleted when the period expires.
-
-    Leaving it unset is the safer position: a workload marked always-up stays up, and the node simply keeps
-    an older AMI until someone handles it deliberately -- often with a prepared flow that cools the workload
-    down, replaces the node and brings it back. Losing that workload to an unattended AMI roll is worse than
-    running an older AMI for a few days.
-
-    The cost is that a node with a genuinely broken budget can stay Deleting indefinitely. Fix the budget
-    rather than setting this: the base chart refuses to render a zero-eviction PDB, and section E1 of
-    `scripts/eks-assess.sh` lists any that already exist.
-
-    Set it only on a cluster with a known stuck-node problem you cannot fix at source, and understand that you
-    are trading away the guarantee that do-not-disrupt and PDBs are honoured.
-  EOT
-}

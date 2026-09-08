@@ -918,9 +918,6 @@ variable "karpenter" {
     resource_configs          = optional(any, { nodePools = { general = {} } }) # karpenter resources creation configs, available options can be fount here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources
     resource_configs_defaults = optional(any, {})                               # the default used for karpenter node pool creation, the available values to override/set can be found in karpenter submodule corresponding variable modules/karpenter/values.tf
     controller_resources      = optional(any, null)                             # resources for the karpenter controller container; defaults to requests 250m/512Mi with a 1Gi memory limit and deliberately no cpu limit, see modules/karpenter/variables.tf
-    ami_alias                 = optional(string, null)                          # declarative node AMI selection in `family@version` form, e.g. "al2023@latest" or a pinned "al2023@v20240807"; defaults to the family implied by node_groups_default.ami_type with @latest
-    disruption_windows        = optional(any, null)                             # time windows suppressing voluntary node disruption, rendered as NodePool disruption budgets; defaults to 06:00-18:00 UTC Mon-Fri blocking Drifted and Underutilized. Schedules are UTC only
-    termination_grace_period  = optional(string, null)                          # upper bound on node drain before pods are force-removed. UNSET by default on purpose: setting it makes nodes hosting blocking PDBs or do-not-disrupt pods eligible for drift and force-deletes those pods, turning both protections into a delay
   })
   default = {
     enabled = true

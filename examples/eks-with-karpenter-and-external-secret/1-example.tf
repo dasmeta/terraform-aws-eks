@@ -63,7 +63,6 @@ module "this" {
       replicas = 1
     }
 
-    # Protected on-demand capacity is defined as a standard node pool below, not via a special input.
     resource_configs_defaults = { # this is optional param, look into karpenter submodule to get available defaults
       default = {                 # NOTE: must be nested under `default`; a top-level `limits` here fails at plan time
         limits = {

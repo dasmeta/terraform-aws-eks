@@ -14,18 +14,6 @@ locals {
     )
   }
 
-  # Disruption budgets rendered from the configured protection windows. `nodes = "0"` for the listed reasons
-  # means no voluntary disruption of that kind may start while the window is open. These never delay spot
-  # interruption handling or node expiry, both of which bypass budgets entirely.
-  disruption_window_budgets = [
-    for window in var.disruption_windows : {
-      nodes    = window.nodes
-      schedule = window.schedule
-      duration = window.duration
-      reasons  = window.reasons
-    }
-  ]
-
   # We create this aws ec2 node class as default for karpenter as this is something general and can be used as default for node-pools which have not nodeClassRef required field set explicitly
   defaultEc2NodeClass = {
     tags                = var.tags
@@ -34,12 +22,14 @@ locals {
     securityGroupSelectorTerms = [
       { tags = { "karpenter.sh/discovery" = var.cluster_name, "Name" = "${var.cluster_name}-node" } }
     ]
-    # Declarative alias selection. `amiFamily` is implied by the alias family and is therefore not set here.
+    # Declarative alias selection. `amiFamily` is implied by the alias family, so it is not set alongside it.
     # This replaces deriving the AMI from an arbitrary running instance, which allowed an unrelated apply to
     # change the fleet's target image and mark every node drifted at once.
-    amiSelectorTerms = [
-      { alias = var.ami_alias }
-    ]
+    # An explicit amiSelectorTerms override wins over the alias.
+    amiSelectorTerms = coalesce(
+      var.resource_configs_defaults["default"].nodeClass.amiSelectorTerms,
+      [{ alias = coalesce(var.resource_configs_defaults["default"].nodeClass.amiAlias, "al2023@latest") }]
+    )
     detailedMonitoring  = var.resource_configs_defaults["default"].nodeClass.detailedMonitoring
     metadataOptions     = var.resource_configs_defaults["default"].nodeClass.metadataOptions
     blockDeviceMappings = var.resource_configs_defaults["default"].nodeClass.blockDeviceMappings
@@ -69,34 +59,17 @@ locals {
     {
       template = merge(try(value.template, {}), {
         spec = merge({ nodeClassRef = local.nodePoolDefaultNodeClassRef }, try(value.template.spec, {}), {
-          requirements = concat([for item in var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].requirements : item if !contains(try(value.template.spec.requirements, []).*.key, item.key)], try(value.template.spec.requirements, []))
-          # expireAfter deliberately stays "Never": node expiry is NOT gated by disruption budgets, so a finite
-          # value would replace nodes unpaced and outside var.disruption_windows. AMI patching is handled by
-          # budget-paced drift via var.ami_alias instead.
-          expireAfter            = try(value.template.spec.expireAfter, "Never")
-          terminationGracePeriod = try(value.template.spec.terminationGracePeriod, var.termination_grace_period)
+          requirements           = concat([for item in var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].requirements : item if !contains(try(value.template.spec.requirements, []).*.key, item.key)], try(value.template.spec.requirements, []))
+          expireAfter            = try(value.template.spec.expireAfter, var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].expireAfter)
+          terminationGracePeriod = try(value.template.spec.terminationGracePeriod, var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].terminationGracePeriod)
         })
       })
-      # Budgets: a pool that declares its own budgets OWNS them completely and the module's disruption
-      # windows are not appended. Appending would be worse than useless -- karpenter resolves multiple
-      # budgets most-restrictive-wins, so a hand-tuned window (one production cluster already runs
-      # 12:00 UTC for 16h, every day, matched to its own timezone) would silently gain a second, narrower
-      # module window on top of it and the operator's intent would be quietly overridden.
-      # Only pools that express no opinion get the module default plus its windows.
+      # A pool's own disruption settings win field by field over the class defaults, which already carry any
+      # protection windows as ordinary budget entries. There is no append step and therefore no
+      # append-versus-override ambiguity: a pool that declares budgets simply has them.
       disruption = merge(
         var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].disruption,
         try(value.disruption, {}),
-        {
-          # try() rather than a ternary on purpose. A conditional would have to unify the pool's own budget
-          # list with the default-plus-windows list, and those legitimately differ in shape -- a bare
-          # `{ nodes = "10%" }` against entries carrying schedule, duration and reasons. Terraform rejects
-          # that as inconsistent conditional result types, at PLAN time rather than at validate. try()
-          # returns the first expression that evaluates, with no unification requirement.
-          budgets = try(value.disruption.budgets, concat(
-            var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].disruption.budgets,
-            local.disruption_window_budgets,
-          ))
-        }
       )
       limits = merge(var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].limits, try(value.limits, {}))
     }

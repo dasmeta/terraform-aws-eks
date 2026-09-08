@@ -96,36 +96,51 @@ module "this" {
     # counts. If you measured different values for your cluster, set them here rather than relying on a live
     # hotfix: an in-cluster patch is silently reverted by the next terraform apply.
 
-    # ami_alias = "al2023@latest"                     # DEFAULT (family derived from node_groups_default.ami_type).
-    #                                                 # Pin to e.g. "al2023@v20240807" to stop AMI drift entirely,
-    #                                                 # at the cost of nodes not receiving AMI patches until you
-    #                                                 # move the pin. With @latest, a new AMI release drifts nodes,
-    #                                                 # paced by the disruption budget and suppressed during the
-    #                                                 # window below.
-
-    # disruption_windows = [                          # DEFAULT and RECOMMENDED for central European traffic.
-    #   {
-    #     schedule = "0 6 * * mon-fri"                # 06:00 UTC weekdays
-    #     duration = "12h"                            # through 18:00 UTC (20:00 CEST)
-    #     reasons  = ["Drifted", "Underutilized"]     # "Empty" stays allowed: removing an empty node disrupts nothing
-    #     nodes    = "0"
+    # resource_configs_defaults = {              # ALL of the following are DEFAULTS and RECOMMENDED.
+    #   default = {                                # Every field is individually optional, so setting one
+    #     nodeClass = {                            # leaves its siblings on the module defaults.
+    #       amiAlias = "al2023@latest"             # derived from node_groups_default.ami_type when unset.
+    #     }                                        # `@latest` means node replacement is CONTINUOUS AND
+    #                                              # UNATTENDED: karpenter re-checks about every minute and
+    #                                              # rolls nodes when AWS publishes a new AMI, with no
+    #                                              # terraform run involved. That is how nodes get OS and
+    #                                              # kernel patches; it is paced by the budgets below.
+    #                                              # Pin a version to stop drift, at the cost of no patching.
+    #
+    #     terminationGracePeriod = null            # DEFAULT, and leaving it unset is the recommendation.
+    #                                              # Setting it makes nodes hosting blocking PDBs or
+    #                                              # do-not-disrupt pods ELIGIBLE for drift and force-deletes
+    #                                              # those pods, turning both protections into a delay.
+    #
+    #     expireAfter = "Never"                    # DEFAULT. Expiry is NOT gated by disruption budgets, so a
+    #                                              # finite value replaces nodes unpaced and outside any
+    #                                              # window. AMI drift handles patching instead, and it IS paced.
+    #
+    #     disruption = {
+    #       consolidationPolicy = "Balanced"       # weighs saving against disruption
+    #       consolidateAfter    = "15m"            # a brief dip no longer triggers removal
+    #       budgets = [
+    #         { nodes = "10%" },                   # never move more than a tenth of the pool at once
+    #         {                                    # the protection window, as an ordinary budget entry
+    #           nodes    = "0"
+    #           schedule = "0 6 * * mon-fri"       # 06:00 UTC weekdays
+    #           duration = "12h"                   # through 18:00 UTC
+    #           reasons  = ["Drifted", "Underutilized"] # "Empty" stays allowed
+    #         },
+    #       ]
+    #     }
+    #
+    #     requirements = [ ... ]                   # DEFAULT: linux amd64, cpu 2-32, memory 2-128Gi,
+    #                                              # generation > 4, categories c/m/r, spot and on-demand.
+    #                                              # Wide on purpose: instance flexibility is what lowers
+    #                                              # spot interruption frequency.
+    #     limits = { cpu = 1000 }                  # DEFAULT ceiling on provisioned capacity.
     #   }
-    # ]
+    # }
     #
-    # IMPORTANT: karpenter evaluates these schedules in UTC ONLY -- it has no timezone support. The default is
-    # therefore off by an hour across European daylight saving and wrong outright for other regions. A recorded
-    # incident saw voluntary eviction at 19:17 UTC (21:17 CEST), just outside this window, so extend `duration`
-    # if your traffic runs later. These budgets gate VOLUNTARY disruption only; they never delay spot
-    # interruption handling, and never delay node expiry.
-
-    # termination_grace_period = "24h"   # UNSET BY DEFAULT, and leaving it unset is the recommendation.
-    #
-    # Setting it does more than bound a drain already underway. Karpenter treats a node hosting
-    # `do-not-disrupt` pods as only "conditionally excluded from Drift": with a terminationGracePeriod
-    # configured that node BECOMES eligible for drift, and when the period elapses pods are force-deleted --
-    # including those with blocking PodDisruptionBudgets or the do-not-disrupt annotation.
-    # So it silently turns both protections into a delay. A workload marked always-up should stay up; its
-    # node keeps an older AMI until a human moves it, which assessment section D4 surfaces.
+    # IMPORTANT: karpenter evaluates budget schedules in UTC ONLY -- it has no timezone support -- so the
+    # default window suits central Europe and is wrong elsewhere. See docs/eks-stability-guide.md section 2.1
+    # for a per-region table. A recorded incident evicted replicas at 19:17 UTC, just outside this window.
 
     resource_configs = {
       nodePools = {
@@ -190,7 +205,7 @@ module "this" {
     #       consolidationPolicy = "Balanced"  # DEFAULT and RECOMMENDED. Weighs cost saving against disruption
     #                                         # instead of consolidating whenever anything cheaper exists.
     #       consolidateAfter    = "15m"       # DEFAULT. A brief utilisation dip no longer triggers node removal.
-    #       budgets             = [{ nodes = "10%" }] # DEFAULT, plus the disruption_windows entries above.
+    #       budgets             = [{ nodes = "10%" }] # DEFAULT, including the protection window entry.
     #     }
     #     limits = { cpu = 1000 }             # DEFAULT ceiling on total provisioned capacity.
     #   }

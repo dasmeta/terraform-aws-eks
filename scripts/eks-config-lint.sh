@@ -114,8 +114,8 @@ for FILE in "$@"; do
   # --- disruption windows present -------------------------------------------
   haswindow=$(yq -r '[ (.variables.karpenter.resource_configs.nodePools // {}) | to_entries[]
     | (.value.disruption.budgets // [])[] | select(has("schedule")) ] | length' "$FILE" 2>/dev/null)
-  dwin=$(q '.variables.karpenter.disruption_windows')
-  if [ "${haswindow:-0}" = "0" ] && [ -z "$dwin" ]; then
+  dwin=$(yq -r '[(.variables.karpenter.resource_configs_defaults.default.disruption.budgets // [])[] | select(has("schedule"))] | length' "$FILE" 2>/dev/null)
+  if [ "${haswindow:-0}" = "0" ] && [ "${dwin:-0}" = "0" ]; then
     finding LOW "no scheduled disruption window" \
       "Voluntary consolidation can run during peak traffic. Module >= 2.30.0 ships a default window; on older versions set budgets with schedule/duration per pool. Schedules are UTC only -- karpenter has no timezone support."
   fi

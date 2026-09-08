@@ -70,7 +70,7 @@ module "this" {
     #   replicas          = 2
     #   priorityClassName = "system-cluster-critical"
     #   controller resources 250m/512Mi requested, 1Gi memory limit, deliberately no cpu limit
-    #   ami_alias derived from node_groups_default.ami_type with @latest
+    #   node AMI alias derived from node_groups_default.ami_type with @latest
     #   Balanced consolidation with a 15m settle time
     #   voluntary disruption suppressed 06:00-18:00 UTC Mon-Fri (UTC only, override outside central Europe)
     #   terminationGracePeriod 24h as a stuck-node safety net

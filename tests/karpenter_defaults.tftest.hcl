@@ -103,8 +103,8 @@ run "pinned_ami_alias_is_accepted" {
   }
 
   variables {
-    subnet_ids = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
-    ami_alias  = "al2023@v20240807"
+    subnet_ids                = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
+    resource_configs_defaults = { default = { nodeClass = { amiAlias = "al2023@v20240807" } } }
   }
 }
 
@@ -117,7 +117,7 @@ run "disruption_windows_can_be_disabled" {
   }
 
   variables {
-    subnet_ids         = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
-    disruption_windows = []
+    subnet_ids                = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
+    resource_configs_defaults = { default = { disruption = { budgets = [{ nodes = "10%" }] } } }
   }
 }

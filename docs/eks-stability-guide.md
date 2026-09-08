@@ -199,7 +199,7 @@ them**. Inheriting the default would reduce them.
 | Change | Disruption | Mitigation |
 | --- | --- | --- |
 | Controller resources, priority | Controller pod restarts once | None needed; seconds of controller downtime, no workload impact |
-| AMI selection moves to `alias` | **One paced node roll** if the alias resolves to a different image than nodes currently run | Pin `ami_alias` to the current AMI version to defer it, then move the pin deliberately later |
+| AMI selection moves to `alias` | **One paced node roll** if the alias resolves to a different image than nodes currently run | Pin `resource_configs_defaults.default.nodeClass.amiAlias` to the current version to defer it, then move the pin deliberately later |
 | Karpenter `1.9` to `1.14` | CRD chart upgraded first; historically has needed manual `kubectl patch` in some setups | Apply in a non-production cluster first |
 | Consolidation to `Balanced`/15m | Less churn, no disruption | None |
 | System node group tainted `CriticalAddonsOnly` | **Rolling replacement of the managed node group** | Maintenance window; see 1.4 |
@@ -217,7 +217,7 @@ out of your traffic hours. The old behaviour changed only on apply, but chose th
 drifted every node at once when it did — rarer, but far less controlled.
 
 If your change control requires a human to schedule node replacement, pin the version instead
-(`ami_alias = "al2023@v20240807"`) and put a recurring task in place to move the pin. Pinning stops patching
+(`nodeClass = { amiAlias = "al2023@v20240807" }`) and put a recurring task in place to move the pin. Pinning stops patching
 until someone acts, so it is a trade, not a free safety improvement.
 
 Apply to development or staging first, confirm Phase 0 checks now read healthy, then promote.
@@ -294,16 +294,26 @@ traffic runs into the evening, extend `duration`.
 
 ```hcl
 karpenter = {
-  disruption_windows = [
-    {
-      schedule = "0 12 * * mon-fri"           # US East
-      duration = "13h"
-      reasons  = ["Drifted", "Underutilized"] # "Empty" stays allowed: removing an empty node disrupts nothing
-      nodes    = "0"
+  resource_configs_defaults = {
+    default = {
+      disruption = {
+        budgets = [
+          { nodes = "10%" },                        # never move more than a tenth of the pool at once
+          {
+            nodes    = "0"                          # block the reasons below while the window is open
+            schedule = "0 12 * * mon-fri"           # US East
+            duration = "13h"
+            reasons  = ["Drifted", "Underutilized"] # "Empty" stays allowed: an empty node disrupts nothing
+          },
+        ]
+      }
     }
-  ]
+  }
 }
 ```
+
+Every field of `resource_configs_defaults` is individually optional, so setting `disruption.budgets` keeps
+`consolidationPolicy` and `consolidateAfter` on the module defaults rather than dropping them.
 
 ### 2.2 Remove any always-on `nodes: "0"` budget
 
@@ -312,10 +322,9 @@ active. That does not reduce churn — it stops all voluntary disruption permane
 remediation. One cluster carried it on four of five pools and had nodes 33 to 102 days old still running the
 previous kubelet minor version.
 
-**Remove it.** A node pool that declares its own `budgets` owns them completely — the module's disruption
-windows are deliberately *not* appended to it, so that a hand-tuned window is never silently narrowed by a
-second one. The consequence here is that a pool carrying an always-on `nodes: "0"` gets no window at all: the
-block stays, and configuring `disruption_windows` changes nothing until the block is gone.
+**Remove it.** Protection windows are ordinary entries in the same `budgets` list, so an always-on
+`nodes: "0"` sits alongside them and wins — budgets resolve most-restrictive-wins. Adding a window changes
+nothing until the always-on block is gone.
 
 > **Disruption note**: removing it lets consolidation and drift remediation resume, so expect node
 > replacement to begin. That is the point, but it means the first apply after removal is the busiest.
@@ -485,7 +494,7 @@ A node hosting a pod with a blocking PodDisruptionBudget or the `karpenter.sh/do
 **never replaced** by voluntary disruption. It keeps its older AMI until a human moves the workload. That is
 the intended behaviour, not a fault to be worked around.
 
-The module leaves `termination_grace_period` unset for exactly this reason. Setting it does more than bound a
+The module leaves `resource_configs_defaults.default.terminationGracePeriod` unset for exactly this reason. Setting it does more than bound a
 drain that has already begun — Karpenter's docs state that a node with `do-not-disrupt` pods is
 "conditionally excluded from Drift" and "if the Node's owning NodeClaim has a `terminationGracePeriod`
 configured, it will still be eligible for disruption via drift", after which pods are force-deleted including
@@ -507,7 +516,7 @@ to act. That is a scheduling problem, not an automation problem:
 4. **Watch how long nodes sit in D4.** Past your patching tolerance it needs escalating. It will not resolve
    on its own, and that is by design.
 
-Do not reach for `termination_grace_period` to make this go away. It does not solve the problem, it just
+Do not reach for `terminationGracePeriod` to make this go away. It does not solve the problem, it just
 moves the outage to a time nobody chose.
 
 ---
