@@ -358,7 +358,19 @@ rather than assuming a clean apply means it did.
 
 ### 2.4 Protected capacity
 
-Add it if the cluster runs an ingress controller, monitoring, or any single-replica or stateful workload.
+**When you need it.** Add this pool only if the cluster runs something that cannot survive its node
+disappearing:
+
+| Add it | Skip it |
+| --- | --- |
+| Ingress controllers | Everything stateless with 2+ replicas |
+| Metrics store and its database | Batch and queue workers that can restart |
+| Single-replica or stateful services | Dev and test clusters |
+
+If nothing on the cluster fits the left column, delete the pool — it is on-demand capacity you are paying
+for and nothing needs. If something does, this is the fix for the pattern where a routine spot reclaim took
+out monitoring or ingress and made every co-occurring incident harder to diagnose.
+
 There is no special input for this — it is an ordinary node pool with an on-demand requirement and a taint:
 
 ```hcl

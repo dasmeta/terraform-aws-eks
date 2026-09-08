@@ -147,25 +147,20 @@ module "this" {
         # The general spot-first pool. Everything without a specific placement requirement lands here.
         general = { weight = 1 }
 
-        # Protected on-demand capacity, built with standard node pool config -- there is no special input
-        # for this, and none is needed. Turn it on for any cluster running an ingress controller,
-        # monitoring, or single-replica/stateful services: those are the workloads that repeatedly turned a
-        # routine spot reclaim into an outage. Delete this pool if you do not want the on-demand cost.
+        # DELETE THIS POOL unless the cluster runs something that cannot survive its node disappearing:
+        # an ingress controller, the metrics store or its database, or any single-replica or stateful
+        # service. If everything here is stateless with 2+ replicas, spot handles it and this is wasted
+        # on-demand spend. Enabling it is the fix for the pattern where a routine spot reclaim took out
+        # monitoring or ingress and made every co-occurring incident harder to diagnose.
         #
-        # Note it declares its own `budgets`. A pool that does so owns them completely, so the module's
-        # disruption windows are NOT appended -- which is what this pool wants: it should only ever lose a
-        # genuinely empty node, at any hour.
+        # There is no special input for this -- it is an ordinary node pool. It declares its own `budgets`,
+        # which keeps the protection window off it: it should only ever lose an empty node, at any hour.
         protected = {
           # Orders pools when several could take the same pod; highest wins. Must exceed `general` above,
           # since an unset weight counts as 0. Value is arbitrary (1-100). Guide 2.4 explains why this is
           # needed even when the pod also selects on-demand.
           weight = 50
           template = {
-            metadata = {
-              labels = {
-                nodetype = "protected"
-              }
-            }
             spec = {
               # Declare only what differs. Requirements merge by KEY, so this narrows the default
               # ["spot", "on-demand"] to on-demand and inherits everything else. Re-stating a default
