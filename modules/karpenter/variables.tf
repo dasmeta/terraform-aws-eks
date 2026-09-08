@@ -295,11 +295,16 @@ variable "resource_configs_defaults" {
 
       disruption = optional(object({
         consolidationPolicy = optional(string, "WhenEmpty") # weighs cost saving against disruption instead of consolidating whenever anything cheaper exists
-        # GPU nodes take minutes to become useful -- instance boot, driver initialisation and a container
-        # image that is frequently tens of gigabytes. Tearing one down a minute after a job ends means the
-        # next job pays that cost again, so a short value here trades real money for job latency. Note this
-        # is NOT a stability trade: the policy above is WhenEmpty, and an empty node has nothing to disrupt.
-        consolidateAfter = optional(string, "10m")
+        # Short on purpose. GPU instances are the most expensive capacity in the cluster, so an idle one is
+        # the costliest thing to keep, and with WhenEmpty above there is no disruption risk either way --
+        # an empty node has nothing to disrupt. This is purely a cost-versus-latency trade.
+        #
+        # The cost of a longer value is silent and continuous; the cost of this short one is visible -- if
+        # jobs queue up behind node provisioning (boot, driver init and a container image that is often tens
+        # of gigabytes), someone notices and raises it. Prefer the failure you can see. Raise it for bursty
+        # inference or interactive workloads with short gaps between jobs; leave it for batch training,
+        # where gaps are long and the node would sit idle anyway.
+        consolidateAfter = optional(string, "1m")
         # Voluntary disruption budgets, passed straight to the CRD. Entries carrying `schedule` and
         # `duration` are protection windows: `nodes = "0"` blocks the listed reasons while the window is
         # open. IMPORTANT -- karpenter evaluates schedules in UTC ONLY and has no timezone support, so the
