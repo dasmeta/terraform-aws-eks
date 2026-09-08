@@ -156,7 +156,23 @@ module "this" {
         # disruption windows are NOT appended -- which is what this pool wants: it should only ever lose a
         # genuinely empty node, at any hour.
         protected = {
-          weight = 50 # preferred over `general` for pods that tolerate the taint below
+          # weight orders node pools when MORE THAN ONE could satisfy the same pod. Karpenter tries the
+          # highest weight first. It is a preference, not a constraint -- the taint below is what actually
+          # keeps ordinary workloads out.
+          #
+          # It has to be set here, and it has to exceed `general`. A pool with no weight is treated as 0,
+          # and `general` above is 1, so leaving this out would make the protected pool LOWER priority than
+          # the general one -- the opposite of the intent.
+          #
+          # Why it matters even though the workload also selects on-demand: `general` accepts both spot and
+          # on-demand, so it can satisfy an on-demand nodeSelector too. Without a higher weight here, a pod
+          # that tolerates the taint could be placed on an on-demand node in the `general` pool instead --
+          # correct capacity type, but an UNTAINTED node, so ordinary workloads would share it and the
+          # isolation is silently lost.
+          #
+          # The number itself is arbitrary; only the ordering matters. Valid range is 1-100, and 50 leaves
+          # room either side for further pools.
+          weight = 50
           template = {
             metadata = {
               labels = {

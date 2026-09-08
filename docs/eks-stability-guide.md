@@ -391,10 +391,23 @@ karpenter = {
 }
 ```
 
-Note it declares its own `budgets`. A pool that does so owns them completely, so the module's disruption
-windows are **not** appended — which is what this pool wants: it should only ever lose an empty node, at any
-hour. Adjust the taint key, add labels, or point it at a different node class as needed; it is a normal pool
-and nothing about it is special-cased.
+Two details in there are easy to get wrong.
+
+**`weight` must be set, and must exceed the general pool's.** It orders pools when more than one could
+satisfy the same pod, highest first. A pool with no weight counts as `0`, so if `general` is `1` and this is
+left unset, the protected pool ends up *lower* priority — the opposite of the intent. The number is
+arbitrary beyond the ordering; the valid range is 1–100.
+
+It matters even though the workload also selects on-demand (section 3.6), because `general` accepts both
+capacity types and can satisfy an on-demand selector itself. Without the higher weight, a tolerating pod can
+land on an on-demand node in `general` — right capacity type, but an **untainted** node that ordinary
+workloads will then share, so the isolation is quietly lost.
+
+**It declares its own `budgets`**, which is what keeps the protection window off this pool. That is
+deliberate: it should only ever lose a genuinely empty node, at any hour.
+
+Everything else is an ordinary node pool — adjust the taint key, add labels, point it at a different node
+class. Nothing about it is special-cased.
 
 Costs on-demand capacity. Workloads must opt in — Phase 4 and section 3.6.
 
