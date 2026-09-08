@@ -156,22 +156,9 @@ module "this" {
         # disruption windows are NOT appended -- which is what this pool wants: it should only ever lose a
         # genuinely empty node, at any hour.
         protected = {
-          # weight orders node pools when MORE THAN ONE could satisfy the same pod. Karpenter tries the
-          # highest weight first. It is a preference, not a constraint -- the taint below is what actually
-          # keeps ordinary workloads out.
-          #
-          # It has to be set here, and it has to exceed `general`. A pool with no weight is treated as 0,
-          # and `general` above is 1, so leaving this out would make the protected pool LOWER priority than
-          # the general one -- the opposite of the intent.
-          #
-          # Why it matters even though the workload also selects on-demand: `general` accepts both spot and
-          # on-demand, so it can satisfy an on-demand nodeSelector too. Without a higher weight here, a pod
-          # that tolerates the taint could be placed on an on-demand node in the `general` pool instead --
-          # correct capacity type, but an UNTAINTED node, so ordinary workloads would share it and the
-          # isolation is silently lost.
-          #
-          # The number itself is arbitrary; only the ordering matters. Valid range is 1-100, and 50 leaves
-          # room either side for further pools.
+          # Orders pools when several could take the same pod; highest wins. Must exceed `general` above,
+          # since an unset weight counts as 0. Value is arbitrary (1-100). Guide 2.4 explains why this is
+          # needed even when the pod also selects on-demand.
           weight = 50
           template = {
             metadata = {
@@ -180,12 +167,9 @@ module "this" {
               }
             }
             spec = {
-              # Declare ONLY what differs from the class defaults. Requirements merge by KEY: a default is
-              # kept unless this pool declares the same key, in which case the pool's version replaces it.
-              # So capacity-type here narrows the default ["spot", "on-demand"] down to on-demand, while
-              # everything else -- instance category, generation, cpu and memory ranges, architecture --
-              # is inherited untouched. Re-stating a default would not just be noise: it would pin this
-              # pool to today's value and silently stop it following the module if that default ever moves.
+              # Declare only what differs. Requirements merge by KEY, so this narrows the default
+              # ["spot", "on-demand"] to on-demand and inherits everything else. Re-stating a default
+              # pins the pool to today's value and stops it following the module. Guide 2.4.
               requirements = [
                 {
                   key      = "karpenter.sh/capacity-type"
