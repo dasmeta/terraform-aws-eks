@@ -349,18 +349,45 @@ rather than assuming a clean apply means it did.
 
 ### 2.4 Protected capacity
 
-Enable it if the cluster runs an ingress controller, monitoring, or any single-replica or stateful workload:
+Add it if the cluster runs an ingress controller, monitoring, or any single-replica or stateful workload.
+There is no special input for this — it is an ordinary node pool with an on-demand requirement and a taint:
 
 ```hcl
 karpenter = {
-  protected_node_pool = {
-    enabled = true
-    limits  = { cpu = 20 }
+  resource_configs = {
+    nodePools = {
+      general = { weight = 1 }
+
+      protected = {
+        weight = 50
+        template = {
+          spec = {
+            requirements = [
+              { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
+            ]
+            taints = [
+              { key = "dasmeta.io/protected", value = "true", effect = "NoSchedule" },
+            ]
+          }
+        }
+        disruption = {
+          consolidationPolicy = "WhenEmpty"   # only ever remove a genuinely empty node
+          consolidateAfter    = "15m"
+          budgets             = [{ nodes = "10%" }]
+        }
+        limits = { cpu = 20 }
+      }
+    }
   }
 }
 ```
 
-Costs on-demand capacity. Workloads must opt in — Phase 4.
+Note it declares its own `budgets`. A pool that does so owns them completely, so the module's disruption
+windows are **not** appended — which is what this pool wants: it should only ever lose an empty node, at any
+hour. Adjust the taint key, add labels, or point it at a different node class as needed; it is a normal pool
+and nothing about it is special-cased.
+
+Costs on-demand capacity. Workloads must opt in — Phase 4 and section 3.6.
 
 ---
 
@@ -586,7 +613,7 @@ On-demand is the only real protection against reclamation, so spend it narrowly 
 | Monitoring (metrics store, its database) | protected on-demand | Losing it during churn removes the visibility you need to diagnose the churn |
 | Everything else | spot | This is the majority, and where the saving is |
 
-Enable the protected pool with `karpenter.protected_node_pool.enabled = true`, then opt workloads in with
+Add the protected pool as a standard node pool (section 2.4), then opt workloads in with
 **both** a toleration and a node selector — see 3.6. The toleration alone only makes the capacity eligible; it
 does not keep the pod off spot.
 

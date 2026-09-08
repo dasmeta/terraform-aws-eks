@@ -158,7 +158,7 @@ resource "helm_release" "karpenter_nodes" {
           default = local.defaultEc2NodeClass,
           gpu     = local.defaultEc2NodeClassGpu
         }
-        nodePools               = local.allNodePools
+        nodePools               = local.nodePools
         karpenterServiceAccount = module.this.service_account
         karpenterNamespace      = var.namespace
       }

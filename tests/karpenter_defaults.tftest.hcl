@@ -121,17 +121,3 @@ run "disruption_windows_can_be_disabled" {
     disruption_windows = []
   }
 }
-
-# The protected on-demand pool is opt-in and must plan cleanly when enabled.
-run "protected_node_pool_can_be_enabled" {
-  command = plan
-
-  module {
-    source = "./modules/karpenter"
-  }
-
-  variables {
-    subnet_ids          = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
-    protected_node_pool = { enabled = true }
-  }
-}

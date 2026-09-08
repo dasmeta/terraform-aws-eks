@@ -63,14 +63,7 @@ module "this" {
       replicas = 1
     }
 
-    # Opt-in on-demand capacity for workloads that must not be moved by spot reclamation: ingress controllers,
-    # monitoring, single-replica and stateful services. Nodes are tainted, so only workloads that tolerate
-    # `dasmeta.io/protected=true:NoSchedule` land here. Off by default because on-demand capacity has real cost.
-    protected_node_pool = {
-      enabled = true
-      limits  = { cpu = 20 }
-    }
-
+    # Protected on-demand capacity is defined as a standard node pool below, not via a special input.
     resource_configs_defaults = { # this is optional param, look into karpenter submodule to get available defaults
       default = {                 # NOTE: must be nested under `default`; a top-level `limits` here fails at plan time
         limits = {

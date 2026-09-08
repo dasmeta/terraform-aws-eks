@@ -373,23 +373,3 @@ variable "termination_grace_period" {
     are trading away the guarantee that do-not-disrupt and PDBs are honoured.
   EOT
 }
-
-variable "protected_node_pool" {
-  type = object({
-    enabled      = optional(bool, false)                    # whether to create the protected on-demand node pool; off by default because on-demand capacity has real cost
-    name         = optional(string, "protected")            # name of the created NodePool
-    weight       = optional(number, 10)                     # scheduling preference relative to other pools; higher wins for pods that tolerate the taint
-    taint_key    = optional(string, "dasmeta.io/protected") # taint key applied to the nodes so ordinary workloads never land here
-    taint_value  = optional(string, "true")                 # taint value paired with taint_key
-    limits       = optional(any, { cpu = 100 })             # upper bound on the capacity this pool may provision
-    requirements = optional(any, null)                      # optional override of the instance requirements; defaults to the standard set restricted to on-demand
-  })
-  default     = {}
-  description = <<-EOT
-    Opt-in on-demand node pool for workloads that must not be moved by spot reclamation: ingress controllers,
-    monitoring, single-replica and stateful services. Nodes carry a taint so only workloads that explicitly
-    tolerate it are scheduled here. The pool uses `WhenEmpty` consolidation and is excluded from
-    `var.disruption_windows`, since it should only ever lose genuinely empty nodes.
-    Disabled by default so no consumer pays for capacity they did not ask for.
-  EOT
-}

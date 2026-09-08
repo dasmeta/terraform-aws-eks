@@ -127,17 +127,58 @@ module "this" {
     # So it silently turns both protections into a delay. A workload marked always-up should stay up; its
     # node keeps an older AMI until a human moves it, which assessment section D4 surfaces.
 
-    # Set explicitly: protected on-demand capacity is OFF by default because it costs real money. Turn it on for
-    # any cluster running ingress controllers, monitoring, or single-replica/stateful services -- those are the
-    # workloads that repeatedly turned a routine spot reclaim into an outage. See http-echo-critical.yaml for how
-    # a workload opts in.
-    protected_node_pool = {
-      enabled = true
-      limits  = { cpu = 20 }
-      # name        = "protected"             # DEFAULT
-      # weight      = 10                      # DEFAULT
-      # taint_key   = "dasmeta.io/protected"  # DEFAULT
-      # taint_value = "true"                  # DEFAULT
+    resource_configs = {
+      nodePools = {
+        # The general spot-first pool. Everything without a specific placement requirement lands here.
+        general = { weight = 1 }
+
+        # Protected on-demand capacity, built with standard node pool config -- there is no special input
+        # for this, and none is needed. Turn it on for any cluster running an ingress controller,
+        # monitoring, or single-replica/stateful services: those are the workloads that repeatedly turned a
+        # routine spot reclaim into an outage. Delete this pool if you do not want the on-demand cost.
+        #
+        # Note it declares its own `budgets`. A pool that does so owns them completely, so the module's
+        # disruption windows are NOT appended -- which is what this pool wants: it should only ever lose a
+        # genuinely empty node, at any hour.
+        protected = {
+          weight = 50 # preferred over `general` for pods that tolerate the taint below
+          template = {
+            metadata = {
+              labels = {
+                nodetype = "protected"
+              }
+            }
+            spec = {
+              requirements = [
+                {
+                  key      = "karpenter.sh/capacity-type"
+                  operator = "In"
+                  values   = ["on-demand"] # not subject to reclamation, which is the whole point
+                },
+                {
+                  key      = "kubernetes.io/arch"
+                  operator = "In"
+                  values   = ["amd64"]
+                },
+              ]
+              # Workloads opt in by tolerating this taint AND selecting on-demand -- see http-echo-critical.yaml.
+              taints = [
+                {
+                  key    = "dasmeta.io/protected"
+                  value  = "true"
+                  effect = "NoSchedule"
+                }
+              ]
+            }
+          }
+          disruption = {
+            consolidationPolicy = "WhenEmpty" # only ever remove a genuinely empty node
+            consolidateAfter    = "15m"
+            budgets             = [{ nodes = "10%" }]
+          }
+          limits = { cpu = 20 }
+        }
+      }
     }
 
     # resource_configs_defaults = {
@@ -155,12 +196,6 @@ module "this" {
     #   }
     # }
 
-    resource_configs = {
-      nodePools = {
-        # The general spot-first pool. Everything without a specific placement requirement lands here.
-        general = { weight = 1 }
-      }
-    }
   }
 
   # Keep the rest of the example small; these are not part of the karpenter recommendation.

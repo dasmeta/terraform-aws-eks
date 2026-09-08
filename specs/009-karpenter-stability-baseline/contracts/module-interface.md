@@ -11,7 +11,7 @@ New and changed consumer inputs. All additions are optional attributes on the ex
 | `controller_resources` | object, all optional | requests `250m`/`512Mi`, memory limit `1Gi`, no CPU limit | Size the controller. Raise memory on large clusters |
 | `disruption_windows` | list of objects, optional | 06:00-18:00 UTC Mon-Fri blocking `Drifted` and `Underutilized` | Suppress voluntary consolidation during business hours |
 | `termination_grace_period` | string | `24h` | Upper bound on drain before remaining pods are removed |
-| `protected_node_pool` | object, all optional | `enabled = false` | Opt-in on-demand capacity for workloads that must not move |
+| ~~`protected_node_pool`~~ | — | — | **Withdrawn before release.** It duplicated what `resource_configs.nodePools` already expresses, with less capability: one taint only, no labels, no custom node class, fixed consolidation. Protected capacity is configured as a standard node pool instead |
 | `ami_alias` | string | derived from node group `ami_type`, version `latest` | Declarative image selection; pin to stop drift |
 
 ## Changed defaults

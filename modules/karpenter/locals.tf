@@ -87,54 +87,19 @@ locals {
         var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].disruption,
         try(value.disruption, {}),
         {
-          budgets = try(value.disruption.budgets, null) != null ? value.disruption.budgets : concat(
+          # try() rather than a ternary on purpose. A conditional would have to unify the pool's own budget
+          # list with the default-plus-windows list, and those legitimately differ in shape -- a bare
+          # `{ nodes = "10%" }` against entries carrying schedule, duration and reasons. Terraform rejects
+          # that as inconsistent conditional result types, at PLAN time rather than at validate. try()
+          # returns the first expression that evaluates, with no unification requirement.
+          budgets = try(value.disruption.budgets, concat(
             var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].disruption.budgets,
             local.disruption_window_budgets,
-          )
+          ))
         }
       )
       limits = merge(var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].limits, try(value.limits, {}))
     }
   ) }
 
-  # Opt-in on-demand pool for workloads that must not be moved by spot reclamation. Tainted so ordinary
-  # workloads never land here, WhenEmpty so only genuinely empty nodes are removed, and deliberately NOT
-  # given the disruption windows: there is no voluntary consolidation to suppress.
-  protectedNodePool = var.protected_node_pool.enabled ? {
-    (var.protected_node_pool.name) = {
-      weight = var.protected_node_pool.weight
-      template = {
-        spec = {
-          nodeClassRef = local.nodePoolDefaultNodeClassRef
-          expireAfter  = "Never"
-          # No terminationGracePeriod here, deliberately. Setting one makes a node ELIGIBLE for drift even
-          # when it hosts pods with blocking PodDisruptionBudgets or the karpenter.sh/do-not-disrupt
-          # annotation, and force-deletes those pods once it elapses. This pool exists precisely so those
-          # protections hold absolutely, so granting an override here would defeat its purpose.
-          taints = [
-            {
-              key    = var.protected_node_pool.taint_key
-              value  = var.protected_node_pool.taint_value
-              effect = "NoSchedule"
-            }
-          ]
-          requirements = coalesce(
-            var.protected_node_pool.requirements,
-            concat(
-              [for item in local.nodePoolDefaultRequirements : item if item.key != "karpenter.sh/capacity-type"],
-              [{ key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] }],
-            )
-          )
-        }
-      }
-      disruption = {
-        consolidationPolicy = "WhenEmpty"
-        consolidateAfter    = "15m"
-        budgets             = [{ nodes = "10%" }]
-      }
-      limits = var.protected_node_pool.limits
-    }
-  } : {}
-
-  allNodePools = merge(local.nodePools, local.protectedNodePool)
 }

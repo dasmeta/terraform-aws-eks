@@ -183,22 +183,36 @@ run "window_permitting_some_disruption" {
 # Axis: protected pool x windows x custom pools. These interact in locals.
 # ---------------------------------------------------------------------------
 
-run "protected_pool_with_custom_taint_and_requirements" {
+# A protected on-demand pool is built with standard node pool config, not a bespoke input. It carries its
+# own budgets, which means the module's disruption windows are deliberately not appended to it.
+run "protected_pool_via_standard_config" {
   command = plan
   module { source = "./modules/karpenter" }
   variables {
     subnet_ids = ["subnet-a", "subnet-b"]
-    protected_node_pool = {
-      enabled     = true
-      name        = "critical"
-      weight      = 50
-      taint_key   = "example.io/critical"
-      taint_value = "yes"
-      limits      = { cpu = 50, memory = "200Gi" }
-      requirements = [
-        { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
-        { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
-      ]
+    resource_configs = {
+      nodePools = {
+        general = { weight = 1 }
+        protected = {
+          weight = 50
+          template = {
+            metadata = { labels = { nodetype = "protected" } }
+            spec = {
+              requirements = [
+                { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
+                { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
+              ]
+              taints = [{ key = "dasmeta.io/protected", value = "true", effect = "NoSchedule" }]
+            }
+          }
+          disruption = {
+            consolidationPolicy = "WhenEmpty"
+            consolidateAfter    = "15m"
+            budgets             = [{ nodes = "10%" }]
+          }
+          limits = { cpu = 50, memory = "200Gi" }
+        }
+      }
     }
   }
 }
@@ -207,9 +221,20 @@ run "protected_pool_with_windows_disabled" {
   command = plan
   module { source = "./modules/karpenter" }
   variables {
-    subnet_ids          = ["subnet-a", "subnet-b"]
-    protected_node_pool = { enabled = true }
-    disruption_windows  = []
+    subnet_ids         = ["subnet-a", "subnet-b"]
+    disruption_windows = []
+    resource_configs = {
+      nodePools = {
+        protected = {
+          template = {
+            spec = {
+              requirements = [{ key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] }]
+              taints       = [{ key = "dasmeta.io/protected", value = "true", effect = "NoSchedule" }]
+            }
+          }
+        }
+      }
+    }
   }
 }
 
@@ -338,7 +363,6 @@ run "everything_at_once" {
     ami_alias                = "al2023@v20240807"
     termination_grace_period = "12h"
     controller_resources     = { requests = { cpu = "500m", memory = "1Gi" }, limits = { memory = "2Gi" } }
-    protected_node_pool      = { enabled = true, limits = { cpu = 20 } }
     disruption_windows = [
       { schedule = "0 12 * * mon-fri", duration = "13h", reasons = ["Drifted", "Underutilized"], nodes = "0" },
     ]

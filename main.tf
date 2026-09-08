@@ -277,7 +277,7 @@
  *      out of CPU while memory sits idle, constrain to `["c"]` (1:2 memory-per-core) rather than the default
  *      c/m/r set; if the reverse, `["r"]` (1:8). Section 14 of `scripts/eks-assess.sh` reports this per node.
  *    - New `karpenter.termination_grace_period`, **unset by default**. It bounds how long a node may drain before remaining pods are removed. It is deliberately NOT enabled by default: setting it does more than bound a drain already underway, it makes a node ELIGIBLE for drift even when it hosts pods with blocking PodDisruptionBudgets or the `karpenter.sh/do-not-disrupt` annotation, and force-deletes those pods when it elapses. That converts both protections from a guarantee into a delay. A workload marked always-up stays up, and its node keeps an older AMI until a human moves it -- assessment section D4 lists such nodes and names what is holding them.
- *    - New opt-in `karpenter.protected_node_pool` creates tainted on-demand capacity for ingress, monitoring, singleton and stateful workloads that must not be moved by spot reclamation. Disabled by default; enabling it costs on-demand capacity. See `examples/eks-with-karpenter-and-external-secret`.
+ *    - Protected on-demand capacity for ingress, monitoring, singleton and stateful workloads is configured with a standard node pool in `karpenter.resource_configs.nodePools` -- an on-demand capacity-type requirement plus a taint -- not a bespoke input. Standard pools already express this and more (labels, multiple taints, a custom node class), and a pool that declares its own `budgets` is excluded from the module's disruption windows, which is what such a pool wants. See `examples/eks-with-karpenter-recommended`.
  *    - Karpenter charts move `1.9.0` -> `1.14.1` and `karpenter-nodes` `0.1.0` -> `0.1.2`. The CRD chart is upgraded before the main chart. If you are coming from a much older release you may still need the `kubectl patch` commands in the 2.20.0 entry below. `ec2:DescribeInstanceStatus` is granted to the controller role, which Karpenter 1.12+ requires for its interruption health checks; without it that code path fails silently with AccessDenied. Note 1.9 is the LTS line, so this moves off LTS deliberately, in exchange for the interruption health checks and `Balanced` consolidation this incident needs.
  *    - **Two things deliberately did NOT change**, both for the same reason - they would bypass the pacing this release adds:
  *      - `expireAfter` stays `Never`. Node expiry is not gated by disruption budgets, so any finite value would replace nodes unpaced and outside the protected window, and switching an existing fleet to a finite value would expire every older node at once. AMI patching is handled by budget-paced drift via the alias instead.
@@ -919,7 +919,6 @@ module "karpenter" {
   # deliberate default, because setting one makes nodes with blocking PDBs or do-not-disrupt pods eligible for
   # drift and then force-deletes those pods. See modules/karpenter/variables.tf.
   termination_grace_period = var.karpenter.termination_grace_period
-  protected_node_pool      = var.karpenter.protected_node_pool != null ? var.karpenter.protected_node_pool : {}
 
   depends_on = [module.eks-core-components, module.priority_class]
 }
