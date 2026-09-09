@@ -239,7 +239,9 @@ kubectl get deploy -A -o json 2>/dev/null | jq -r '.items[]
   | select(.metadata.namespace | test("^(kube-system|kube-public|kube-node-lease|karpenter|linkerd|cert-manager)$") | not)
   | "  SINGLE  \(.metadata.namespace)/\(.metadata.name)"' | head -25
 echo "  (a single replica cannot be protected by a PodDisruptionBudget at all: any drain takes it down."
-echo "   Raise to 2, or place it on protected on-demand capacity.)"
+echo "   For an APPLICATION, raise it to 2. For a CONTROLLER that must not run twice -- external-dns and"
+echo "   most operators without leader election -- a second replica causes conflicting writes and is the"
+echo "   wrong fix; put it on protected on-demand capacity instead, or accept the restart.)"
 
 hr "F1. INSTANCE TYPE MIX (burstable t-family throttles under load and is interrupted more often)"
 kubectl get nodes -L node.kubernetes.io/instance-type,karpenter.sh/capacity-type,karpenter.sh/nodepool -o json 2>/dev/null | jq -r '
