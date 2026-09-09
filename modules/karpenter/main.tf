@@ -57,24 +57,45 @@ module "this" {
   create_instance_profile           = true
   create_node_iam_role              = true
 
-  # ONE statement, not two. The upstream module inlines these into a single aws_iam_policy, and AWS caps a
-  # managed policy at 6144 characters -- a limit this policy already sits close to. Adding a second statement
-  # exceeded it and the controller policy failed to create entirely, which left karpenter unable to launch
-  # any instance. Merging both actions into one statement costs ~30 characters instead of ~150.
-  #
-  # iam:ListInstanceProfiles     -- instance profile garbage collection, karpenter 1.9+. Cannot be scoped.
-  # ec2:DescribeInstanceStatus   -- interruption-controller health checks, karpenter 1.12+. The pinned
-  #                                 upstream version omits it from AllowRegionalReadActions, so without it
-  #                                 that path fails with AccessDenied and the capability is silently absent.
-  #
-  # TODO: both are granted upstream from eks module v21.15.1+; drop this block when that upgrade lands.
-  iam_policy_statements = [
-    {
-      sid       = "AllowUnscopedReadActions"
-      actions   = ["iam:ListInstanceProfiles", "ec2:DescribeInstanceStatus"]
-      resources = ["*"]
-    }
-  ]
+  # Our two extra actions are attached as a SEPARATE managed policy (below) rather than through
+  # `iam_policy_statements`, which would inline them into the upstream document. See that resource for why.
+  iam_role_policies = {
+    unscoped_read = aws_iam_policy.controller_unscoped_read.arn
+  }
+}
+
+# AWS caps a managed policy at 6144 characters, whitespace excluded. The upstream controller document is
+# already 5966 of those for a 30-character cluster name, and the cluster name appears in it 16 times -- so
+# every additional character of cluster name costs 16, and the 178 characters of headroom are gone once the
+# name grows by 11. `iam_policy_statements` therefore is not a usable escape hatch: anything added there
+# competes for a budget the cluster name already owns, and going over does not degrade gracefully. The policy
+# fails to create, the controller has no permissions at all, and karpenter cannot launch a single instance --
+# which surfaces as unrelated workloads hanging with nowhere to schedule.
+#
+# A separate managed policy gets its own 6144 budget and leaves the upstream document untouched.
+#
+# iam:ListInstanceProfiles   -- instance profile garbage collection, karpenter 1.9+. Cannot be scoped.
+# ec2:DescribeInstanceStatus -- interruption-controller health checks, karpenter 1.12+. The pinned upstream
+#                               version omits it from AllowRegionalReadActions, so without it that path fails
+#                               with AccessDenied and the capability is silently absent.
+#
+# TODO: both are granted upstream from eks module v21.15.1+; drop this policy when that upgrade lands.
+resource "aws_iam_policy" "controller_unscoped_read" {
+  name_prefix = "KarpenterControllerRead-${substr(var.cluster_name, 0, 20)}-"
+  description = "Unscoped read actions the karpenter controller needs that the pinned upstream policy omits"
+  tags        = var.tags
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "AllowUnscopedReadActions"
+        Effect   = "Allow"
+        Action   = ["iam:ListInstanceProfiles", "ec2:DescribeInstanceStatus"]
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 # installs karpenter operator crds helm package (we need this separate chart for crds, as the below main chart do not support crds upgrade, doc: https://karpenter.sh/docs/upgrading/upgrade-guide/#crd-upgrades)
