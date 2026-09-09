@@ -1065,13 +1065,20 @@ variable "node_local_dns" {
 
 variable "kyverno" {
   type = object({
-    enabled         = optional(bool, true)
+    # Default OFF since 2.30.0. kyverno registers admission webhooks with failurePolicy=Fail, which means the
+    # API calls they match are REJECTED whenever no healthy backend exists rather than being skipped -- so an
+    # admission controller with too few replicas is a cluster-wide veto held by a single pod. It was enabled
+    # by default only to carry the temporary `bitnami-to-bitnamilegacy` image rewrite, which is a workaround,
+    # not a permanent policy engine requirement. Pin the registry in the workload's own image config instead;
+    # assessment section E8 lists any image still pointing at `bitnami`. Enable this only where the cluster
+    # genuinely uses policy enforcement, and give the admission controller 2+ replicas when you do.
+    enabled         = optional(bool, false)
     policies        = optional(list(string), ["bitnami-to-bitnamilegacy"]) # Predefined kyverno rules to apply/enable. supported rule are "bitnami-to-bitnamilegacy"
     custom_policies = optional(any, [])                                    # Custom kyverno rules to apply. The custom policies are list of objects. check for more details in terraform module "dasmeta/shared/any//modules/kyverno"
     extra_configs   = optional(any, {})                                    # Configs to pass and override kyverno helm values.yaml defaults and var.default_configs if needed more fine control. for more info check https://artifacthub.io/packages/helm/kyverno/kyverno?modal=values
   })
   default     = {}
-  description = "Allows to enable/install the kyverno k8s policies management tool/operator, by default we have predefined \"bitnami-to-bitnamilegacy\" policy enabled"
+  description = "Allows to enable/install the kyverno k8s policies management tool/operator. Disabled by default since 2.30.0: it carries a cluster-wide admission webhook with failurePolicy=Fail, and the predefined \"bitnami-to-bitnamilegacy\" policy it shipped for was a temporary migration aid. Pin the registry in each workload image instead -- eks-assess.sh section E8 lists any that still need it."
 }
 
 variable "tags" {

@@ -312,6 +312,26 @@
  *        anything. Any node group that declares its own `taints` is left exactly as written.
  *      - Opt out with `node_groups_system_taint = { enabled = false }`, which is the right choice for
  *        development or test clusters where the isolation is not worth the extra capacity.
+ *    - **`kyverno.enabled` now defaults to `false`.** It was on by default only to carry the temporary
+ *      `bitnami-to-bitnamilegacy` image rewrite, and most clusters have since migrated those references
+ *      directly. Keeping it costs more than it gives: kyverno registers admission webhooks with
+ *      `failurePolicy: Fail`, so the API calls they match are REJECTED whenever no healthy backend exists --
+ *      not skipped. Its admission controller runs a single replica by default, which makes a cluster-wide veto
+ *      depend on one pod surviving every spot reclaim, consolidation and node group upgrade. The rejections
+ *      typically land on pod creation, so the workload that cannot start looks like the fault while the cause
+ *      is several layers away. The same property makes it awkward to remove: the pods go, the webhooks stay
+ *      registered, and the cleanup is rejected by itself, which presents as a `helm delete` or
+ *      `terraform destroy` that never finishes.
+ *      - **Before upgrading**, run `scripts/eks-assess.sh` and read section E8. It lists every running image
+ *        still pointing at the retired `bitnami` repository. Fix each one in the workload's OWN image config
+ *        -- a values override or a chart upgrade to `bitnamilegacy` -- rather than relying on the mutating
+ *        policy. Doing it in the image reference means a pod no longer needs an admission webhook to be
+ *        healthy in order to get a working image.
+ *      - If E8 is empty, nothing needs doing: the policy has no work left and this default simply removes it.
+ *      - Set `kyverno = { enabled = true }` to keep it, which is the right choice where the cluster genuinely
+ *        uses policy enforcement. Give the admission controller 2+ replicas if you do -- assessment section B3
+ *        reports every `Fail`-policy webhook alongside how many ready backends it currently has.
+ *      - Disabling it uninstalls the release. Delete its webhook configurations first if the uninstall hangs.
  *    - The system node group instance type changes from `t3.large` to `t3.medium`. Same family, one size down:
  *      these nodes carry a small steady load -- one karpenter replica, one coredns, a CSI controller and the
  *      DaemonSets -- and `t3.large` was simply larger than that needs. Burstable is appropriate here precisely

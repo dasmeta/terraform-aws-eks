@@ -268,6 +268,24 @@ echo "   For an APPLICATION, raise it to 2. For a CONTROLLER that must not run t
 echo "   most operators without leader election -- a second replica causes conflicting writes and is the"
 echo "   wrong fix; put it on protected on-demand capacity instead, or accept the restart.)"
 
+hr "E8. BITNAMI IMAGES STILL POINTING AT THE RETIRED REPOSITORY"
+echo "  Bitnami moved its free images to the \`bitnamilegacy\` repository. Pin the new path in each workload's"
+echo "  OWN image config -- a values override, a chart upgrade -- and not with the kyverno mutating policy."
+echo "  That policy was a stopgap for the cutover. Keeping it means every pod creation in the cluster depends"
+echo "  on an admission webhook staying healthy (section B3) in order to get a working image reference."
+hits=$(kubectl get pods -A -o json 2>/dev/null | jq -r '
+  .items[] | .metadata.namespace as $ns
+  | (.spec.containers[]?, .spec.initContainers[]?)
+  | select(.image | test("(^|/)bitnami/"))
+  | "  SWITCH  \($ns)  \(.image)"' | sort -u)
+if [ -n "$hits" ]; then
+  echo "$hits"
+  echo "  -> replace the 'bitnami/' path with 'bitnamilegacy/' in the chart values for each of these,"
+  echo "     then set kyverno.enabled = false (it is false by default from 2.30.0)."
+else
+  echo "  none -- no image references the retired repository, so the kyverno rewrite policy is not needed here"
+fi
+
 hr "F1. INSTANCE TYPE MIX (burstable t-family throttles under load and is interrupted more often)"
 kubectl get nodes -L node.kubernetes.io/instance-type,karpenter.sh/capacity-type,karpenter.sh/nodepool -o json 2>/dev/null | jq -r '
   [.items[] | {
