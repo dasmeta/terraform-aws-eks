@@ -2,11 +2,12 @@
 # To render standalone:
 #   helm template http-echo-critical dasmeta/base --version 0.4.0 -f ./http-echo-critical.yaml
 #
-# A workload that must NOT be moved by spot reclamation: ingress controllers, monitoring, single-replica or
+# A workload that must NOT be moved by spot reclamation: monitoring, a message broker, single-replica or
 # stateful services. This is the shape that repeatedly turned a routine spot reclaim into an outage --
-# a singleton database pod on a spot node, an ingress controller sharing capacity with bulk workloads.
+# a singleton database pod on a spot node sharing capacity with bulk workloads.
 #
-# Requires base chart >= 0.4.0, and karpenter.protected_node_pool.enabled = true in the eks module.
+# Requires base chart >= 0.4.0, and a `protected` node pool defined under karpenter.resource_configs.nodePools
+# in the eks module -- see 1-example.tf. There is no dedicated input for it; it is an ordinary node pool.
 
 image:
   repository: mendhak/http-https-echo
@@ -75,7 +76,7 @@ resources:
 
 ingress:
   enabled: true
-  class: nginx
+  class: alb
   hosts:
     - host: http-echo-critical.devops.dasmeta.com
       paths:

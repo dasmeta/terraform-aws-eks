@@ -148,10 +148,11 @@ module "this" {
         general = { weight = 1 }
 
         # DELETE THIS POOL unless the cluster runs something that cannot survive its node disappearing:
-        # an ingress controller, the metrics store or its database, or any single-replica or stateful
-        # service. If everything here is stateless with 2+ replicas, spot handles it and this is wasted
-        # on-demand spend. Enabling it is the fix for the pattern where a routine spot reclaim took out
-        # monitoring or ingress and made every co-occurring incident harder to diagnose.
+        # the metrics store or its database, a message broker, or any single-replica or stateful service.
+        # If everything here is stateless with 2+ replicas, spot handles it and this is wasted on-demand
+        # spend. Enabling it is the fix for the pattern where a routine spot reclaim took out monitoring and
+        # made every co-occurring incident harder to diagnose. Note that ingress is NOT a reason to keep it
+        # here: with an ALB the load balancer lives outside the cluster and survives any node loss.
         #
         # There is no special input for this -- it is an ordinary node pool. It declares its own `budgets`,
         # which keeps the protection window off it: it should only ever lose an empty node, at any hour.
@@ -223,55 +224,18 @@ module "this" {
     enabled = false
   }
 
+  # ingress-nginx is retired upstream, so a new setup should not adopt it. The AWS Load Balancer Controller
+  # is enabled by default and is what serves ingress here: an `Ingress` with class `alb` provisions an ALB,
+  # and with target-type `ip` the load balancer sends traffic straight to pod IPs.
+  #
+  # That removes an entire class of the disruption this configuration is about. An in-cluster ingress
+  # controller is a data-plane component -- lose its nodes and everything behind it goes with them, which is
+  # why it needed protected capacity, a spread constraint and a PDB of its own. An ALB is managed by AWS and
+  # sits outside the cluster, so there is nothing left to reclaim. The controller itself only reconciles
+  # Ingress objects into ALB configuration; it is not in the request path, and it already runs 2 replicas on
+  # the managed node group, which it tolerates via CriticalAddonsOnly.
   nginx_ingress_controller_config = {
-    enabled          = true
-    name             = "nginx"
-    create_namespace = true
-    namespace        = "ingress-nginx"
-    # Set explicitly: the ingress controller is exactly the workload that must not lose all replicas to a single
-    # node disruption. 2 replicas is the minimum that lets a PodDisruptionBudget protect anything at all.
-    replicacount    = 2
-    metrics_enabled = true
-
-    # Set explicitly: replica count alone does NOT stop both replicas landing on the same node. On the first
-    # run of this example they did exactly that -- both on one SPOT node -- so a single reclaim would have
-    # taken ingress down completely, which is the failure this whole configuration exists to prevent. Two
-    # separate things are needed and neither substitutes for the other:
-    #
-    #   topologySpreadConstraints -- keeps the replicas on different nodes. DoNotSchedule rather than
-    #                                ScheduleAnyway because karpenter provisions a node to satisfy it, so
-    #                                the constraint is met rather than quietly skipped under pressure.
-    #   tolerations + nodeSelector -- moves them onto the protected on-demand pool. The toleration alone only
-    #                                 makes those nodes eligible; the nodeSelector is what keeps the pods off
-    #                                 reclaimable capacity. See http-echo-critical.yaml for the same pair.
-    #
-    # Guide 4.2. If the protected pool is deleted, drop the tolerations and nodeSelector but KEEP the spread
-    # constraint -- spot ingress spread across two nodes is still far better than two replicas on one.
-    configs = {
-      controller = {
-        tolerations = [
-          { key = "dasmeta.io/protected", operator = "Equal", value = "true", effect = "NoSchedule" }
-        ]
-        nodeSelector = {
-          "karpenter.sh/capacity-type" = "on-demand"
-        }
-        # The chart runs these through `tpl`, so the selector follows the release name instead of hardcoding it.
-        topologySpreadConstraints = [
-          {
-            maxSkew           = 1
-            topologyKey       = "kubernetes.io/hostname"
-            whenUnsatisfiable = "DoNotSchedule"
-            labelSelector = {
-              matchLabels = {
-                "app.kubernetes.io/name"      = "{{ include \"ingress-nginx.name\" . }}"
-                "app.kubernetes.io/instance"  = "{{ .Release.Name }}"
-                "app.kubernetes.io/component" = "controller"
-              }
-            }
-          }
-        ]
-      }
-    }
+    enabled = false
   }
 }
 

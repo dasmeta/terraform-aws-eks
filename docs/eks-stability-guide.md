@@ -234,8 +234,9 @@ starved, which is the first link in the incident chain this guide exists to brea
 documented recommendation and was being forgotten in practice.
 
 **What stays on system nodes**: the Karpenter controller, the EKS CoreDNS addon and the EBS CSI controller,
-all of which tolerate `CriticalAddonsOnly` out of the box. **What moves to Karpenter capacity**: ingress
-controllers, cert-manager, external-dns, KEDA, service mesh. That is the intent, not a side effect.
+all of which tolerate `CriticalAddonsOnly` out of the box, plus the AWS Load Balancer Controller. **What
+moves to Karpenter capacity**: cert-manager, external-dns, KEDA, service mesh, and any in-cluster ingress
+controller. That is the intent, not a side effect.
 
 **Two safeguards worth knowing:**
 
@@ -363,13 +364,13 @@ disappearing:
 
 | Add it | Skip it |
 | --- | --- |
-| Ingress controllers | Everything stateless with 2+ replicas |
-| Metrics store and its database | Batch and queue workers that can restart |
-| Single-replica or stateful services | Dev and test clusters |
+| Metrics store and its database | Everything stateless with 2+ replicas |
+| Single-replica or stateful services | Batch and queue workers that can restart |
+| An in-cluster ingress controller, if one is unavoidable | Ingress served by an ALB, which is outside the cluster |
 
 If nothing on the cluster fits the left column, delete the pool — it is on-demand capacity you are paying
 for and nothing needs. If something does, this is the fix for the pattern where a routine spot reclaim took
-out monitoring or ingress and made every co-occurring incident harder to diagnose.
+out monitoring and made every co-occurring incident harder to diagnose.
 
 There is no special input for this — it is an ordinary node pool with an on-demand requirement and a taint:
 
@@ -574,11 +575,19 @@ Check and fix, in this order:
    during exactly the incidents you need visibility into.
 4. `kube-state-metrics` — when it is evicted, alerts go stale and incidents look worse or resolve falsely.
 
-### 4.2 Ingress controllers
+### 4.2 Ingress
 
-At least 2 replicas, on protected capacity. An ingress controller on a reclaimed spot node takes out
-everything behind it, and the resulting Route53 health-check dips have repeatedly been misdiagnosed as
-application faults.
+Prefer an AWS load balancer over an in-cluster ingress controller. An `Ingress` with class `alb` and
+target-type `ip` puts the load balancer outside the cluster and sends traffic straight to pod IPs, so there
+is no ingress data plane left to reclaim. The AWS Load Balancer Controller only reconciles Ingress objects
+into ALB configuration and is not in the request path. This is also the direction of travel: ingress-nginx
+is retired upstream, so new setups should not adopt it.
+
+Where an in-cluster controller is unavoidable, it needs all three: at least 2 replicas, a
+`topologySpreadConstraints` entry on `kubernetes.io/hostname` so the replicas cannot share a node, and
+protected on-demand capacity. Replicas alone protect nothing -- two of them on one reclaimed node fail
+together, and the resulting Route53 health-check dips have repeatedly been misdiagnosed as application
+faults.
 
 ---
 
@@ -648,7 +657,7 @@ On-demand is the only real protection against reclamation, so spend it narrowly 
 | Workload | Placement | Why |
 | --- | --- | --- |
 | Node autoscaler controller | managed node group | If it is reclaimed while reclaiming, nothing drains |
-| Ingress controllers | protected on-demand | Reclaiming one takes out everything behind it |
+| In-cluster ingress controllers, where unavoidable | protected on-demand | Reclaiming one takes out everything behind it; an ALB has no such exposure |
 | Databases, single-replica stateful | protected on-demand | ReadWriteOnce volumes reattach slowly from a node that is already gone |
 | Monitoring (metrics store, its database) | protected on-demand | Losing it during churn removes the visibility you need to diagnose the churn |
 | Everything else | spot | This is the majority, and where the saving is |

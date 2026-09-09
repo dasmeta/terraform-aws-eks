@@ -85,7 +85,7 @@ resources:
 
 ingress:
   enabled: true
-  class: nginx
+  class: alb
   hosts:
     - host: http-echo-recommended.devops.dasmeta.com
       paths:
