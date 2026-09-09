@@ -57,22 +57,21 @@ module "this" {
   create_instance_profile           = true
   create_node_iam_role              = true
 
-  # Required for Karpenter 1.9+ instance profile garbage collection (iam:ListInstanceProfiles cannot be resource-scoped)
-  # TODO: with module version >=v21.15.1 this policy being set automatically, so we can remove this after upgrading the module version
+  # ONE statement, not two. The upstream module inlines these into a single aws_iam_policy, and AWS caps a
+  # managed policy at 6144 characters -- a limit this policy already sits close to. Adding a second statement
+  # exceeded it and the controller policy failed to create entirely, which left karpenter unable to launch
+  # any instance. Merging both actions into one statement costs ~30 characters instead of ~150.
+  #
+  # iam:ListInstanceProfiles     -- instance profile garbage collection, karpenter 1.9+. Cannot be scoped.
+  # ec2:DescribeInstanceStatus   -- interruption-controller health checks, karpenter 1.12+. The pinned
+  #                                 upstream version omits it from AllowRegionalReadActions, so without it
+  #                                 that path fails with AccessDenied and the capability is silently absent.
+  #
+  # TODO: both are granted upstream from eks module v21.15.1+; drop this block when that upgrade lands.
   iam_policy_statements = [
     {
-      sid       = "AllowUnscopedInstanceProfileListAction"
-      actions   = ["iam:ListInstanceProfiles"]
-      resources = ["*"]
-    },
-    # Required by karpenter >= 1.12 for the interruption controller's EC2 instance-status health checks,
-    # which is the capability that lets karpenter act on unhealthy/terminating capacity. The pinned upstream
-    # module version does not include this action in its AllowRegionalReadActions statement, so without this
-    # the new code path fails with AccessDenied and the capability is silently inactive.
-    # TODO: re-check whether this is granted upstream when the eks module is upgraded to >= v21.
-    {
-      sid       = "AllowInstanceStatusRead"
-      actions   = ["ec2:DescribeInstanceStatus"]
+      sid       = "AllowUnscopedReadActions"
+      actions   = ["iam:ListInstanceProfiles", "ec2:DescribeInstanceStatus"]
       resources = ["*"]
     }
   ]
