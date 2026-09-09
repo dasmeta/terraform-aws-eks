@@ -575,6 +575,21 @@ Check and fix, in this order:
    during exactly the incidents you need visibility into.
 4. `kube-state-metrics` — when it is evicted, alerts go stale and incidents look worse or resolve falsely.
 
+### 4.1b Admission webhook controllers
+
+Any component that registers a webhook with `failurePolicy: Fail` -- kyverno, KEDA, cert-manager, a service
+mesh injector -- holds a veto over the API calls it matches. When it has no healthy backend, those calls are
+rejected rather than skipped. One replica means one eviction is enough, and the rejections usually land on pod
+creation across the whole cluster, so the workload that cannot start looks like the fault and the real cause
+is several layers away.
+
+Give these 2+ replicas, or place them on protected capacity, and check that their PDB permits an eviction.
+Assessment section B3 lists every `Fail` webhook alongside how many backends it currently has.
+
+The same property makes them awkward to remove: the pods go, the webhook stays registered, and the cleanup it
+needs is rejected by itself. That presents as a `helm delete` or `terraform destroy` that never finishes.
+Delete the webhook configurations first, then the release.
+
 ### 4.2 Ingress
 
 Prefer an AWS load balancer over an in-cluster ingress controller. An `Ingress` with class `alb` and

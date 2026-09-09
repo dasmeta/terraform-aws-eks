@@ -105,6 +105,31 @@ else
   echo "  none (correct when karpenter manages nodes)"
 fi
 
+hr "B3. ADMISSION WEBHOOKS THAT CAN WEDGE THE CLUSTER"
+echo "  A webhook with failurePolicy=Fail REJECTS the API calls it intercepts whenever it has no healthy"
+echo "  backend. With one backend, a single eviction -- spot reclaim, consolidation, node upgrade -- is enough,"
+echo "  and the rejections hit whatever the webhook matches, commonly pod creation across the cluster. The"
+echo "  workload that cannot start then looks like the fault, so this is slow to diagnose."
+echo "  It also blocks UNINSTALL of the component that owns it: the pods go, the webhook stays registered,"
+echo "  and the cleanup it needs is rejected by itself. That presents as a helm delete that never finishes."
+found=0
+while IFS='|' read -r cfg ns svc; do
+  [ -z "$cfg" ] && continue
+  n=$(kubectl -n "$ns" get endpoints "$svc" -o json 2>/dev/null | jq '[.subsets[]?.addresses[]?] | length' 2>/dev/null)
+  n=${n:-0}
+  found=1
+  if [ "$n" -lt 2 ]; then
+    printf '  AT RISK  %-48s backends=%s  (%s/%s)\n' "$cfg" "$n" "$ns" "$svc"
+  else
+    printf '  ok       %-48s backends=%s  (%s/%s)\n' "$cfg" "$n" "$ns" "$svc"
+  fi
+done < <(kubectl get validatingwebhookconfigurations,mutatingwebhookconfigurations -o json 2>/dev/null | jq -r '
+  .items[] | .metadata.name as $cfg | .webhooks[]?
+  | select(.failurePolicy == "Fail")
+  | select(.clientConfig.service != null)
+  | "\($cfg)|\(.clientConfig.service.namespace)|\(.clientConfig.service.name)"' | sort -u)
+[ "$found" = 0 ] && echo "  none with failurePolicy=Fail"
+
 hr "C1. KARPENTER CONTROLLER (if this is down, nothing drains)"
 kubectl -n karpenter get deploy karpenter -o json 2>/dev/null | jq -r '
   "replicas_desired: \(.spec.replicas)",
