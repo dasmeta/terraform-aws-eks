@@ -232,6 +232,46 @@ module "this" {
     # node disruption. 2 replicas is the minimum that lets a PodDisruptionBudget protect anything at all.
     replicacount    = 2
     metrics_enabled = true
+
+    # Set explicitly: replica count alone does NOT stop both replicas landing on the same node. On the first
+    # run of this example they did exactly that -- both on one SPOT node -- so a single reclaim would have
+    # taken ingress down completely, which is the failure this whole configuration exists to prevent. Two
+    # separate things are needed and neither substitutes for the other:
+    #
+    #   topologySpreadConstraints -- keeps the replicas on different nodes. DoNotSchedule rather than
+    #                                ScheduleAnyway because karpenter provisions a node to satisfy it, so
+    #                                the constraint is met rather than quietly skipped under pressure.
+    #   tolerations + nodeSelector -- moves them onto the protected on-demand pool. The toleration alone only
+    #                                 makes those nodes eligible; the nodeSelector is what keeps the pods off
+    #                                 reclaimable capacity. See http-echo-critical.yaml for the same pair.
+    #
+    # Guide 4.2. If the protected pool is deleted, drop the tolerations and nodeSelector but KEEP the spread
+    # constraint -- spot ingress spread across two nodes is still far better than two replicas on one.
+    configs = {
+      controller = {
+        tolerations = [
+          { key = "dasmeta.io/protected", operator = "Equal", value = "true", effect = "NoSchedule" }
+        ]
+        nodeSelector = {
+          "karpenter.sh/capacity-type" = "on-demand"
+        }
+        # The chart runs these through `tpl`, so the selector follows the release name instead of hardcoding it.
+        topologySpreadConstraints = [
+          {
+            maxSkew           = 1
+            topologyKey       = "kubernetes.io/hostname"
+            whenUnsatisfiable = "DoNotSchedule"
+            labelSelector = {
+              matchLabels = {
+                "app.kubernetes.io/name"      = "{{ include \"ingress-nginx.name\" . }}"
+                "app.kubernetes.io/instance"  = "{{ .Release.Name }}"
+                "app.kubernetes.io/component" = "controller"
+              }
+            }
+          }
+        ]
+      }
+    }
   }
 }
 
