@@ -237,6 +237,32 @@ module "this" {
   nginx_ingress_controller_config = {
     enabled = false
   }
+
+  # FOR THIS EXAMPLE ONLY -- most real setups should leave this disabled.
+  #
+  # external-dns watches Ingress objects and writes the matching Route53 records, which is what makes the two
+  # example hostnames resolve without anyone creating DNS by hand. It is here so the example is testable end
+  # to end, not because it is part of the karpenter recommendation.
+  #
+  # Leave it off wherever DNS is already managed somewhere else -- a separate terraform stack, another
+  # account, or a provider that is not Route53. Two systems writing the same zone will overwrite each other's
+  # records, and the loser is whichever ran last.
+  #
+  # If you do enable it, both of these settings are load-bearing:
+  #   domainFilters -- without it EVERY hosted zone in the account is in scope, so a mistake here edits
+  #                    records for unrelated systems. Always scope it.
+  #   txtOwnerId    -- external-dns records ownership in a TXT record. Two clusters sharing a zone without
+  #                    distinct owner ids will each treat the other's records as orphans and delete them.
+  external_dns = {
+    enabled = true
+    configs = {
+      domainFilters = ["devops.dasmeta.com"]
+      txtOwnerId    = "test-eks-karpenter-recommended"
+      # `sync` lets it DELETE records whose ingress is gone, so tearing this example down leaves no strays.
+      # The chart default is `upsert-only`, which never deletes -- the safer choice for a shared zone.
+      policy = "sync"
+    }
+  }
 }
 
 # A normal application: spot-backed, protected by the base chart's disruption defaults.

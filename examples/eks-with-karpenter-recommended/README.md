@@ -24,6 +24,12 @@ the defaults are the recommendation.
 | Node lifecycle | Declarative AMI selection, `Balanced` consolidation, disruption windows, drain ceiling |
 | Protected capacity | An opt-in on-demand pool, and a workload correctly pinned to it |
 | Workload safety | Replica floors, disruption budgets, spread, shutdown timing, probes and requests |
+| Ingress | An ALB rather than an in-cluster controller, so there is no ingress data plane to reclaim |
+
+Two components are enabled purely so the example is testable end to end and are **not** part of the
+recommendation: `external_dns`, which creates the Route53 records for the example hostnames, and the two
+`http-echo` releases. Delete both when adapting this. Real setups usually manage DNS elsewhere, and enabling
+external-dns against a zone another system already writes will have the two overwrite each other.
 
 ## The five things that actually cause outages
 
