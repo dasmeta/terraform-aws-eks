@@ -241,8 +241,11 @@ resource "helm_release" "http_echo" {
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
   namespace  = "default"
-  version    = "0.4.0" # NOTE: 0.4.0+ is required -- it is the release that creates PodDisruptionBudgets by default
-  wait       = false
+  # 0.4.0+ is REQUIRED: it is the release that creates PodDisruptionBudgets by default and refuses to render
+  # one that permits zero evictions. Until it is published this example cannot be applied as written -- point
+  # `chart` at a local checkout of dasmeta/helm/charts/base to try it before then.
+  version = "0.4.0"
+  wait    = false
 
   values = [file("${path.module}/http-echo.yaml")]
 
@@ -255,7 +258,7 @@ resource "helm_release" "http_echo_critical" {
   repository = "https://dasmeta.github.io/helm"
   chart      = "base"
   namespace  = "default"
-  version    = "0.4.0"
+  version    = "0.4.0" # see the note on the release above
   wait       = false
 
   values = [file("${path.module}/http-echo-critical.yaml")]
