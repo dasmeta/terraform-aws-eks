@@ -16,6 +16,9 @@ containerPort: 8080
 
 service:
   enabled: true
+  # ClusterIP, not NodePort. The chart's default `target-type: ip` registers pod IPs directly with the ALB, so
+  # traffic bypasses the node port hop entirely and a pod leaving no longer depends on kube-proxy rules being
+  # reprogrammed. NodePort is only needed for `target-type: instance`.
   type: ClusterIP
 
 # Set explicitly: the newer external-secrets operator that ships with this module version serves v1.
@@ -86,6 +89,16 @@ resources:
 ingress:
   enabled: true
   class: alb
+  # Set explicitly: the chart's default listen-ports are '[{"HTTP":80},{"HTTPS":443}]'. A 443 listener needs a
+  # certificate, and with no `certificate-arn` annotation the controller tries to discover one in ACM matching
+  # the host -- if none matches, the Ingress fails to reconcile and NO load balancer is created. HTTP only
+  # keeps the example self-contained. Add 443 back together with a certificate for anything real.
+  #
+  # Set explicitly: `group.name` puts every Ingress sharing the name behind ONE ALB. Without it the controller
+  # provisions a separate ALB per Ingress, which is a per-hour charge each for what is usually one entry point.
+  annotations:
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/group.name: recommended-example
   hosts:
     - host: http-echo-recommended.devops.dasmeta.com
       paths:
