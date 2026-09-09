@@ -237,15 +237,15 @@ module "this" {
 
 # A normal application: spot-backed, protected by the base chart's disruption defaults.
 resource "helm_release" "http_echo" {
-  name       = "http-echo"
-  repository = "https://dasmeta.github.io/helm"
-  chart      = "base"
-  namespace  = "default"
-  # 0.4.0+ is REQUIRED: it is the release that creates PodDisruptionBudgets by default and refuses to render
-  # one that permits zero evictions. Until it is published this example cannot be applied as written -- point
-  # `chart` at a local checkout of dasmeta/helm/charts/base to try it before then.
-  version = "0.4.0"
-  wait    = false
+  name = "http-echo"
+  # TEMPORARY -- LOCAL PATH FOR PRE-RELEASE TESTING. MUST BE REVERTED BEFORE MERGE.
+  # Restore before opening a PR:
+  #   repository = "https://dasmeta.github.io/helm"
+  #   chart      = "base"
+  #   version    = "0.4.0"
+  chart     = "/Users/tmuradyan/projects/dasmeta/helm/charts/base"
+  namespace = "default"
+  wait      = false
 
   values = [file("${path.module}/http-echo.yaml")]
 
@@ -254,12 +254,11 @@ resource "helm_release" "http_echo" {
 
 # A workload that must not be moved by spot reclamation, pinned to the protected on-demand pool.
 resource "helm_release" "http_echo_critical" {
-  name       = "http-echo-critical"
-  repository = "https://dasmeta.github.io/helm"
-  chart      = "base"
-  namespace  = "default"
-  version    = "0.4.0" # see the note on the release above
-  wait       = false
+  name = "http-echo-critical"
+  # TEMPORARY -- LOCAL PATH FOR PRE-RELEASE TESTING. MUST BE REVERTED BEFORE MERGE. See above.
+  chart     = "/Users/tmuradyan/projects/dasmeta/helm/charts/base"
+  namespace = "default"
+  wait      = false
 
   values = [file("${path.module}/http-echo-critical.yaml")]
 

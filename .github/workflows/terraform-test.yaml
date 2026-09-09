@@ -20,3 +20,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           path: ${{ matrix.path }}
         continue-on-error: true
+
+  no-local-paths:
+    name: no local filesystem paths
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: actions/checkout@v4
+      # A local path is legitimate while testing unreleased changes, but must never merge: this module is
+      # published, so an absolute path breaks every consumer and leaks a local environment.
+      - run: ./scripts/check-no-local-paths.sh
