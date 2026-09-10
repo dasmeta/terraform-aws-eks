@@ -312,6 +312,18 @@
  *        anything. Any node group that declares its own `taints` is left exactly as written.
  *      - Opt out with `node_groups_system_taint = { enabled = false }`, which is the right choice for
  *        development or test clusters where the isolation is not worth the extra capacity.
+ *    - **The kubernetes, kubectl and helm providers now authenticate with the `exec` credential plugin
+ *      instead of a token.** `aws_eks_cluster_auth` mints a pre-signed STS token valid for exactly 15 minutes,
+ *      once, and terraform cannot refresh it mid-apply. A first apply spends about 8 minutes creating the
+ *      cluster and 2 more on the node group before any kubernetes resource is attempted, so the token is
+ *      already most of its way through its life the first time it is used, and any apply running longer than
+ *      15 minutes loses it outright. Both present identically as `Unauthorized` or "the server has asked for
+ *      the client to provide credentials", attributed to whichever resource happened to be next rather than
+ *      to the credential -- which is why it reads as a random first-run failure. `exec` runs
+ *      `aws eks get-token` per API request, so the credential is minted when needed and cannot age out.
+ *      - **REQUIREMENT: the AWS CLI v2 must be on PATH wherever terraform runs, including CI runners.** This
+ *        is the one action this change requires. If your runner image lacks it, add it before upgrading.
+ *      - No state change and no resource replacement; only how the providers obtain credentials.
  *    - **`kyverno.enabled` now defaults to `false`.** It was on by default only to carry the temporary
  *      `bitnami-to-bitnamilegacy` image rewrite, and most clusters have since migrated those references
  *      directly. Keeping it costs more than it gives: kyverno registers admission webhooks with
