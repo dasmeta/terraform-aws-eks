@@ -181,9 +181,14 @@ kubectl get nodes -o json 2>/dev/null | jq -r --arg now "$(date -u +%s)" '
   | "  \($age)d  \(.metadata.name)  \(.status.nodeInfo.kubeletVersion)"' | sort -rn | head -10
 
 hr "D4. NODES HELD BACK FROM REPLACEMENT (drifted, but correctly blocked -- needs a human)"
-echo "  These nodes want to be replaced (usually a newer AMI) but karpenter is honouring a protection on"
-echo "  them. That is the intended behaviour, NOT a fault. They will keep an older AMI until someone moves"
-echo "  the workload deliberately -- typically cool the workload down, replace the node, bring it back."
+echo "  These nodes want to be replaced -- usually a newer AMI -- and karpenter has not replaced them yet."
+echo "  That is normally intended behaviour, NOT a fault. Check the causes in this order:"
+echo "   1. A DISRUPTION WINDOW is open. Drift is voluntary disruption, so a budget of nodes:0 covering"
+echo "      Drifted holds the roll until the window closes. Section D2 shows each pool's budgets. This is"
+echo "      the usual answer right after a kubernetes version upgrade, which drifts every node at once."
+echo "   2. A PodDisruptionBudget on this node permits no eviction. That is a DEFECT -- see section E1."
+echo "   3. A pod carries karpenter.sh/do-not-disrupt. Deliberate; needs the workload own replacement flow."
+echo "  Only 2 needs fixing. For 1, the roll proceeds on its own when the window closes."
 echo
 drifted=$(kubectl get nodeclaims -o json 2>/dev/null | jq -r '.items[]
   | select((.status.conditions // [])[] | select(.type == "Drifted" and .status == "True"))
@@ -192,7 +197,8 @@ if [ -z "$drifted" ]; then
   echo "  no drifted nodes"
 else
   for n in $drifted; do
-    echo "  DRIFTED  $n"
+    pool=$(kubectl get node "$n" -o jsonpath='{.metadata.labels.karpenter\.sh/nodepool}' 2>/dev/null)
+    echo "  DRIFTED  $n  nodepool=${pool:-unknown}  -- check that pool in D2"
     # pods asking not to be moved
     kubectl get pods -A --field-selector "spec.nodeName=$n" -o json 2>/dev/null | jq -r '.items[]
       | select(.metadata.annotations["karpenter.sh/do-not-disrupt"] == "true")

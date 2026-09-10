@@ -10,7 +10,8 @@
 module "this" {
   source = "../.."
 
-  cluster_name = local.cluster_name
+  cluster_name    = local.cluster_name
+  cluster_version = "1.35"
 
   # The subnets must span at least 2 availability zones, otherwise the system node group cannot place its 2
   # nodes in 2 zones and karpenter's second replica can never schedule. The module fails the plan when 2+
@@ -178,6 +179,28 @@ module "this" {
                   key      = "karpenter.sh/capacity-type"
                   operator = "In"
                   values   = ["on-demand"] # not subject to reclamation, which is the whole point
+                },
+                # Burstable is allowed HERE and excluded from the general pool, for the same reason the
+                # system node group uses it: this capacity is on-demand and carries small, steady critical
+                # workloads, which is the profile burstable suits. The general pool excludes "t" because
+                # bulk workloads drive sustained CPU and burstable throttles under it -- that argument does
+                # not apply to a couple of singletons. Paying the on-demand premium for compute-optimised
+                # headroom these pods never use is the expensive half of this pool for no benefit.
+                #
+                # If something CPU-hungry lands here -- a metrics store under real load -- narrow this back
+                # to ["c", "m", "r"] for that pool, or give it a pool of its own.
+                {
+                  key      = "karpenter.k8s.aws/instance-category"
+                  operator = "In"
+                  values   = ["t", "c", "m", "r"]
+                },
+                # Lowered from the default of >4 because that excludes the t family entirely: t3 is
+                # generation 3 and t4g is arm64. >2 admits t3/t3a while still keeping the pre-nitro
+                # generations out.
+                {
+                  key      = "karpenter.k8s.aws/instance-generation"
+                  operator = "Gt"
+                  values   = ["2"]
                 },
               ]
               # Workloads opt in by tolerating this taint AND selecting on-demand -- see http-echo-critical.yaml.

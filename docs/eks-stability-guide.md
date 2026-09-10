@@ -721,6 +721,30 @@ Add the protected pool as a standard node pool (section 2.4), then opt workloads
 **both** a toleration and a node selector — see 3.6. The toleration alone only makes the capacity eligible; it
 does not keep the pod off spot.
 
+
+**Do not pay twice.** Protected capacity is already on-demand, which is the premium you are choosing to pay.
+Do not also pay for compute-optimised shapes there unless something on it needs them. The workloads that
+belong on protected capacity -- a controller, a singleton, a small stateful service -- have the same low,
+steady profile that makes burstable right for the system node group. The module's default requirements
+exclude the `t` family because they are written for the general pool, where bulk workloads drive sustained
+CPU and burstable throttles; that argument does not carry over to a couple of singletons.
+
+Widen the protected pool's own requirements to admit burstable:
+
+```hcl
+requirements = [
+  { key = "karpenter.sh/capacity-type",                operator = "In", values = ["on-demand"] },
+  { key = "karpenter.k8s.aws/instance-category",       operator = "In", values = ["t", "c", "m", "r"] },
+  { key = "karpenter.k8s.aws/instance-generation",     operator = "Gt", values = ["2"] },
+]
+```
+
+The generation floor has to drop with it. The default of `>4` excludes the `t` family outright: `t3` is
+generation 3, and `t4g` is arm64 so the architecture requirement removes it anyway. `>2` admits `t3`/`t3a`
+while still keeping the pre-nitro generations out.
+
+Reverse this for anything CPU-hungry that lands on protected capacity -- a metrics store under real load is
+the usual example. Narrow that pool back to `["c", "m", "r"]`, or give the workload a pool of its own.
 ### The system node group
 
 The autoscaler controller cannot run on nodes the autoscaler created — its chart sets a
