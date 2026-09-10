@@ -35,7 +35,12 @@ variable "node_groups" {
         fewer than 2 nodes here makes a highly available controller impossible regardless of cluster size.
       - t3.medium as a cost-appropriate default for the common case. See the sizing note below; the one type
         that does NOT work is t3.small.
-      - max 4, since the group does not scale with application load once tainted.
+      - max 3, which is desired + 1. Nothing scales this group on its own -- karpenter does not manage
+        managed node groups and no cluster autoscaler runs alongside it -- so node count stays at
+        desired_size and the ceiling is only ever used by EKS during a rolling replacement, where one spare
+        lets both system nodes stay available while a node is replaced. Setting max equal to desired also
+        works and is what several production clusters run; the cost is that a rolling replacement dips to a
+        single node, which leaves one karpenter replica Pending until the new node joins.
 
     SIZING. System nodes carry a small, steady load: one karpenter replica, one coredns, a CSI controller and
     the DaemonSets. Measured karpenter controller CPU across a real fleet scales at roughly 3m per cluster
@@ -55,7 +60,7 @@ variable "node_groups" {
   default = {
     default = {
       min_size                     = 2
-      max_size                     = 4
+      max_size                     = 3
       desired_size                 = 2
       instance_types               = ["t3.medium", "t3a.medium"]
       capacity_type                = "ON_DEMAND"
