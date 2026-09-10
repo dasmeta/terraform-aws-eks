@@ -42,20 +42,25 @@ module "this" {
   #
   # Verify after apply (expect 2+ rows in 2+ distinct zones):
   #   kubectl get nodes -L topology.kubernetes.io/zone,karpenter.sh/nodepool | grep -v 'karpenter.sh/nodepool'
-  node_groups = {
-    system = {
-      min_size     = 2
-      desired_size = 2
-      max_size     = 3
-      # taints = {                              # DEFAULT when karpenter is enabled, and RECOMMENDED.
-      #   system = {                            # Reserves this group for cluster-critical components so
-      #     key    = "CriticalAddonsOnly"        # application pods do not compete with the karpenter
-      #     value  = "true"                      # controller on two small nodes. Karpenter, the coredns
-      #     effect = "NO_SCHEDULE"               # addon and the EBS CSI controller all tolerate this key.
-      #   }                                      # Disable with node_groups_system_taint.enabled = false,
-      # }                                        # which suits dev/test clusters.
-    }
-  }
+  # node_groups = {                            # ALL of the following are DEFAULTS and RECOMMENDED, so the
+  #   default = {                              # whole block can be omitted -- it is shown for visibility.
+  #     min_size     = 2                       # DEFAULT. Two nodes in two zones is a hard requirement for
+  #     desired_size = 2                       # karpenter's 2 replicas: the chart pins each to a separate
+  #                                            # node in a separate zone, and karpenter's own nodes are
+  #                                            # ineligible to host it.
+  #     max_size     = 4                       # DEFAULT. Headroom for a rolling replacement of a 2-node
+  #                                            # group, which needs to stand up new nodes before removing
+  #                                            # old ones. This group does not scale with application load
+  #                                            # once tainted, so it never needs to be large.
+  #     taints = {                             # DEFAULT when karpenter is enabled.
+  #       system = {                           # Reserves this group for cluster-critical components so
+  #         key    = "CriticalAddonsOnly"      # application pods do not compete with the karpenter
+  #         value  = "true"                    # controller on two small nodes. Karpenter, the coredns
+  #         effect = "NO_SCHEDULE"             # addon and the EBS CSI controller all tolerate this key.
+  #       }                                    # Disable with node_groups_system_taint.enabled = false,
+  #     }                                      # which suits dev/test clusters.
+  #   }
+  # }
 
   # node_groups_default = {
   #   instance_types = ["t3.medium", "t3a.medium"]            # DEFAULT and RECOMMENDED up to ~50 cluster nodes.
