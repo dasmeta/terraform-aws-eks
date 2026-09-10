@@ -606,6 +606,46 @@ faults.
 
 ---
 
+## Upgrading the Kubernetes version
+
+Two things behave differently from what most people expect, and both look like a stalled upgrade.
+
+**The node group upgrade is a full drain, so it is where bad budgets surface.** Every node is cordoned and
+drained in turn. A PodDisruptionBudget permitting zero evictions does not slow this down, it **fails** it,
+and the error names pod eviction rather than the budget. If you upgrade nothing else first, run assessment
+section E1 and fix every zero-eviction budget before starting.
+
+**Raising the control plane drifts the entire Karpenter fleet at once.** The `al2023@latest` alias resolves
+the AMI for the cluster's Kubernetes version, so the target image for every node changes the moment the
+control plane moves. This is the largest single drift event the configuration will ever produce.
+
+That drift is voluntary disruption, so the budgets and the disruption window apply to it. Inside the window
+the roll is **blocked**, and the cluster sits with an upgraded control plane and nodes still on the previous
+kubelet. That is correct, within the supported version skew, and deliberate — but it reads as a stuck
+upgrade to anyone who does not know the window is there.
+
+Confirm which state you are in rather than guessing:
+
+```bash
+kubectl -n karpenter port-forward deploy/karpenter 8080:8080 >/dev/null 2>&1 &
+sleep 3; curl -s localhost:8080/metrics | grep allowed_disruptions
+```
+
+`0` against `Drifted` means the window is holding the roll and it will proceed when the window closes.
+Section D3 shows the kubelet spread while that is true; D4 lists anything held back for a different reason.
+
+If the nodes must roll now, the options in order of preference are: wait for the window; narrow the window
+for this maintenance; or temporarily remove the `Drifted` reason from the budget. Do not delete the budget
+entirely — that also removes the concurrency limit, and rolling every node at once during an upgrade is how
+a controlled upgrade becomes an outage.
+
+**A note on system nodes.** If `max_size` equals `desired_size`, EKS cannot surge and replaces the managed
+node group one node at a time. On a two-node group that means a single node for part of the upgrade, so one
+Karpenter replica is `Pending` until the replacement joins. The surviving replica keeps reconciling. Raise
+`max_size` to `desired + 1` before the upgrade if you want both replicas schedulable throughout.
+
+---
+
 ## Phase 5 — Observability
 
 **Entry gate**: none, but most useful once Phase 1 is applied.
@@ -729,6 +769,8 @@ Check numbers refer to `./scripts/eks-assess.sh` sections.
 | Karpenter preempted under node pressure | Priority class demoted from `system-cluster-critical` | C1 |
 | Name resolution breaks during a drain | CoreDNS has no PodDisruptionBudget | B1 |
 | A node keeps an old AMI while others roll | A PDB or `do-not-disrupt` is correctly holding it | D4, guide 3.8 |
+| Control plane upgraded, nodes still on the old kubelet | The disruption window is correctly blocking `Drifted`; it rolls when the window closes | D3, guide "Upgrading the Kubernetes version" |
+| Node group upgrade fails on pod eviction | A PodDisruptionBudget permits zero evictions | E1, guide 3.2 |
 
 ---
 
