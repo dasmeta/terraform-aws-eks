@@ -35,12 +35,14 @@ variable "node_groups" {
         fewer than 2 nodes here makes a highly available controller impossible regardless of cluster size.
       - t3.medium as a cost-appropriate default for the common case. See the sizing note below; the one type
         that does NOT work is t3.small.
-      - max 3, which is desired + 1. Nothing scales this group on its own -- karpenter does not manage
-        managed node groups and no cluster autoscaler runs alongside it -- so node count stays at
-        desired_size and the ceiling is only ever used by EKS during a rolling replacement, where one spare
-        lets both system nodes stay available while a node is replaced. Setting max equal to desired also
-        works and is what several production clusters run; the cost is that a rolling replacement dips to a
-        single node, which leaves one karpenter replica Pending until the new node joins.
+      - max 2, equal to desired. Nothing scales this group on its own -- karpenter does not manage managed
+        node groups and no cluster autoscaler runs alongside it -- so the node count stays at desired_size
+        and a ceiling above it is only ever used by EKS to surge during a rolling replacement. Production
+        clusters in the fleet run max equal to desired, including at 1/1/1, with no node group upgrade
+        problems, so the surge is not needed in practice. The consequence to know: a rolling replacement
+        dips to a single node, so one karpenter replica is Pending until the new node joins. The surviving
+        replica keeps reconciling throughout. Raise to 3 to keep both replicas schedulable during a
+        replacement, at the cost of one node's headroom you otherwise never use.
 
     SIZING. System nodes carry a small, steady load: one karpenter replica, one coredns, a CSI controller and
     the DaemonSets. Measured karpenter controller CPU across a real fleet scales at roughly 3m per cluster
@@ -60,7 +62,7 @@ variable "node_groups" {
   default = {
     default = {
       min_size                     = 2
-      max_size                     = 3
+      max_size                     = 2
       desired_size                 = 2
       instance_types               = ["t3.medium", "t3a.medium"]
       capacity_type                = "ON_DEMAND"

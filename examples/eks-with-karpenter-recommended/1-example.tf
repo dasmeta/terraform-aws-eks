@@ -48,12 +48,12 @@ module "this" {
   #     desired_size = 2                       # karpenter's 2 replicas: the chart pins each to a separate
   #                                            # node in a separate zone, and karpenter's own nodes are
   #                                            # ineligible to host it.
-  #     max_size     = 3                       # DEFAULT, and desired + 1. Nothing scales this group on its
+  #     max_size     = 2                       # DEFAULT, equal to desired. Nothing scales this group on its
   #                                            # own -- karpenter does not manage managed node groups and no
   #                                            # cluster autoscaler runs alongside it -- so the count stays
-  #                                            # at desired_size. The spare is only used by EKS during a
-  #                                            # rolling replacement, so both system nodes stay available
-  #                                            # while one is replaced.
+  #                                            # at desired_size and never drifts up to a ceiling. Raise to
+  #                                            # 3 only if you want both karpenter replicas to stay
+  #                                            # schedulable during a rolling node replacement.
   #     taints = {                             # DEFAULT when karpenter is enabled.
   #       system = {                           # Reserves this group for cluster-critical components so
   #         key    = "CriticalAddonsOnly"      # application pods do not compete with the karpenter
