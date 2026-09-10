@@ -144,6 +144,27 @@ instance-status health checks in the interruption controller (1.12+) and
 Upgrading the upstream `terraform-aws-modules/eks` karpenter submodule from
 20.37.2 to 21.x is **out of scope** and tracked separately.
 
+Three concrete findings for that ticket, discovered while validating this one:
+
+- **It gates the AWS provider major version.** Both the eks module and its
+  karpenter submodule at 20.37.2 require `aws >= 5.95, < 6.0.0`. Nothing in this
+  repository can move to provider 6.x until that upgrade lands, and no change to
+  our own constraints helps -- only 6 of our files cap at `< 6.0.0` and none of
+  them is what binds.
+- **It gates the VPC module.** `dasmeta/vpc` 1.1.0 pulls
+  `terraform-aws-modules/vpc` 6.6.0, which requires `aws >= 6.28`. That is
+  mutually unsatisfiable with the line above, so the vpc module stays at 1.0.1
+  and its deprecated `aws_eip.vpc` warning stays with it. The warning is
+  cosmetic and changes nothing about what is created.
+- **Two of our modules need real code changes, not just a constraint bump.**
+  `modules/ebs-csi` and `modules/efs-csi` use `aws_iam_role.managed_policy_arns`,
+  which provider 6 removes. They need `aws_iam_role_policy_attachment` instead.
+  Both already emit a deprecation warning on `terraform validate` today, which is
+  where this surfaced.
+- The `iam_policy_statements` workaround in `modules/karpenter` can be deleted at
+  the same time: `iam:ListInstanceProfiles` and `ec2:DescribeInstanceStatus` are
+  both granted upstream from v21.15.1+.
+
 ## Verification
 
 Native `.tftest.hcl` tests for assertions that need no cloud credentials, plus
