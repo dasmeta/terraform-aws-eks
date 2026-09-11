@@ -178,7 +178,14 @@ resource "time_sleep" "karpenter_teardown" {
   depends_on = [helm_release.this]
 
   # Only on destroy. Creation is unaffected.
-  destroy_duration = "90s"
+  #
+  # 60s rather than the 30s used for the load balancer controller, because this one is not waiting on API
+  # calls. Deleting a NodePool cascades to its NodeClaims, and each one cordons its node and evicts the pods,
+  # respecting PodDisruptionBudgets and each pod's terminationGracePeriodSeconds. The bound is the workloads,
+  # not the AWS API -- the recommended example alone sets grace periods of 45s and 60s, so a shorter wait
+  # would cut its own drains short. Anything with long grace periods or tight budgets will still outlast
+  # this; that is what the documented pre-destroy procedure is for.
+  destroy_duration = "60s"
 }
 
 resource "helm_release" "karpenter_nodes" {

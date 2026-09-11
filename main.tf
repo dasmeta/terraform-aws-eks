@@ -312,7 +312,7 @@
  *        anything. Any node group that declares its own `taints` is left exactly as written.
  *      - Opt out with `node_groups_system_taint = { enabled = false }`, which is the right choice for
  *        development or test clusters where the isolation is not worth the extra capacity.
- *    - **Destroys now hold two controllers alive for 90 seconds each.** The load balancer controller and the
+ *    - **Destroys now hold two controllers alive briefly** -- the load balancer controller for 30 seconds, karpenter for 60. The load balancer controller and the
  *      karpenter controller own AWS resources terraform did not create and cannot see -- load balancers and
  *      their ENIs, and EC2 instances. On a destroy terraform removes the controller while it is still
  *      cleaning those up, orphaning them; the orphaned ENIs then hold the node security group and the run

@@ -71,5 +71,10 @@ resource "time_sleep" "controller_teardown" {
   depends_on = [helm_release.aws-load-balancer-controller]
 
   # Only on destroy. Creation is unaffected.
-  destroy_duration = "90s"
+  #
+  # 30s because this controller's teardown work is API calls, not waiting on workloads: it sees the Ingress
+  # deletion within a second or two, deletes the listeners, the load balancer and the target groups, then
+  # drops the finalizer. Target group deletion can retry while the load balancer finishes going away, which
+  # is the case that occasionally runs longer.
+  destroy_duration = "30s"
 }

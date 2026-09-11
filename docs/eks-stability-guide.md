@@ -790,8 +790,9 @@ nobody to remove it and becomes a deadlock instead of a guard.
 Whether it happens depends on whether the controller finished inside the window terraform happened to give
 it, which is why the same configuration usually tears down cleanly.
 
-The module holds the load balancer controller and the Karpenter controller alive for 90 seconds each on
-destroy to widen that window. That is a mitigation, not a guarantee -- a fixed wait cannot know whether
+The module holds the load balancer controller alive for 30 seconds on destroy, and the Karpenter controller
+for 60. The difference is what each is waiting for: the load balancer controller is making API calls, while
+Karpenter is draining pods and is therefore bounded by PodDisruptionBudgets and each pod's grace period. That is a mitigation, not a guarantee -- a fixed wait cannot know whether
 cleanup finished, and a drain that respects PodDisruptionBudgets can outlast it.
 
 **Do this instead, in this order:**
