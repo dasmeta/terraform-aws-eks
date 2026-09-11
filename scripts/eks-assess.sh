@@ -293,14 +293,19 @@ else
 fi
 
 hr "F1. INSTANCE TYPE MIX (burstable t-family throttles under load and is interrupted more often)"
-kubectl get nodes -L node.kubernetes.io/instance-type,karpenter.sh/capacity-type,karpenter.sh/nodepool -o json 2>/dev/null | jq -r '
+echo "  Read the POOL column with the capacity type. On-demand nodes in a pool that also permits spot are"
+echo "  paying on-demand rates without being asked to -- usually spot capacity was unavailable for the"
+echo "  shapes the pool allows, which is a signal to widen its instance requirements rather than a setting"
+echo "  to change. On-demand in a pool that requires it is simply that pool working."
+kubectl get nodes -o json 2>/dev/null | jq -r '
   [.items[] | {
      type: (.metadata.labels["node.kubernetes.io/instance-type"] // "unknown"),
-     cap:  (.metadata.labels["karpenter.sh/capacity-type"] // "managed")
+     cap:  (.metadata.labels["karpenter.sh/capacity-type"] // "managed"),
+     pool: (.metadata.labels["karpenter.sh/nodepool"] // "-- managed node group --")
    }]
-  | group_by(.type + "/" + .cap)
-  | map({k: (.[0].type + "  " + .[0].cap), n: length})
-  | sort_by(-.n)[] | "  \(.n)x  \(.k)"'
+  | group_by(.type + "/" + .cap + "/" + .pool)
+  | map({t: .[0].type, c: .[0].cap, p: .[0].pool, n: length})
+  | sort_by(-.n)[] | "  \(.n)x  \(.t | . + "                    " | .[0:18])\(.c | . + "            " | .[0:11]) pool=\(.p)"'
 echo "-- family split (t = burstable; c = compute 1:2; m = general 1:4; r = memory 1:8):"
 kubectl get nodes -o json 2>/dev/null | jq -r '
   [.items[] | (.metadata.labels["node.kubernetes.io/instance-type"] // "unknown") | split(".")[0] | .[0:1]]
