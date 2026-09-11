@@ -202,6 +202,18 @@ module "this" {
                   operator = "Gt"
                   values   = ["2"]
                 },
+                # Raised from the module default of 2000MiB once admitting the t family made 2GiB shapes
+                # reachable: karpenter picked a t3a.small here, which is the one size ruled out for the
+                # system node group for the same two reasons. The VPC CNI allows only 11 pods on it
+                # ((3 ENIs x (4 IPs - 1)) + 2) and the DaemonSets take about 5 of those, and ~1.5GiB
+                # allocatable is thin for anything worth protecting. 3000 admits t3.medium at 4GiB, which is
+                # the smallest shape that behaves, and costs nothing when karpenter would have picked bigger
+                # anyway.
+                {
+                  key      = "karpenter.k8s.aws/instance-memory"
+                  operator = "Gt"
+                  values   = ["3000"]
+                },
               ]
               # Workloads opt in by tolerating this taint AND selecting on-demand -- see http-echo-critical.yaml.
               taints = [

@@ -733,11 +733,19 @@ Widen the protected pool's own requirements to admit burstable:
 
 ```hcl
 requirements = [
-  { key = "karpenter.sh/capacity-type",                operator = "In", values = ["on-demand"] },
-  { key = "karpenter.k8s.aws/instance-category",       operator = "In", values = ["t", "c", "m", "r"] },
-  { key = "karpenter.k8s.aws/instance-generation",     operator = "Gt", values = ["2"] },
+  { key = "karpenter.sh/capacity-type",            operator = "In", values = ["on-demand"] },
+  { key = "karpenter.k8s.aws/instance-category",   operator = "In", values = ["t", "c", "m", "r"] },
+  { key = "karpenter.k8s.aws/instance-generation", operator = "Gt", values = ["2"] },
+  { key = "karpenter.k8s.aws/instance-memory",     operator = "Gt", values = ["3000"] },
 ]
 ```
+
+The memory floor is not optional once the `t` family is admitted. Without it karpenter reaches 2GiB shapes
+and will pick one -- observed picking a `t3a.small` on protected capacity. That is the same size ruled out
+for the system node group, for the same two reasons: the VPC CNI allows only 11 pods on it, of which the
+DaemonSets take about 5, and roughly 1.5GiB allocatable is thin for anything worth protecting. `3000` admits
+`t3.medium` at 4GiB, the smallest shape that behaves, and costs nothing in the cases where karpenter would
+have chosen something larger regardless.
 
 The generation floor has to drop with it. The default of `>4` excludes the `t` family outright: `t3` is
 generation 3, and `t4g` is arm64 so the architecture requirement removes it anyway. `>2` admits `t3`/`t3a`
