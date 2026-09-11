@@ -389,7 +389,7 @@ karpenter = {
 
 The preset supplies `weight = 50`, the on-demand requirement, an instance filter admitting burstable while
 excluding the specialised families, a memory floor above the 2GiB shapes, the `dedicated=on-demand` taint,
-`WhenEmpty` consolidation and a capacity ceiling. Override any of them on the pool.
+`WhenEmpty` consolidation and the standard capacity ceiling. Override any of them on the pool.
 
 **Why `weight` is in the preset rather than left to you.** It orders pools when more than one could satisfy
 the same pod, highest first, and a pool with no weight counts as `0` — so with `general` at `1` and this
@@ -727,7 +727,7 @@ resource_configs = {
 ```
 
 which resolves to the on-demand requirement, the burstable-friendly instance filter with its memory floor,
-the `dedicated=on-demand` taint, weight 50, `WhenEmpty` consolidation and a small capacity ceiling. Each is
+the `dedicated=on-demand` taint, weight 50, `WhenEmpty` consolidation and the standard capacity ceiling. Each is
 overridable on the pool. The equivalent written out, if you need to change one of them:
 
 ```hcl

@@ -358,7 +358,11 @@ variable "resource_configs_defaults" {
         budgets = optional(any, [{ nodes = "10%" }])
       }), {})
 
-      limits = optional(any, { cpu = 20 }) # small by design: this is on-demand capacity, not a bulk pool
+      # Same ceiling as the other presets. A limit is a runaway guard, not a cost budget: when it binds,
+      # karpenter stops provisioning and the pods waiting on capacity simply pend -- and the pods waiting on
+      # THIS pool are the ones that were moved here because they must stay up. A low ceiling turns a cost
+      # control into an availability incident. Control spend by what you put here, not by capping the pool.
+      limits = optional(any, { cpu = 1000 })
     }), {})
 
     gpu = optional(object({
@@ -448,14 +452,16 @@ variable "resource_configs_defaults" {
   })
   default     = {}
   description = <<-EOT
-    Defaults applied to every karpenter node pool and node class, in two buckets: `default` for ordinary
-    workloads and `gpu` for GPU node classes.
+    Defaults applied to every karpenter node pool and node class, in three presets: `default` for ordinary
+    workloads, `gpu` for GPU node classes, and `on-demand` for capacity that ordinary workloads must not
+    land on. A pool inherits a preset by referencing that node class in `nodeClassRef.name`, so declaring
+    on-demand capacity is a nodeClassRef and nothing else.
 
     Every field is individually optional, so setting one leaves its siblings on their defaults -- overriding
     `disruption.consolidateAfter` keeps `consolidationPolicy` and the protection window rather than dropping
     them.
 
-    NOTE: only the keys `default` and `gpu` are accepted here. Terraform silently drops object attributes a
+    NOTE: only the keys `default`, `gpu` and `on-demand` are accepted here. Terraform silently drops object attributes a
     type does not declare, so anything placed at the top level never takes effect. The root module validates
     against that; see the corresponding validation on var.karpenter.
   EOT
