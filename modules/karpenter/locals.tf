@@ -74,8 +74,6 @@ locals {
     blockDeviceMappings = var.resource_configs_defaults["gpu"].nodeClass.blockDeviceMappings
   }
 
-  nodePoolDefaultNodeClassRef = var.resource_configs_defaults["default"].nodeClassRef
-  nodePoolDefaultRequirements = var.resource_configs_defaults["default"].requirements
 
   # Which defaults preset a pool inherits, resolved once: the node class it references, or "default".
   #
@@ -105,11 +103,21 @@ locals {
     { for k, v in { weight = local.poolOptional[key].weight } : k => v if v != null },
     {
       template = merge(try(value.template, {}), {
-        spec = merge({ nodeClassRef = local.nodePoolDefaultNodeClassRef }, try(value.template.spec, {}),
-          # Same treatment: the protected preset carries taints, the others do not, and a pool that declares
+        spec = merge(try(value.template.spec, {}),
+          # Same treatment: the on-demand preset carries taints, the others do not, and a pool that declares
           # its own keeps exactly what it wrote.
           { for k, v in { taints = local.poolOptional[key].taints } : k => v if v != null },
           {
+            # DEEP merge, unlike everything else in this spec. merge() is shallow, so a pool supplying only
+            # `nodeClassRef = { name = "on-demand" }` -- which is the documented way to select a preset --
+            # would otherwise REPLACE the whole reference and drop `group` and `kind`. The CRD requires both,
+            # so the NodePool is rejected at apply time with "nodeClassRef.group: Required value", long after
+            # the plan looked fine. Merging over the selected preset's own reference fills them in, and a
+            # name matching no preset still gets a usable group/kind from the default one.
+            nodeClassRef = merge(
+              var.resource_configs_defaults[local.poolDefaultsKey[key]].nodeClassRef,
+              try(value.template.spec.nodeClassRef, {})
+            )
             requirements           = concat([for item in var.resource_configs_defaults[local.poolDefaultsKey[key]].requirements : item if !contains(try(value.template.spec.requirements, []).*.key, item.key)], try(value.template.spec.requirements, []))
             expireAfter            = try(value.template.spec.expireAfter, var.resource_configs_defaults[local.poolDefaultsKey[key]].expireAfter)
             terminationGracePeriod = try(value.template.spec.terminationGracePeriod, var.resource_configs_defaults[local.poolDefaultsKey[key]].terminationGracePeriod)

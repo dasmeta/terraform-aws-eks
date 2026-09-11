@@ -227,3 +227,47 @@ run "pool_taints_replace_the_preset_taints" {
     error_message = "overriding taints must not discard the rest of the preset"
   }
 }
+
+# Selecting a preset means writing `nodeClassRef = { name = "..." }` and nothing else, which is a PARTIAL
+# reference. merge() is shallow, so without a deep merge that partial replaces the full default and drops
+# group and kind -- both of which the NodePool CRD requires. The plan looks fine and the apply fails with
+# "spec.template.spec.nodeClassRef.group: Required value", so this is asserted rather than trusted.
+run "partial_node_class_ref_keeps_group_and_kind" {
+  command = plan
+
+  module {
+    source = "./modules/karpenter"
+  }
+
+  variables {
+    subnet_ids = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
+    resource_configs = {
+      nodePools = {
+        general     = { weight = 1 }
+        "on-demand" = { template = { spec = { nodeClassRef = { name = "on-demand" } } } }
+        custom      = { template = { spec = { nodeClassRef = { name = "something-bespoke" } } } }
+      }
+    }
+  }
+
+  assert {
+    condition = alltrue([
+      for name in ["general", "on-demand", "custom"] :
+      output.node_pools[name].template.spec.nodeClassRef.group == "karpenter.k8s.aws"
+      && output.node_pools[name].template.spec.nodeClassRef.kind == "EC2NodeClass"
+    ])
+    error_message = "every pool must render a complete nodeClassRef; the CRD rejects one missing group or kind"
+  }
+
+  # The name the pool asked for must survive the merge that fills in group and kind.
+  assert {
+    condition     = output.node_pools["on-demand"].template.spec.nodeClassRef.name == "on-demand"
+    error_message = "filling in group and kind must not overwrite the node class the pool selected"
+  }
+
+  # A class matching no preset still gets a usable group/kind, and keeps its own name.
+  assert {
+    condition     = output.node_pools.custom.template.spec.nodeClassRef.name == "something-bespoke"
+    error_message = "a custom node class name must be preserved"
+  }
+}
