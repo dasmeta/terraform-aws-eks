@@ -3,6 +3,15 @@
 The reference Karpenter setup. Copy this when starting a new spot-backed cluster, or diff an existing cluster
 against it.
 
+**This is a Karpenter-focused reference, not a standard every cluster must match.** Nothing in it is
+mandatory. Real setups differ by region, traffic shape, cost target, compliance and what the workloads
+actually do, and the module is built to be configured for each of them rather than to enforce one answer.
+Several values here should be reconsidered per cluster rather than copied: the disruption window is UTC and
+cut for central Europe, the instance filters assume general-purpose workloads, and the on-demand pool assumes
+a handful of singletons rather than anything CPU-hungry. Where a choice has a real trade-off, the comment
+next to it says what you give up by changing it -- so a deliberate difference is easy to make, and an
+accidental one is easy to spot.
+
 Every option the module or chart already applies is written out but **commented**, so the full recommended
 shape is visible in one place without re-declaring behaviour you already get. Anything left **uncommented** is
 set deliberately and carries the reason on the line above it.

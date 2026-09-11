@@ -1,8 +1,24 @@
 # Recommended Karpenter setup.
 #
-# This example is the reference for a stable spot-backed cluster. Options the module already applies by
-# default are written out but COMMENTED, so you can see the full picture in one place without re-declaring
-# behaviour you already get. Anything left UNCOMMENTED is set on purpose and says why on the line above it.
+# WHAT THIS IS: a KARPENTER-focused reference for a stable spot-backed cluster. It shows how the node
+# pools, disruption settings, capacity types and workload protections fit together, with the reasoning for
+# each choice written next to it.
+#
+# WHAT THIS IS NOT: a standard every cluster must match. Nothing here is mandatory. Real setups differ --
+# by region, traffic shape, cost target, compliance, what the workloads actually do -- and the module is
+# built to be configured for each of them rather than to enforce one answer. Every value shown can be
+# overridden, and several SHOULD be for a given cluster: the disruption window is UTC and cut for central
+# Europe, the instance filters assume general-purpose workloads, and the on-demand pool assumes a handful
+# of singletons rather than something CPU-hungry. Treat these as informed starting points, not as settings
+# to copy unexamined.
+#
+# Where a choice has a real trade-off, the comment says what you give up by changing it, so a deliberate
+# difference is easy to make and an accidental one is easy to spot. `docs/eks-stability-guide.md` covers
+# the same ground for an existing cluster, including how to pick values for a setup unlike this one.
+#
+# HOW TO READ IT: options the module already applies by default are written out but COMMENTED, so the full
+# picture is visible in one place without re-declaring behaviour you already get. Anything left UNCOMMENTED
+# is set on purpose and says why on the line above it.
 #
 # Rule of thumb when copying this: start by deleting every commented block. If the result still expresses
 # what you need, you are done -- the defaults are the recommendation.
@@ -106,7 +122,12 @@ module "this" {
 
     # resource_configs_defaults = {              # ALL of the following are DEFAULTS and RECOMMENDED.
     #   default = {                                # Every field is individually optional, so setting one
-    #     nodeClass = {                            # leaves its siblings on the module defaults.
+    #                                              # leaves its siblings on the module defaults. Settings
+    #                                              # MUST be nested under `default`, `gpu` or `on-demand`:
+    #                                              # terraform silently drops a key the type does not
+    #                                              # declare, so a top-level one never takes effect. The
+    #                                              # root module validates against that.
+    #     nodeClass = {
     #       amiAlias = "al2023@latest"             # derived from node_groups_default.ami_type when unset.
     #     }                                        # `@latest` means node replacement is CONTINUOUS AND
     #                                              # UNATTENDED: karpenter re-checks about every minute and
@@ -178,20 +199,6 @@ module "this" {
       }
     }
 
-    # resource_configs_defaults = {
-    #   default = {                           # NOTE: must be nested under `default`. A top-level key here fails at plan time.
-    #     requirements = [ ... ]              # DEFAULT: linux amd64, cpu 2-32, memory 2-128Gi, generation > 2,
-    #                                         # both spot and on-demand. Wide on purpose: instance-type
-    #                                         # flexibility is what lowers spot interruption frequency.
-    #     disruption = {
-    #       consolidationPolicy = "Balanced"  # DEFAULT and RECOMMENDED. Weighs cost saving against disruption
-    #                                         # instead of consolidating whenever anything cheaper exists.
-    #       consolidateAfter    = "15m"       # DEFAULT. A brief utilisation dip no longer triggers node removal.
-    #       budgets             = [{ nodes = "10%" }] # DEFAULT, including the protection window entry.
-    #     }
-    #     limits = { cpu = 1000 }             # DEFAULT ceiling on total provisioned capacity.
-    #   }
-    # }
 
   }
 
