@@ -121,6 +121,15 @@ module "this" {
     # hotfix: an in-cluster patch is silently reverted by the next terraform apply.
 
     # resource_configs_defaults = {              # ALL of the following are DEFAULTS and RECOMMENDED.
+    #                                            #
+    #                                            # Three presets, selected per pool by nodeClassRef name:
+    #                                            #   default   -- every pool that names no class
+    #                                            #   on-demand -- capacity ordinary workloads must not use
+    #                                            #   gpu       -- GPU pools
+    #                                            # A pool inherits its preset's requirements, taints,
+    #                                            # weight, disruption and limits, which is why the pools
+    #                                            # below are so short. Override any single field on the
+    #                                            # pool itself; the rest of the preset still applies.
     #   default = {                                # Every field is individually optional, so setting one
     #                                              # leaves its siblings on the module defaults. Settings
     #                                              # MUST be nested under `default`, `gpu` or `on-demand`:
@@ -164,6 +173,54 @@ module "this" {
     #                                              # Wide on purpose: instance flexibility is what lowers
     #                                              # spot interruption frequency.
     #     limits = { cpu = 1000 }                  # DEFAULT ceiling on provisioned capacity.
+    #   }
+    #
+    #   # The `on-demand` preset, used by the pool below. Overriding anything here changes that pool without
+    #   # touching `general`, because a pool inherits the preset named by its nodeClassRef -- that is the
+    #   # whole mechanism. `default` applies to every pool that names no class; `gpu` to GPU pools.
+    #   on-demand = {
+    #     weight = 50                              # DEFAULT. Orders pools when both could take a pod;
+    #                                              # highest wins and an unset weight counts as 0, so this
+    #                                              # MUST exceed general's. It matters even though the pod
+    #                                              # also selects on-demand: `general` accepts both capacity
+    #                                              # types and would otherwise satisfy the pod itself.
+    #
+    #     taints = [                               # DEFAULT. `dedicated=<class>` is the kubernetes
+    #       {                                      # convention for reserved nodes. Declaring your own
+    #         key    = "dedicated"                 # taints REPLACES this list rather than adding to it,
+    #         value  = "on-demand"                 # so re-state this entry if you want both.
+    #         effect = "NoSchedule"
+    #       }
+    #     ]
+    #
+    #     requirements = [ ... ]                   # DEFAULT: on-demand only, categories t/c/m/r,
+    #                                              # generation > 2, memory > 3000MiB, cpu < 33.
+    #                                              # Differs from `default` on purpose: burstable is ALLOWED
+    #                                              # here because this pool carries small steady workloads,
+    #                                              # which is the profile t suits -- while the general pool
+    #                                              # excludes it because bulk load throttles it. Generation
+    #                                              # drops to >2 because >4 would exclude t3 (gen 3)
+    #                                              # entirely, and the memory floor rises to 3000 because
+    #                                              # admitting t makes 2GiB shapes reachable and karpenter
+    #                                              # picks the cheapest that fits -- a t3a.small, which the
+    #                                              # VPC CNI limits to 11 pods. Narrow back to c/m/r if
+    #                                              # something CPU-hungry lands here.
+    #
+    #     disruption = {
+    #       consolidationPolicy = "WhenEmpty"      # DEFAULT, and stricter than general's Balanced: only
+    #                                              # ever remove a node that is already empty. Consolidating
+    #                                              # a node still holding one of these workloads is exactly
+    #                                              # the disruption this pool exists to avoid.
+    #       consolidateAfter    = "15m"            # DEFAULT
+    #       budgets = [{ nodes = "10%" }]          # DEFAULT. No protection window, deliberately: with
+    #                                              # WhenEmpty the only voluntary disruption is removing an
+    #                                              # empty node, which disrupts nothing at any hour.
+    #     }
+    #
+    #     limits = { cpu = 1000 }                  # DEFAULT, same ceiling as the other presets. A limit is
+    #                                              # a runaway guard, not a cost budget -- when it binds,
+    #                                              # these pods pend, and these are the pods that were put
+    #                                              # here because they must stay up.
     #   }
     # }
     #
