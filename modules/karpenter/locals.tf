@@ -35,6 +35,29 @@ locals {
     blockDeviceMappings = var.resource_configs_defaults["default"].nodeClass.blockDeviceMappings
   }
 
+  # Identical in shape to the default class. It exists as its own class because the defaults preset is
+  # selected by nodeClassRef name, so a pool referencing "protected" inherits the protected requirements,
+  # taints, weight, disruption and limits without restating any of them.
+  defaultEc2NodeClassProtected = {
+    tags                = var.tags
+    role                = module.this.node_iam_role_name
+    subnetSelectorTerms = [for id in var.subnet_ids : { id = id }]
+    securityGroupSelectorTerms = [
+      { tags = { "karpenter.sh/discovery" = var.cluster_name, "Name" = "${var.cluster_name}-node" } }
+    ]
+    amiSelectorTerms = coalesce(
+      var.resource_configs_defaults["protected"].nodeClass.amiSelectorTerms,
+      [{ alias = coalesce(
+        var.resource_configs_defaults["protected"].nodeClass.amiAlias,
+        var.resource_configs_defaults["default"].nodeClass.amiAlias,
+        "al2023@latest"
+      ) }]
+    )
+    detailedMonitoring  = var.resource_configs_defaults["protected"].nodeClass.detailedMonitoring
+    metadataOptions     = var.resource_configs_defaults["protected"].nodeClass.metadataOptions
+    blockDeviceMappings = var.resource_configs_defaults["protected"].nodeClass.blockDeviceMappings
+  }
+
   defaultEc2NodeClassGpu = {
     tags                = var.tags
     amiFamily           = coalesce(var.resource_configs_defaults["gpu"].nodeClass.amiFamily, local.amiFamilyGpu) # ami family should be get automatically, but it can be also passed for node class
@@ -54,24 +77,49 @@ locals {
   nodePoolDefaultNodeClassRef = var.resource_configs_defaults["default"].nodeClassRef
   nodePoolDefaultRequirements = var.resource_configs_defaults["default"].requirements
 
+  # Which defaults preset a pool inherits, resolved once: the node class it references, or "default".
+  poolDefaultsKey = {
+    for key, value in try(var.resource_configs.nodePools, {}) :
+    key => contains(keys(var.resource_configs_defaults), try(value.template.spec.nodeClassRef.name, "default")) ? try(value.template.spec.nodeClassRef.name, "default") : "default"
+  }
+
+  # `weight` and `taints` exist on the protected preset and not on the others, so they must be ABSENT rather
+  # than null for pools that have neither -- a rendered `weight: null` is not the same thing as no weight.
+  # Resolved here, then merged in below only when set.
+  poolOptional = {
+    for key, value in try(var.resource_configs.nodePools, {}) : key => {
+      weight = try(value.weight, try(var.resource_configs_defaults[local.poolDefaultsKey[key]].weight, null))
+      taints = try(value.template.spec.taints, try(var.resource_configs_defaults[local.poolDefaultsKey[key]].taints, null))
+    }
+  }
+
   nodePools = { for key, value in try(var.resource_configs.nodePools, {}) : key => merge(
     value,
+    # Dropped entirely when null. Built as a for-expression over a single-entry object rather than a
+    # ternary: a ternary would have to unify `{ weight = number }` with `{}`, which terraform rejects as
+    # inconsistent result types -- and it rejects it at plan time, not at validate, so it would reach
+    # consumers. The same shape is used for the system node group taint in the root module.
+    { for k, v in { weight = local.poolOptional[key].weight } : k => v if v != null },
     {
       template = merge(try(value.template, {}), {
-        spec = merge({ nodeClassRef = local.nodePoolDefaultNodeClassRef }, try(value.template.spec, {}), {
-          requirements           = concat([for item in var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].requirements : item if !contains(try(value.template.spec.requirements, []).*.key, item.key)], try(value.template.spec.requirements, []))
-          expireAfter            = try(value.template.spec.expireAfter, var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].expireAfter)
-          terminationGracePeriod = try(value.template.spec.terminationGracePeriod, var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].terminationGracePeriod)
+        spec = merge({ nodeClassRef = local.nodePoolDefaultNodeClassRef }, try(value.template.spec, {}),
+          # Same treatment: the protected preset carries taints, the others do not, and a pool that declares
+          # its own keeps exactly what it wrote.
+          { for k, v in { taints = local.poolOptional[key].taints } : k => v if v != null },
+          {
+            requirements           = concat([for item in var.resource_configs_defaults[local.poolDefaultsKey[key]].requirements : item if !contains(try(value.template.spec.requirements, []).*.key, item.key)], try(value.template.spec.requirements, []))
+            expireAfter            = try(value.template.spec.expireAfter, var.resource_configs_defaults[local.poolDefaultsKey[key]].expireAfter)
+            terminationGracePeriod = try(value.template.spec.terminationGracePeriod, var.resource_configs_defaults[local.poolDefaultsKey[key]].terminationGracePeriod)
         })
       })
       # A pool's own disruption settings win field by field over the class defaults, which already carry any
       # protection windows as ordinary budget entries. There is no append step and therefore no
       # append-versus-override ambiguity: a pool that declares budgets simply has them.
       disruption = merge(
-        var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].disruption,
+        var.resource_configs_defaults[local.poolDefaultsKey[key]].disruption,
         try(value.disruption, {}),
       )
-      limits = merge(var.resource_configs_defaults[try(value.template.spec.nodeClassRef.name, "default")].limits, try(value.limits, {}))
+      limits = merge(var.resource_configs_defaults[local.poolDefaultsKey[key]].limits, try(value.limits, {}))
     }
   ) }
 

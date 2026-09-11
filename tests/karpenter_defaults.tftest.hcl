@@ -121,3 +121,67 @@ run "disruption_windows_can_be_disabled" {
     resource_configs_defaults = { default = { disruption = { budgets = [{ nodes = "10%" }] } } }
   }
 }
+
+# The protected preset exists so that declaring on-demand capacity is a nodeClassRef and nothing else.
+# These assert on the rendered NodePool values rather than on the plan succeeding, because the failure this
+# guards against -- a field arriving as null instead of being absent -- plans perfectly well.
+run "protected_preset_supplies_the_whole_pool" {
+  command = plan
+
+  module {
+    source = "./modules/karpenter"
+  }
+
+  variables {
+    subnet_ids = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
+    resource_configs = {
+      nodePools = {
+        general   = { weight = 1 }
+        protected = { template = { spec = { nodeClassRef = { name = "protected" } } } }
+      }
+    }
+  }
+
+  assert {
+    condition     = output.node_pools.protected.weight == 50
+    error_message = "the protected preset must supply weight, so a pool does not have to restate it"
+  }
+
+  assert {
+    condition     = output.node_pools.protected.template.spec.taints[0].key == "dasmeta.io/protected"
+    error_message = "the protected preset must supply its taint, otherwise ordinary workloads land on on-demand capacity"
+  }
+
+  assert {
+    condition = contains([
+      for r in output.node_pools.protected.template.spec.requirements :
+      r.values[0] if r.key == "karpenter.sh/capacity-type"
+    ], "on-demand")
+    error_message = "the protected preset must pin capacity-type to on-demand"
+  }
+
+  # Admitting the t family makes 2GiB shapes reachable; without this floor karpenter picks a t3a.small.
+  assert {
+    condition = length([
+      for r in output.node_pools.protected.template.spec.requirements :
+      r if r.key == "karpenter.k8s.aws/instance-memory" && r.operator == "Gt" && r.values[0] == "3000"
+    ]) == 1
+    error_message = "the protected preset must keep a memory floor above 2GiB now that burstable is allowed"
+  }
+
+  assert {
+    condition     = output.node_pools.protected.disruption.consolidationPolicy == "WhenEmpty"
+    error_message = "protected capacity must only ever lose an empty node"
+  }
+
+  # The other half of the contract: pools that inherit no weight or taints must not render them as null.
+  assert {
+    condition     = !can(output.node_pools.general.taints)
+    error_message = "a pool with no taints must omit the field entirely, not render taints: null"
+  }
+
+  assert {
+    condition     = output.node_pools.general.weight == 1
+    error_message = "an explicit pool weight must survive the preset merge"
+  }
+}

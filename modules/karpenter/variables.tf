@@ -232,6 +232,122 @@ variable "resource_configs_defaults" {
       limits = optional(any, { cpu = 1000 }) # ceiling on total capacity this pool may provision
     }), {})
 
+    # Preset for ON-DEMAND capacity that ordinary workloads must not land on: ingress, monitoring,
+    # singletons, stateful services. A pool referencing `nodeClassRef.name = "protected"` inherits all of
+    # the below, so declaring one is three lines rather than fifty. Every field stays individually
+    # overridable on the pool.
+    protected = optional(object({
+      nodeClass = optional(object({
+        amiAlias           = optional(string, null) # null means "derive from the managed node group ami_type at the root module"
+        amiSelectorTerms   = optional(any, null)    # full override of AMI selection; when set, amiAlias is ignored
+        amiFamily          = optional(string, null) # only needed when amiSelectorTerms is used without an alias
+        detailedMonitoring = optional(bool, true)   # 1-minute EC2 metrics rather than 5-minute
+        metadataOptions = optional(any, {
+          httpEndpoint            = "enabled"
+          httpProtocolIPv6        = "disabled"
+          httpPutResponseHopLimit = 2 # blocks IMDS access from containers not on the host network
+          httpTokens              = "required"
+        })
+        blockDeviceMappings = optional(any, [
+          {
+            deviceName = "/dev/xvda"
+            ebs = {
+              volumeSize = "100Gi"
+              volumeType = "gp3"
+              encrypted  = true
+            }
+          }
+        ])
+      }), {})
+
+      nodeClassRef = optional(object({
+        group = optional(string, "karpenter.k8s.aws")
+        kind  = optional(string, "EC2NodeClass")
+        name  = optional(string, "protected")
+      }), {})
+
+      # Orders pools when several could take the same pod; highest wins, and an unset weight counts as 0.
+      # Must exceed the general pool's weight, which is why this is not left to chance.
+      weight = optional(number, 50)
+
+      # Applied to the pool so ordinary workloads never land on capacity you are paying on-demand rates for.
+      # A workload opts in by tolerating this AND selecting on-demand -- the toleration alone only makes the
+      # nodes eligible, it does not keep the pod off spot.
+      taints = optional(any, [
+        {
+          key    = "dasmeta.io/protected"
+          value  = "true"
+          effect = "NoSchedule"
+        }
+      ])
+
+      requirements = optional(any, [
+        {
+          key      = "karpenter.sh/capacity-type"
+          operator = "In"
+          values   = ["on-demand"] # not subject to reclamation, which is the whole point of this pool
+        },
+        {
+          # Burstable is allowed HERE and excluded from the general pool, for the same reason the system node
+          # group uses it: this capacity carries small, steady critical workloads, which is the profile
+          # burstable suits. The general pool excludes "t" because bulk workloads drive sustained CPU and
+          # burstable throttles under it; that does not apply to a handful of singletons. Paying the
+          # on-demand premium for compute-optimised headroom these pods never use is cost for no benefit.
+          # Narrow to ["c", "m", "r"] if something CPU-hungry lands here, such as a metrics store under load.
+          key      = "karpenter.k8s.aws/instance-category"
+          operator = "In"
+          values   = ["t", "c", "m", "r"]
+        },
+        {
+          # >2 rather than the general pool's >4, which would exclude the t family outright: t3 is
+          # generation 3, and t4g is arm64 and already excluded by the architecture requirement.
+          key      = "karpenter.k8s.aws/instance-generation"
+          operator = "Gt"
+          values   = ["2"]
+        },
+        {
+          # Above the general pool's 2000MiB, because admitting the t family makes 2GiB shapes reachable and
+          # karpenter picks the cheapest that fits -- observed selecting a t3a.small. That is the size ruled
+          # out for the system node group for the same two reasons: the VPC CNI allows only 11 pods on it
+          # ((3 ENIs x (4 IPs - 1)) + 2) and the DaemonSets take about 5 of those, and ~1.5GiB allocatable is
+          # thin for anything worth protecting. 3000 admits t3.medium at 4GiB, the smallest shape that behaves.
+          key      = "karpenter.k8s.aws/instance-memory"
+          operator = "Gt"
+          values   = ["3000"]
+        },
+        {
+          key      = "karpenter.k8s.aws/instance-cpu"
+          operator = "Lt"
+          values   = ["33"]
+        },
+        {
+          key      = "karpenter.k8s.aws/instance-memory"
+          operator = "Lt"
+          values   = ["131073"]
+        },
+        {
+          key      = "kubernetes.io/arch"
+          operator = "In"
+          values   = ["amd64"]
+        }
+      ])
+
+      terminationGracePeriod = optional(string, null)
+      expireAfter            = optional(string, "Never")
+
+      disruption = optional(object({
+        # WhenEmpty, not Balanced: this pool should only ever lose a genuinely empty node. Consolidating a
+        # node that still holds a protected workload is the disruption the pool exists to avoid.
+        consolidationPolicy = optional(string, "WhenEmpty")
+        consolidateAfter    = optional(string, "15m")
+        # No protection window here on purpose. With WhenEmpty the only voluntary disruption is removing an
+        # empty node, which disrupts nothing and is therefore safe at any hour.
+        budgets = optional(any, [{ nodes = "10%" }])
+      }), {})
+
+      limits = optional(any, { cpu = 20 }) # small by design: this is on-demand capacity, not a bulk pool
+    }), {})
+
     gpu = optional(object({
       nodeClass = optional(object({
         amiAlias = optional(string, "al2023@latest") # GPU node classes track the AL2023 GPU image

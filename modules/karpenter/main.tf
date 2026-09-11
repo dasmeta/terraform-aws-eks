@@ -203,8 +203,9 @@ resource "helm_release" "karpenter_nodes" {
       var.resource_configs,
       {
         ec2NodeClasses = {
-          default = local.defaultEc2NodeClass,
-          gpu     = local.defaultEc2NodeClassGpu
+          default   = local.defaultEc2NodeClass,
+          gpu       = local.defaultEc2NodeClassGpu,
+          protected = local.defaultEc2NodeClassProtected
         }
         nodePools               = local.nodePools
         karpenterServiceAccount = module.this.service_account

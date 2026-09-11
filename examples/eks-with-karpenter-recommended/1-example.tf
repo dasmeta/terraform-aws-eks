@@ -162,75 +162,18 @@ module "this" {
         # made every co-occurring incident harder to diagnose. Note that ingress is NOT a reason to keep it
         # here: with an ALB the load balancer lives outside the cluster and survives any node loss.
         #
-        # There is no special input for this -- it is an ordinary node pool. It declares its own `budgets`,
-        # which keeps the protection window off it: it should only ever lose an empty node, at any hour.
+        # Referencing the `protected` node class is the whole configuration. It carries the on-demand
+        # requirement, the burstable-friendly instance filter with its memory floor, the
+        # `dasmeta.io/protected` taint, weight 50, WhenEmpty consolidation and a small capacity ceiling.
+        # Every one of those stays overridable here; see the module's resource_configs_defaults for what
+        # each defaults to and why. Workloads opt in by tolerating the taint AND selecting on-demand --
+        # see http-echo-critical.yaml.
         protected = {
-          # Orders pools when several could take the same pod; highest wins. Must exceed `general` above,
-          # since an unset weight counts as 0. Value is arbitrary (1-100). Guide 2.4 explains why this is
-          # needed even when the pod also selects on-demand.
-          weight = 50
           template = {
             spec = {
-              # Declare only what differs. Requirements merge by KEY, so this narrows the default
-              # ["spot", "on-demand"] to on-demand and inherits everything else. Re-stating a default
-              # pins the pool to today's value and stops it following the module. Guide 2.4.
-              requirements = [
-                {
-                  key      = "karpenter.sh/capacity-type"
-                  operator = "In"
-                  values   = ["on-demand"] # not subject to reclamation, which is the whole point
-                },
-                # Burstable is allowed HERE and excluded from the general pool, for the same reason the
-                # system node group uses it: this capacity is on-demand and carries small, steady critical
-                # workloads, which is the profile burstable suits. The general pool excludes "t" because
-                # bulk workloads drive sustained CPU and burstable throttles under it -- that argument does
-                # not apply to a couple of singletons. Paying the on-demand premium for compute-optimised
-                # headroom these pods never use is the expensive half of this pool for no benefit.
-                #
-                # If something CPU-hungry lands here -- a metrics store under real load -- narrow this back
-                # to ["c", "m", "r"] for that pool, or give it a pool of its own.
-                {
-                  key      = "karpenter.k8s.aws/instance-category"
-                  operator = "In"
-                  values   = ["t", "c", "m", "r"]
-                },
-                # Lowered from the default of >4 because that excludes the t family entirely: t3 is
-                # generation 3 and t4g is arm64. >2 admits t3/t3a while still keeping the pre-nitro
-                # generations out.
-                {
-                  key      = "karpenter.k8s.aws/instance-generation"
-                  operator = "Gt"
-                  values   = ["2"]
-                },
-                # Raised from the module default of 2000MiB once admitting the t family made 2GiB shapes
-                # reachable: karpenter picked a t3a.small here, which is the one size ruled out for the
-                # system node group for the same two reasons. The VPC CNI allows only 11 pods on it
-                # ((3 ENIs x (4 IPs - 1)) + 2) and the DaemonSets take about 5 of those, and ~1.5GiB
-                # allocatable is thin for anything worth protecting. 3000 admits t3.medium at 4GiB, which is
-                # the smallest shape that behaves, and costs nothing when karpenter would have picked bigger
-                # anyway.
-                {
-                  key      = "karpenter.k8s.aws/instance-memory"
-                  operator = "Gt"
-                  values   = ["3000"]
-                },
-              ]
-              # Workloads opt in by tolerating this taint AND selecting on-demand -- see http-echo-critical.yaml.
-              taints = [
-                {
-                  key    = "dasmeta.io/protected"
-                  value  = "true"
-                  effect = "NoSchedule"
-                }
-              ]
+              nodeClassRef = { name = "protected" }
             }
           }
-          disruption = {
-            consolidationPolicy = "WhenEmpty" # only ever remove a genuinely empty node
-            consolidateAfter    = "15m"
-            budgets             = [{ nodes = "10%" }]
-          }
-          limits = { cpu = 20 }
         }
       }
     }

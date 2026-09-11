@@ -731,6 +731,20 @@ CPU and burstable throttles; that argument does not carry over to a couple of si
 
 Widen the protected pool's own requirements to admit burstable:
 
+All of this is the `protected` preset, so declaring the pool is:
+
+```hcl
+resource_configs = {
+  nodePools = {
+    protected = { template = { spec = { nodeClassRef = { name = "protected" } } } }
+  }
+}
+```
+
+which resolves to the on-demand requirement, the burstable-friendly instance filter with its memory floor,
+the `dasmeta.io/protected` taint, weight 50, `WhenEmpty` consolidation and a small capacity ceiling. Each is
+overridable on the pool. The equivalent written out, if you need to change one of them:
+
 ```hcl
 requirements = [
   { key = "karpenter.sh/capacity-type",            operator = "In", values = ["on-demand"] },
