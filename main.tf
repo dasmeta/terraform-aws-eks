@@ -312,6 +312,15 @@
  *        anything. Any node group that declares its own `taints` is left exactly as written.
  *      - Opt out with `node_groups_system_taint = { enabled = false }`, which is the right choice for
  *        development or test clusters where the isolation is not worth the extra capacity.
+ *    - **Destroys now hold two controllers alive for 90 seconds each.** The load balancer controller and the
+ *      karpenter controller own AWS resources terraform did not create and cannot see -- load balancers and
+ *      their ENIs, and EC2 instances. On a destroy terraform removes the controller while it is still
+ *      cleaning those up, orphaning them; the orphaned ENIs then hold the node security group and the run
+ *      fails several resources later on a security group that is not the cause. A `time_sleep` with
+ *      `destroy_duration` widens the window. It is a mitigation, not a guarantee: delete Ingress and
+ *      `Service type=LoadBalancer` objects and the node pools, confirm the load balancers and node claims
+ *      are gone, and only then destroy. See "Destroying a cluster" in `docs/eks-stability-guide.md`.
+ *      Applies add nothing; the wait is destroy-only.
  *    - **Known issue, not introduced by this release: a first apply can fail with `Unauthorized`.** The
  *      kubernetes, kubectl and helm providers authenticate with a token from `aws_eks_cluster_auth`. That
  *      token is minted once, is valid for exactly 15 minutes, and terraform cannot refresh it during an

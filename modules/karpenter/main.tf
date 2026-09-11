@@ -160,6 +160,27 @@ resource "helm_release" "this" {
 }
 
 # allows to create karpenter crd resources such as NodeClasses, NodePools
+# Holds the karpenter controller alive for a window on DESTROY, so it can terminate the EC2 instances it owns.
+#
+# Deleting a NodePool marks its NodeClaims for deletion, but draining and terminating the instance is the
+# controller's job, and terraform has no edge to those instances at all -- it never created them. Remove the
+# controller first and the instances are orphaned, still holding the `-node` security group, so the destroy
+# fails later on a security group whose real blocker is an EC2 instance nothing is tracking.
+#
+# Ordering matters and is easy to get backwards. This sleep is created AFTER the controller and BEFORE the
+# node classes below, which on destroy gives: node classes (NodePools deleted) -> this wait -> controller.
+# Hanging the sleep off the node classes instead would place the wait before the NodePools are deleted, which
+# is useless.
+#
+# A fixed wait is a mitigation, not a guarantee: draining respects PodDisruptionBudgets and can outlast it.
+# Delete the node pools and confirm `kubectl get nodeclaims` is empty before destroying for the reliable path.
+resource "time_sleep" "karpenter_teardown" {
+  depends_on = [helm_release.this]
+
+  # Only on destroy. Creation is unaffected.
+  destroy_duration = "90s"
+}
+
 resource "helm_release" "karpenter_nodes" {
   name             = "karpenter-node-classes"
   repository       = "https://dasmeta.github.io/helm"
@@ -186,5 +207,5 @@ resource "helm_release" "karpenter_nodes" {
     jsonencode({ ec2NodeClasses = try(var.resource_configs.ec2NodeClasses, {}) })
   ]
 
-  depends_on = [helm_release.this]
+  depends_on = [time_sleep.karpenter_teardown]
 }

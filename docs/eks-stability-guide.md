@@ -772,6 +772,65 @@ The autoscaler controller cannot run on nodes the autoscaler created — its cha
   ~1.5 GiB allocatable cannot hold the controller's memory limit alongside CoreDNS and the CSI controller.
   `t3.medium` gives 17 pods and 4 GiB, which fits with headroom.
 
+## Destroying a cluster
+
+A destroy that fails on a security group is almost never about the security group.
+
+Terraform owns what it created: the VPC, subnets, security groups, the cluster, the node groups. It does
+**not** own what controllers inside the cluster created on its behalf -- the ALBs and ENIs from the load
+balancer controller, the EC2 instances from Karpenter, volumes from the EBS CSI driver, records from
+external-dns. There is no edge in the graph to any of them, so nothing can be ordered against them.
+
+On a destroy that becomes a race. Terraform deletes an Ingress, the controller starts deleting the ALB, and
+terraform -- seeing no dependency -- removes the controller mid-job. The ALB and its ENIs are orphaned, the
+ENIs hold the node security group, and the run fails several resources later pointing at a security group
+that is not the problem. Finalizers exist to prevent this, but once the controller is gone the finalizer has
+nobody to remove it and becomes a deadlock instead of a guard.
+
+Whether it happens depends on whether the controller finished inside the window terraform happened to give
+it, which is why the same configuration usually tears down cleanly.
+
+The module holds the load balancer controller and the Karpenter controller alive for 90 seconds each on
+destroy to widen that window. That is a mitigation, not a guarantee -- a fixed wait cannot know whether
+cleanup finished, and a drain that respects PodDisruptionBudgets can outlast it.
+
+**Do this instead, in this order:**
+
+```bash
+# 1. remove the objects that own cloud resources
+kubectl delete ingress --all --all-namespaces
+kubectl delete svc --all-namespaces --field-selector spec.type=LoadBalancer
+
+# 2. let karpenter terminate its own instances
+kubectl delete nodepool --all
+kubectl get nodeclaims          # wait until this is empty
+
+# 3. confirm the cloud resources are actually gone, not just the objects
+aws elbv2 describe-load-balancers --region <region> \
+  --query 'LoadBalancers[?contains(LoadBalancerName,`k8s-`)].LoadBalancerName' --output text
+
+# 4. only now
+terraform destroy
+```
+
+If a destroy has already wedged on a security group, find what still references it and remove that first:
+
+```bash
+aws ec2 describe-network-interfaces --region <region> \
+  --filters "Name=group-id,Values=<sg-id>" \
+  --query 'NetworkInterfaces[].{ENI:NetworkInterfaceId,Desc:Description,Attach:Attachment.AttachmentId}' \
+  --output table
+```
+
+The description names the owner. `ELB app/k8s-...` is an orphaned load balancer: delete it and its ENIs go
+with it. `aws-K8S-i-...` is a CNI interface from a node that no longer exists: detach with `--force`, then
+delete. Re-run the destroy afterwards.
+
+Note that external-dns runs `upsert-only` by default, so Route53 records survive a teardown by design. They
+do not block anything; clean them up separately if the zone matters.
+
+---
+
 ## Quick reference: symptom to cause
 
 Check numbers refer to `./scripts/eks-assess.sh` sections.
@@ -795,6 +854,7 @@ Check numbers refer to `./scripts/eks-assess.sh` sections.
 | A node keeps an old AMI while others roll | A PDB or `do-not-disrupt` is correctly holding it | D4, guide 3.8 |
 | Control plane upgraded, nodes still on the old kubelet | The disruption window is correctly blocking `Drifted`; it rolls when the window closes | D3, guide "Upgrading the Kubernetes version" |
 | Node group upgrade fails on pod eviction | A PodDisruptionBudget permits zero evictions | E1, guide 3.2 |
+| `terraform destroy` fails deleting a security group | Orphaned ENIs from an ALB or a karpenter instance a controller never finished cleaning up | guide "Destroying a cluster" |
 
 ---
 
