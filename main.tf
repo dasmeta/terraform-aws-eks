@@ -278,9 +278,9 @@
  *      c/m/r set; if the reverse, `["r"]` (1:8). Section 14 of `scripts/eks-assess.sh` reports this per node.
  *    - `karpenter.resource_configs_defaults.default.terminationGracePeriod`, **unset by default**. It bounds how long a node may drain before remaining pods are removed. It is deliberately NOT enabled by default: setting it does more than bound a drain already underway, it makes a node ELIGIBLE for drift even when it hosts pods with blocking PodDisruptionBudgets or the `karpenter.sh/do-not-disrupt` annotation, and force-deletes those pods when it elapses. That converts both protections from a guarantee into a delay. A workload marked always-up stays up, and its node keeps an older AMI until a human moves it -- assessment section D4 lists such nodes and names what is holding them.
  *    - **Protected on-demand capacity is now a preset.** `resource_configs_defaults` gains a third key,
- *      `protected`, alongside `default` and `gpu`, and the module creates a matching `protected` EC2NodeClass.
+ *      `on-demand`, alongside `default` and `gpu`, and the module creates a matching `on-demand` EC2NodeClass.
  *      A pool referencing it inherits the on-demand requirement, an instance filter that admits burstable
- *      with a memory floor above the 2GiB shapes, the `dasmeta.io/protected` taint, weight 50, `WhenEmpty`
+ *      with a memory floor above the 2GiB shapes, the `dedicated=on-demand` taint, weight 50, `WhenEmpty`
  *      consolidation and a small capacity ceiling -- so declaring the pool is three lines rather than fifty,
  *      and every field stays overridable. Nothing is created unless a pool references it.
  *    - Protected on-demand capacity for ingress, monitoring, singleton and stateful workloads is configured with a standard node pool in `karpenter.resource_configs.nodePools` -- an on-demand capacity-type requirement plus a taint -- not a bespoke input. Standard pools already express this and more (labels, multiple taints, a custom node class), and a pool that declares its own `budgets` is excluded from the module's disruption windows, which is what such a pool wants. See `examples/eks-with-karpenter-recommended`.

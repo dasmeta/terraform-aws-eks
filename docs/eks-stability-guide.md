@@ -380,36 +380,21 @@ karpenter = {
     nodePools = {
       general = { weight = 1 }
 
-      protected = {
-        weight = 50
-        template = {
-          spec = {
-            requirements = [
-              { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
-            ]
-            taints = [
-              { key = "dasmeta.io/protected", value = "true", effect = "NoSchedule" },
-            ]
-          }
-        }
-        disruption = {
-          consolidationPolicy = "WhenEmpty"   # only ever remove a genuinely empty node
-          consolidateAfter    = "15m"
-          budgets             = [{ nodes = "10%" }]
-        }
-        limits = { cpu = 20 }
-      }
+      # The whole pool. Referencing the `on-demand` node class brings the preset with it.
+      on-demand = { template = { spec = { nodeClassRef = { name = "on-demand" } } } }
     }
   }
 }
 ```
 
-Two details in there are easy to get wrong.
+The preset supplies `weight = 50`, the on-demand requirement, an instance filter admitting burstable while
+excluding the specialised families, a memory floor above the 2GiB shapes, the `dedicated=on-demand` taint,
+`WhenEmpty` consolidation and a capacity ceiling. Override any of them on the pool.
 
-**`weight` must be set, and must exceed the general pool's.** It orders pools when more than one could
-satisfy the same pod, highest first. A pool with no weight counts as `0`, so if `general` is `1` and this is
-left unset, the protected pool ends up *lower* priority — the opposite of the intent. The number is
-arbitrary beyond the ordering; the valid range is 1–100.
+**Why `weight` is in the preset rather than left to you.** It orders pools when more than one could satisfy
+the same pod, highest first, and a pool with no weight counts as `0` — so with `general` at `1` and this
+left unset, the on-demand pool ends up *lower* priority, the opposite of the intent. The number is arbitrary
+beyond the ordering; the valid range is 1–100.
 
 It matters even though the workload also selects on-demand (section 3.6), because `general` accepts both
 capacity types and can satisfy an on-demand selector itself. Without the higher weight, a tolerating pod can
@@ -489,18 +474,18 @@ every container. Limits are a separate decision; requests are what scheduling an
 
 ### 3.5 Single-replica services
 
-A single-replica service cannot be protected by a PDB. Either raise it to 2, or move it to protected capacity
+A single-replica service cannot be protected by a PDB. Either raise it to 2, or move it to on-demand capacity
 (3.6). There is no third option — this is a genuine gap, not a configuration oversight.
 
-### 3.6 Pinning a workload to protected capacity
+### 3.6 Pinning a workload to on-demand capacity
 
 Both parts are required:
 
 ```yaml
-tolerations:                                  # makes protected nodes ELIGIBLE
-  - key: "dasmeta.io/protected"
+tolerations:                                  # makes on-demand nodes ELIGIBLE
+  - key: "dedicated"
     operator: "Equal"
-    value: "true"
+    value: "on-demand"
     effect: "NoSchedule"
 
 nodeSelector:                                 # is what actually keeps it OFF spot
@@ -569,7 +554,7 @@ node could ever complete.
 
 Check and fix, in this order:
 
-1. Any database or stateful pod on spot — move to protected capacity (3.6).
+1. Any database or stateful pod on spot — move to on-demand capacity (3.6).
 2. Any PDB with `disruptionsAllowed: 0` — assessment section E1.
 3. Prometheus with RWO storage and a single replica — slow volume reattach on eviction causes monitoring gaps
    during exactly the incidents you need visibility into.
@@ -583,7 +568,7 @@ rejected rather than skipped. One replica means one eviction is enough, and the 
 creation across the whole cluster, so the workload that cannot start looks like the fault and the real cause
 is several layers away.
 
-Give these 2+ replicas, or place them on protected capacity, and check that their PDB permits an eviction.
+Give these 2+ replicas, or place them on on-demand capacity, and check that their PDB permits an eviction.
 Assessment section B3 lists every `Fail` webhook alongside how many backends it currently has.
 
 The same property makes them awkward to remove: the pods go, the webhook stays registered, and the cleanup it
@@ -736,13 +721,13 @@ All of this is the `protected` preset, so declaring the pool is:
 ```hcl
 resource_configs = {
   nodePools = {
-    protected = { template = { spec = { nodeClassRef = { name = "protected" } } } }
+    on-demand = { template = { spec = { nodeClassRef = { name = "on-demand" } } } }
   }
 }
 ```
 
 which resolves to the on-demand requirement, the burstable-friendly instance filter with its memory floor,
-the `dasmeta.io/protected` taint, weight 50, `WhenEmpty` consolidation and a small capacity ceiling. Each is
+the `dedicated=on-demand` taint, weight 50, `WhenEmpty` consolidation and a small capacity ceiling. Each is
 overridable on the pool. The equivalent written out, if you need to change one of them:
 
 ```hcl

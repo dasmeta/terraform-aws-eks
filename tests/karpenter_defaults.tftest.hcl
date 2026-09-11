@@ -125,7 +125,7 @@ run "disruption_windows_can_be_disabled" {
 # The protected preset exists so that declaring on-demand capacity is a nodeClassRef and nothing else.
 # These assert on the rendered NodePool values rather than on the plan succeeding, because the failure this
 # guards against -- a field arriving as null instead of being absent -- plans perfectly well.
-run "protected_preset_supplies_the_whole_pool" {
+run "on_demand_preset_supplies_the_whole_pool" {
   command = plan
 
   module {
@@ -136,42 +136,42 @@ run "protected_preset_supplies_the_whole_pool" {
     subnet_ids = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
     resource_configs = {
       nodePools = {
-        general   = { weight = 1 }
-        protected = { template = { spec = { nodeClassRef = { name = "protected" } } } }
+        general     = { weight = 1 }
+        "on-demand" = { template = { spec = { nodeClassRef = { name = "on-demand" } } } }
       }
     }
   }
 
   assert {
-    condition     = output.node_pools.protected.weight == 50
-    error_message = "the protected preset must supply weight, so a pool does not have to restate it"
+    condition     = output.node_pools["on-demand"].weight == 50
+    error_message = "the on-demand preset must supply weight, so a pool does not have to restate it"
   }
 
   assert {
-    condition     = output.node_pools.protected.template.spec.taints[0].key == "dasmeta.io/protected"
-    error_message = "the protected preset must supply its taint, otherwise ordinary workloads land on on-demand capacity"
+    condition     = output.node_pools["on-demand"].template.spec.taints[0].key == "dedicated"
+    error_message = "the on-demand preset must supply its taint, otherwise ordinary workloads land on on-demand capacity"
   }
 
   assert {
     condition = contains([
-      for r in output.node_pools.protected.template.spec.requirements :
+      for r in output.node_pools["on-demand"].template.spec.requirements :
       r.values[0] if r.key == "karpenter.sh/capacity-type"
     ], "on-demand")
-    error_message = "the protected preset must pin capacity-type to on-demand"
+    error_message = "the on-demand preset must pin capacity-type to on-demand"
   }
 
   # Admitting the t family makes 2GiB shapes reachable; without this floor karpenter picks a t3a.small.
   assert {
     condition = length([
-      for r in output.node_pools.protected.template.spec.requirements :
+      for r in output.node_pools["on-demand"].template.spec.requirements :
       r if r.key == "karpenter.k8s.aws/instance-memory" && r.operator == "Gt" && r.values[0] == "3000"
     ]) == 1
-    error_message = "the protected preset must keep a memory floor above 2GiB now that burstable is allowed"
+    error_message = "the on-demand preset must keep a memory floor above 2GiB now that burstable is allowed"
   }
 
   assert {
-    condition     = output.node_pools.protected.disruption.consolidationPolicy == "WhenEmpty"
-    error_message = "protected capacity must only ever lose an empty node"
+    condition     = output.node_pools["on-demand"].disruption.consolidationPolicy == "WhenEmpty"
+    error_message = "on-demand capacity must only ever lose an empty node"
   }
 
   # The other half of the contract: pools that inherit no weight or taints must not render them as null.
@@ -183,5 +183,47 @@ run "protected_preset_supplies_the_whole_pool" {
   assert {
     condition     = output.node_pools.general.weight == 1
     error_message = "an explicit pool weight must survive the preset merge"
+  }
+}
+
+# A pool's own taints REPLACE the preset's rather than merging with them. Asserted because the alternative
+# -- a half-inherited taint set -- would be a silent scheduling change rather than a visible one.
+run "pool_taints_replace_the_preset_taints" {
+  command = plan
+
+  module {
+    source = "./modules/karpenter"
+  }
+
+  variables {
+    subnet_ids = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
+    resource_configs = {
+      nodePools = {
+        "on-demand" = {
+          template = {
+            spec = {
+              nodeClassRef = { name = "on-demand" }
+              taints       = [{ key = "team", value = "data", effect = "NoSchedule" }]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = length(output.node_pools["on-demand"].template.spec.taints) == 1
+    error_message = "a pool declaring taints must get exactly what it wrote, not its taints plus the preset's"
+  }
+
+  assert {
+    condition     = output.node_pools["on-demand"].template.spec.taints[0].key == "team"
+    error_message = "the pool's own taint must win over the preset default"
+  }
+
+  # The rest of the preset must still apply: only taints were overridden.
+  assert {
+    condition     = output.node_pools["on-demand"].weight == 50
+    error_message = "overriding taints must not discard the rest of the preset"
   }
 }

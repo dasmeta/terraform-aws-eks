@@ -232,11 +232,11 @@ variable "resource_configs_defaults" {
       limits = optional(any, { cpu = 1000 }) # ceiling on total capacity this pool may provision
     }), {})
 
-    # Preset for ON-DEMAND capacity that ordinary workloads must not land on: ingress, monitoring,
-    # singletons, stateful services. A pool referencing `nodeClassRef.name = "protected"` inherits all of
-    # the below, so declaring one is three lines rather than fifty. Every field stays individually
-    # overridable on the pool.
-    protected = optional(object({
+    # Preset for ON-DEMAND capacity that ordinary workloads must not land on: monitoring, singletons,
+    # stateful services, anything that cannot survive its node disappearing. A pool referencing
+    # `nodeClassRef.name = "on-demand"` inherits all of the below, so declaring one is three lines rather
+    # than fifty. Every field stays individually overridable on the pool.
+    on-demand = optional(object({
       nodeClass = optional(object({
         amiAlias           = optional(string, null) # null means "derive from the managed node group ami_type at the root module"
         amiSelectorTerms   = optional(any, null)    # full override of AMI selection; when set, amiAlias is ignored
@@ -263,7 +263,7 @@ variable "resource_configs_defaults" {
       nodeClassRef = optional(object({
         group = optional(string, "karpenter.k8s.aws")
         kind  = optional(string, "EC2NodeClass")
-        name  = optional(string, "protected")
+        name  = optional(string, "on-demand")
       }), {})
 
       # Orders pools when several could take the same pod; highest wins, and an unset weight counts as 0.
@@ -273,10 +273,18 @@ variable "resource_configs_defaults" {
       # Applied to the pool so ordinary workloads never land on capacity you are paying on-demand rates for.
       # A workload opts in by tolerating this AND selecting on-demand -- the toleration alone only makes the
       # nodes eligible, it does not keep the pod off spot.
+      #
+      # `dedicated=<node class>` is the convention kubernetes itself uses for reserved nodes, so it reads
+      # the same way in any cluster and needs no vendor prefix to explain. The value tracks the node class
+      # name, so a second preset added later follows the same shape without inventing a new key.
+      #
+      # A pool that declares its own `taints` REPLACES this list rather than adding to it -- taints are not
+      # merged entry by entry, because a half-inherited taint set is worse than either choice made cleanly.
+      # Re-state this entry alongside your own if you want both.
       taints = optional(any, [
         {
-          key    = "dasmeta.io/protected"
-          value  = "true"
+          key    = "dedicated"
+          value  = "on-demand"
           effect = "NoSchedule"
         }
       ])
@@ -288,12 +296,17 @@ variable "resource_configs_defaults" {
           values   = ["on-demand"] # not subject to reclamation, which is the whole point of this pool
         },
         {
-          # Burstable is allowed HERE and excluded from the general pool, for the same reason the system node
-          # group uses it: this capacity carries small, steady critical workloads, which is the profile
+          # Read this as what it EXCLUDES, not what it includes: the specialised families -- gpu (g, p),
+          # storage optimised (i, d, h), high memory (x, z), inference and training (inf, trn). None of them
+          # is ever the right answer for a singleton, and all of them are an expensive surprise if one
+          # happens to be the cheapest shape that fits in some region. On-demand does not need instance
+          # diversity the way spot does, so there is nothing to gain from a wider set.
+          #
+          # Burstable IS included here and excluded from the general pool, for the same reason the system
+          # node group uses it: this capacity carries small, steady workloads, which is the profile
           # burstable suits. The general pool excludes "t" because bulk workloads drive sustained CPU and
-          # burstable throttles under it; that does not apply to a handful of singletons. Paying the
-          # on-demand premium for compute-optimised headroom these pods never use is cost for no benefit.
-          # Narrow to ["c", "m", "r"] if something CPU-hungry lands here, such as a metrics store under load.
+          # burstable throttles under it; that does not apply to a handful of singletons. Narrow to
+          # ["c", "m", "r"] if something CPU-hungry lands here, such as a metrics store under real load.
           key      = "karpenter.k8s.aws/instance-category"
           operator = "In"
           values   = ["t", "c", "m", "r"]

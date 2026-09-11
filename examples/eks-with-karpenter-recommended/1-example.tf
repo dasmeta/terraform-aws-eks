@@ -162,16 +162,16 @@ module "this" {
         # made every co-occurring incident harder to diagnose. Note that ingress is NOT a reason to keep it
         # here: with an ALB the load balancer lives outside the cluster and survives any node loss.
         #
-        # Referencing the `protected` node class is the whole configuration. It carries the on-demand
-        # requirement, the burstable-friendly instance filter with its memory floor, the
-        # `dasmeta.io/protected` taint, weight 50, WhenEmpty consolidation and a small capacity ceiling.
-        # Every one of those stays overridable here; see the module's resource_configs_defaults for what
-        # each defaults to and why. Workloads opt in by tolerating the taint AND selecting on-demand --
-        # see http-echo-critical.yaml.
-        protected = {
+        # Referencing the `on-demand` node class is the whole configuration. It carries the on-demand
+        # requirement, an instance filter that admits burstable and excludes the specialised families, a
+        # memory floor above the 2GiB shapes, the `dedicated=on-demand` taint, weight 50, WhenEmpty
+        # consolidation and a small capacity ceiling. Every one of those stays overridable here; see the
+        # module's resource_configs_defaults for what each defaults to and why. Workloads opt in by
+        # tolerating the taint AND selecting on-demand -- see http-echo-critical.yaml.
+        on-demand = {
           template = {
             spec = {
-              nodeClassRef = { name = "protected" }
+              nodeClassRef = { name = "on-demand" }
             }
           }
         }

@@ -937,9 +937,9 @@ variable "karpenter" {
   # default cpu ceiling of 1000 instead of the 11 they asked for. This validation turns that into a loud failure.
   validation {
     condition = alltrue([
-      for key in keys(try(var.karpenter.resource_configs_defaults, {})) : contains(["default", "gpu", "protected"], key)
+      for key in keys(try(var.karpenter.resource_configs_defaults, {})) : contains(["default", "gpu", "on-demand"], key)
     ])
-    error_message = "karpenter.resource_configs_defaults accepts only the keys `default`, `gpu` and `protected`. Any other key is silently dropped by terraform and never takes effect. Nest your settings, e.g. resource_configs_defaults = { default = { limits = { cpu = 11 } } }."
+    error_message = "karpenter.resource_configs_defaults accepts only the keys `default`, `gpu` and `on-demand`. Any other key is silently dropped by terraform and never takes effect. Nest your settings, e.g. resource_configs_defaults = { default = { limits = { cpu = 11 } } }."
   }
 
   description = <<-EOT

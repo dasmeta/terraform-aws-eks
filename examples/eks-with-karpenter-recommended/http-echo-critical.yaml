@@ -6,7 +6,7 @@
 # stateful services. This is the shape that repeatedly turned a routine spot reclaim into an outage --
 # a singleton database pod on a spot node sharing capacity with bulk workloads.
 #
-# Requires base chart >= 0.4.0, and a `protected` node pool defined under karpenter.resource_configs.nodePools
+# Requires base chart >= 0.4.0, and an `on-demand` node pool defined under karpenter.resource_configs.nodePools
 # in the eks module -- see 1-example.tf. There is no dedicated input for it; it is an ordinary node pool.
 
 image:
@@ -27,9 +27,9 @@ externalSecretsApiVersion: external-secrets.io/v1
 # Set explicitly: this is how a workload opts in to the protected pool. The nodes carry a NoSchedule taint so
 # ordinary workloads never land on the on-demand capacity you are paying for; only pods that tolerate it do.
 tolerations:
-  - key: "dasmeta.io/protected"
+  - key: "dedicated"
     operator: "Equal"
-    value: "true"
+    value: "on-demand"
     effect: "NoSchedule"
 
 # Set explicitly: the toleration alone only makes the protected nodes ELIGIBLE -- it does not keep this pod off

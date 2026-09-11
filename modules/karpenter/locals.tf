@@ -36,9 +36,9 @@ locals {
   }
 
   # Identical in shape to the default class. It exists as its own class because the defaults preset is
-  # selected by nodeClassRef name, so a pool referencing "protected" inherits the protected requirements,
+  # selected by nodeClassRef name, so a pool referencing "on-demand" inherits that preset's requirements,
   # taints, weight, disruption and limits without restating any of them.
-  defaultEc2NodeClassProtected = {
+  defaultEc2NodeClassOnDemand = {
     tags                = var.tags
     role                = module.this.node_iam_role_name
     subnetSelectorTerms = [for id in var.subnet_ids : { id = id }]
@@ -46,16 +46,16 @@ locals {
       { tags = { "karpenter.sh/discovery" = var.cluster_name, "Name" = "${var.cluster_name}-node" } }
     ]
     amiSelectorTerms = coalesce(
-      var.resource_configs_defaults["protected"].nodeClass.amiSelectorTerms,
+      var.resource_configs_defaults["on-demand"].nodeClass.amiSelectorTerms,
       [{ alias = coalesce(
-        var.resource_configs_defaults["protected"].nodeClass.amiAlias,
+        var.resource_configs_defaults["on-demand"].nodeClass.amiAlias,
         var.resource_configs_defaults["default"].nodeClass.amiAlias,
         "al2023@latest"
       ) }]
     )
-    detailedMonitoring  = var.resource_configs_defaults["protected"].nodeClass.detailedMonitoring
-    metadataOptions     = var.resource_configs_defaults["protected"].nodeClass.metadataOptions
-    blockDeviceMappings = var.resource_configs_defaults["protected"].nodeClass.blockDeviceMappings
+    detailedMonitoring  = var.resource_configs_defaults["on-demand"].nodeClass.detailedMonitoring
+    metadataOptions     = var.resource_configs_defaults["on-demand"].nodeClass.metadataOptions
+    blockDeviceMappings = var.resource_configs_defaults["on-demand"].nodeClass.blockDeviceMappings
   }
 
   defaultEc2NodeClassGpu = {
@@ -78,12 +78,15 @@ locals {
   nodePoolDefaultRequirements = var.resource_configs_defaults["default"].requirements
 
   # Which defaults preset a pool inherits, resolved once: the node class it references, or "default".
+  #
+  # A class name matching no preset falls back to "default", which is what a consumer's own custom node
+  # class should do.
   poolDefaultsKey = {
     for key, value in try(var.resource_configs.nodePools, {}) :
     key => contains(keys(var.resource_configs_defaults), try(value.template.spec.nodeClassRef.name, "default")) ? try(value.template.spec.nodeClassRef.name, "default") : "default"
   }
 
-  # `weight` and `taints` exist on the protected preset and not on the others, so they must be ABSENT rather
+  # `weight` and `taints` exist on the on-demand preset and not on the others, so they must be ABSENT rather
   # than null for pools that have neither -- a rendered `weight: null` is not the same thing as no weight.
   # Resolved here, then merged in below only when set.
   poolOptional = {
