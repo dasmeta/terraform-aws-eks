@@ -805,11 +805,26 @@ Whether it happens depends on whether the controller finished inside the window 
 it, which is why the same configuration usually tears down cleanly.
 
 The module holds the load balancer controller alive for 30 seconds on destroy, and the Karpenter controller
-for 60. The difference is what each is waiting for: the load balancer controller is making API calls, while
-Karpenter is draining pods and is therefore bounded by PodDisruptionBudgets and each pod's grace period. That is a mitigation, not a guarantee -- a fixed wait cannot know whether
-cleanup finished, and a drain that respects PodDisruptionBudgets can outlast it.
+for 60 -- the first is waiting on API calls, the second on pod drains. **That helps and is not enough.** It
+only applies where terraform owns the Ingress objects, and a fixed wait cannot know whether AWS finished
+releasing the ENIs, which happens asynchronously after the controller's work is done. A destroy has been
+observed failing on the node security group with the sleeps in place.
 
-**Do this instead, in this order:**
+**Run the preparation script:**
+
+```bash
+./scripts/eks-destroy-prep.sh && terraform destroy
+```
+
+It deletes the objects that own AWS resources, then polls until those AWS resources are actually gone
+rather than sleeping a guessed interval, and exits non-zero while anything is still holding on -- so the
+`&&` stops you starting a destroy that will fail fifteen minutes later. `--dry-run` changes nothing.
+
+Its last section is what saves the most time: every ENI still attached to a cluster security group, **with
+its description**. The description names the owner and the owner determines the fix. Without it you get
+`DependencyViolation` on a security group that is not the problem and no indication of what is.
+
+**The equivalent by hand:**
 
 ```bash
 # 1. remove the objects that own cloud resources
@@ -869,7 +884,7 @@ Check numbers refer to `./scripts/eks-assess.sh` sections.
 | A node keeps an old AMI while others roll | A PDB or `do-not-disrupt` is correctly holding it | D4, guide 3.8 |
 | Control plane upgraded, nodes still on the old kubelet | The disruption window is correctly blocking `Drifted`; it rolls when the window closes | D3, guide "Upgrading the Kubernetes version" |
 | Node group upgrade fails on pod eviction | A PodDisruptionBudget permits zero evictions | E1, guide 3.2 |
-| `terraform destroy` fails deleting a security group | Orphaned ENIs from an ALB or a karpenter instance a controller never finished cleaning up | guide "Destroying a cluster" |
+| `terraform destroy` fails deleting a security group | Orphaned ENIs from an ALB or a karpenter instance a controller never finished cleaning up | `scripts/eks-destroy-prep.sh` |
 
 ---
 

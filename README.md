@@ -329,10 +329,13 @@ Those include:
      their ENIs, and EC2 instances. On a destroy terraform removes the controller while it is still
      cleaning those up, orphaning them; the orphaned ENIs then hold the node security group and the run
      fails several resources later on a security group that is not the cause. A `time_sleep` with
-     `destroy_duration` widens the window. It is a mitigation, not a guarantee: delete Ingress and
-     `Service type=LoadBalancer` objects and the node pools, confirm the load balancers and node claims
-     are gone, and only then destroy. See "Destroying a cluster" in `docs/eks-stability-guide.md`.
-     Applies add nothing; the wait is destroy-only.
+     `destroy_duration` widens the window. It is a mitigation and has been observed not to be enough: a
+     fixed wait cannot know whether AWS finished releasing the ENIs, which happens asynchronously after
+     the controller's own work completes. Run `scripts/eks-destroy-prep.sh` before destroying -- it
+     deletes the objects that own AWS resources, waits for those resources to actually disappear, and
+     reports any ENI still holding a cluster security group along with what owns it. It exits non-zero
+     when something is still attached, so `./scripts/eks-destroy-prep.sh && terraform destroy` will not
+     start a run that fails fifteen minutes later. Applies add nothing; the wait is destroy-only.
    - **Known issue, not introduced by this release: a first apply can fail with `Unauthorized`.** The
      kubernetes, kubectl and helm providers authenticate with a token from `aws_eks_cluster_auth`. That
      token is minted once, is valid for exactly 15 minutes, and terraform cannot refresh it during an
