@@ -69,6 +69,33 @@ echo "  node OS images:"
 kubectl get nodes -o json 2>/dev/null | jq -r '[.items[].status.nodeInfo.osImage] | group_by(.)
   | map({i: .[0], n: length}) | sort_by(-.n)[] | "    \(.n)x \(.i)"'
 
+# Control plane and nodes differing is normal and reads as alarming, so say which kind it is rather than
+# leaving the reader to compare two lists. A PATCH difference is routine -- EKS patches the control plane on
+# its own and the node AMI follows later. A MINOR difference is the upgrade case, where the nodes are waiting
+# on a drift roll that the disruption window may be holding.
+cp_ver="$(kubectl version -o json 2>/dev/null | jq -r '.serverVersion.gitVersion // empty' | sed 's/^v//;s/-.*//')"
+node_vers="$(kubectl get nodes -o json 2>/dev/null | jq -r '[.items[].status.nodeInfo.kubeletVersion] | unique[]' | sed 's/^v//;s/-.*//')"
+if [ -n "$cp_ver" ] && [ -n "$node_vers" ]; then
+  cp_mm="$(printf '%s' "$cp_ver" | cut -d. -f1-2)"
+  skew_minor=0; skew_patch=0
+  # Iterated over lines rather than by word splitting, which the bash shebang provides but zsh does not --
+  # a reader testing a snippet of this in their own shell would otherwise get a wrong answer silently.
+  while IFS= read -r nv; do
+    [ -z "$nv" ] && continue
+    [ "$(printf '%s' "$nv" | cut -d. -f1-2)" = "$cp_mm" ] || skew_minor=1
+    [ "$nv" = "$cp_ver" ] || skew_patch=1
+  done <<< "$node_vers"
+  if [ "$skew_minor" = 1 ]; then
+    echo "  SKEW: nodes are a MINOR version behind the control plane. Supported, but they are waiting on an"
+    echo "        AMI drift roll -- check D4 and the disruption windows in D2 if it is not progressing."
+  elif [ "$skew_patch" = 1 ]; then
+    echo "  skew: nodes are a patch behind the control plane ($cp_ver). Routine -- EKS patches the control"
+    echo "        plane on its own and the node AMI follows when AWS republishes it. Nothing to do."
+  else
+    echo "  control plane and nodes are on the same version"
+  fi
+fi
+
 hr "A2. CLUSTER SCALE"
 printf '  nodes_total     : %s\n' "$(kubectl get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ')"
 printf '  nodes_karpenter : %s\n' "$(kubectl get nodes -l karpenter.sh/nodepool --no-headers 2>/dev/null | wc -l | tr -d ' ')"

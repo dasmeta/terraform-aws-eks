@@ -26,8 +26,8 @@
 module "this" {
   source = "../.."
 
-  cluster_name    = local.cluster_name
-  cluster_version = "1.35"
+  cluster_name = local.cluster_name
+  # cluster_version = "1.35"
 
   # The subnets must span at least 2 availability zones, otherwise the system node group cannot place its 2
   # nodes in 2 zones and karpenter's second replica can never schedule. The module fails the plan when 2+
