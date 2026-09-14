@@ -77,17 +77,24 @@ cp_ver="$(kubectl version -o json 2>/dev/null | jq -r '.serverVersion.gitVersion
 node_vers="$(kubectl get nodes -o json 2>/dev/null | jq -r '[.items[].status.nodeInfo.kubeletVersion] | unique[]' | sed 's/^v//;s/-.*//')"
 if [ -n "$cp_ver" ] && [ -n "$node_vers" ]; then
   cp_mm="$(printf '%s' "$cp_ver" | cut -d. -f1-2)"
-  skew_minor=0; skew_patch=0
+  skew_minor=0; skew_patch=0; behind_minor=0
+  total_nodes="$(kubectl get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ')"
   # Iterated over lines rather than by word splitting, which the bash shebang provides but zsh does not --
   # a reader testing a snippet of this in their own shell would otherwise get a wrong answer silently.
   while IFS= read -r nv; do
     [ -z "$nv" ] && continue
-    [ "$(printf '%s' "$nv" | cut -d. -f1-2)" = "$cp_mm" ] || skew_minor=1
+    if [ "$(printf '%s' "$nv" | cut -d. -f1-2)" = "$cp_mm" ]; then :; else
+      skew_minor=1
+      # How many nodes sit on this older minor, so the line can say "1 of 6" rather than implying all.
+      n="$(kubectl get nodes -o json 2>/dev/null | jq --arg v "$nv" '[.items[] | select((.status.nodeInfo.kubeletVersion | sub("^v";"") | sub("-.*";"")) == $v)] | length')"
+      behind_minor=$((behind_minor + ${n:-0}))
+    fi
     [ "$nv" = "$cp_ver" ] || skew_patch=1
   done <<< "$node_vers"
   if [ "$skew_minor" = 1 ]; then
-    echo "  SKEW: nodes are a MINOR version behind the control plane. Supported, but they are waiting on an"
-    echo "        AMI drift roll -- check D4 and the disruption windows in D2 if it is not progressing."
+    echo "  SKEW: ${behind_minor} of ${total_nodes} nodes are a MINOR version behind the control plane. Supported, but"
+    echo "        they are waiting on an AMI drift roll -- check D4 and the disruption windows in D2 if it"
+    echo "        is not progressing. A count well below the total means the roll is already under way."
   elif [ "$skew_patch" = 1 ]; then
     echo "  skew: nodes are a patch behind the control plane ($cp_ver). Routine -- EKS patches the control"
     echo "        plane on its own and the node AMI follows when AWS republishes it. Nothing to do."
@@ -362,7 +369,9 @@ if [ -n "$QUEUE" ]; then
     --end-time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --period 3600 --statistics Maximum --region "$REGION" \
     --query 'sort_by(Datapoints,&Timestamp)[?Maximum>`0`].[Timestamp,Maximum]' --output text 2>/dev/null \
-    | sed 's/^/  /' | tail -20 || echo "  query failed (check credentials, queue name, region)"
+    | awk '{ printf "  %-26s %s seconds\n", $1, $2 }' | tail -20 || echo "  query failed (check credentials, queue name, region)"
+  echo "  Timestamps are whatever your AWS CLI renders; the disruption windows in D2 are UTC ONLY, so"
+  echo "  convert before correlating a backlog with a window."
   echo "  (no rows means the controller kept up for every event in the 30 day window)"
   echo "  ANY value above 120 is a MISSED DRAIN: the spot interruption notice is only 120s."
 else
