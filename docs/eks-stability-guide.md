@@ -786,6 +786,48 @@ The autoscaler controller cannot run on nodes the autoscaler created — its cha
   ~1.5 GiB allocatable cannot hold the controller's memory limit alongside CoreDNS and the CSI controller.
   `t3.medium` gives 17 pods and 4 GiB, which fits with headroom.
 
+## Leaked CNI network interfaces
+
+This one costs you twice, and the expensive half happens while the cluster is running.
+
+The VPC CNI allocates secondary network interfaces on each node to hand out pod IPs. When a node goes away
+before the CNI detaches them -- every consolidation, every spot reclaim, every node group replacement -- the
+interface is left behind in `available` state, attached to nothing. Nothing reclaims it. AWS does not
+garbage-collect an available interface.
+
+**On a running cluster** each orphan holds a private IP in its subnet. A cluster with heavy node churn
+loses address space steadily, and the failure it eventually produces is pods that cannot be scheduled with
+nothing in Kubernetes explaining why -- the subnet is full of addresses belonging to nodes that no longer
+exist. This is the reason to care about it before any teardown.
+
+**At teardown** they hold the node security group, and `terraform destroy` fails on it with
+`DependencyViolation` fifteen minutes after the thing that caused it.
+
+Assessment section G2 reports them. Remove them with:
+
+```bash
+./scripts/eks-destroy-prep.sh --delete-orphan-enis
+```
+
+Safe against a live cluster: it only removes interfaces that are `available` and unattached, which by
+definition no pod is using.
+
+**Why this is not automated in the module.** Two ways were considered and both are worse than the script. A
+Terraform destroy-time provisioner would make the AWS CLI a hard requirement on every machine and CI runner
+that runs the module -- a cost deliberately rejected elsewhere in this release -- and a failing destroy
+provisioner halts the destroy it was meant to help. Deleting network interfaces from Terraform on a filter
+is also a poor trade: if the filter is ever wrong it removes something live, and the blast radius is other
+people's traffic.
+
+**Reducing how many leak** is the better long-term answer, and it is a configuration change rather than a
+cleanup. `ENABLE_PREFIX_DELEGATION` on the VPC CNI addon assigns each interface a /28 prefix instead of
+individual addresses, so one interface serves many more pods and a node needs far fewer of them. Fewer
+interfaces means proportionally fewer orphans, and better pod density on the same instance types. It
+changes max-pods arithmetic, so it wants its own testing rather than being switched on alongside everything
+else here.
+
+---
+
 ## Destroying a cluster
 
 A destroy that fails on a security group is almost never about the security group.
@@ -907,7 +949,8 @@ Check numbers refer to `./scripts/eks-assess.sh` sections.
 | A node keeps an old AMI while others roll | A PDB or `do-not-disrupt` is correctly holding it | D4, guide 3.8 |
 | Control plane upgraded, nodes still on the old kubelet | The disruption window is correctly blocking `Drifted`; it rolls when the window closes | D3, guide "Upgrading the Kubernetes version" |
 | Node group upgrade fails on pod eviction | A PodDisruptionBudget permits zero evictions | E1, guide 3.2 |
-| `terraform destroy` fails deleting a security group | Orphaned ENIs from an ALB or a karpenter instance a controller never finished cleaning up | `scripts/eks-destroy-prep.sh` |
+| `terraform destroy` fails deleting a security group | Leaked VPC CNI interfaces from terminated nodes, holding it | G2, `eks-destroy-prep.sh --delete-orphan-enis` |
+| Pods cannot schedule, subnet looks full, no kubernetes explanation | Leaked CNI interfaces holding IPs for nodes that no longer exist | G2 |
 
 ---
 

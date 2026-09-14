@@ -379,6 +379,36 @@ else
   echo "  the queue could not be discovered from the karpenter deployment; pass --queue <name>"
 fi
 
+if [ -n "${REGION}" ] && [ -n "${CLUSTER}" ]; then
+  hr "G2. ORPHANED CNI NETWORK INTERFACES (leaked IPs, and a stuck destroy later)"
+  echo "  The VPC CNI allocates secondary interfaces on each node to hand out pod IPs. When a node goes away"
+  echo "  before the CNI detaches them -- every consolidation, every spot reclaim, every node group"
+  echo "  replacement -- the interface is left behind in 'available' state. Nothing reclaims it: AWS does not"
+  echo "  garbage-collect an available interface."
+  echo
+  echo "  Two consequences, and the first is the one that bites a running cluster:"
+  echo "    - each one holds a private IP in its subnet, so a cluster with heavy churn quietly loses address"
+  echo "      space and eventually cannot schedule pods, with nothing in kubernetes explaining why;"
+  echo "    - at teardown they hold the node security group and 'terraform destroy' fails on it."
+  orphans="$(aws ec2 describe-network-interfaces --region "$REGION" \
+    --filters "Name=status,Values=available" \
+    --query 'NetworkInterfaces[?starts_with(Description, `aws-K8S-i-`)].[NetworkInterfaceId,SubnetId,PrivateIpAddress,Description]' \
+    --output text 2>/dev/null)"
+  if [ -z "$orphans" ]; then
+    echo "  none"
+  else
+    n="$(printf '%s\n' "$orphans" | grep -c .)"
+    printf '%s\n' "$orphans" | awk '{ printf "  ORPHAN  %-24s %-26s %-16s from %s\n", $1, $2, $3, $4 }' | head -25
+    echo
+    echo "  ${n} orphaned interface(s), each holding one private IP. The instance id is in the description,"
+    echo "  so \`aws ec2 describe-instances --instance-ids <id>\` names the node it came from while that"
+    echo "  instance is still visible. Remove them with:"
+    echo "    scripts/eks-destroy-prep.sh --delete-orphan-enis"
+    echo "  which is safe to run against a LIVE cluster: it only removes interfaces that are available and"
+    echo "  unattached, which by definition no pod is using."
+  fi
+fi
+
 rm -f /tmp/_ka_multi.txt /tmp/_ka_pdbns.txt /tmp/_ka_spot.txt
 echo
 echo "== done. read-only; nothing was changed."
