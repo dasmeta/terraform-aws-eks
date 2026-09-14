@@ -186,6 +186,19 @@ variable "resource_configs_defaults" {
           values   = ["4"] # gen 5+: better price/performance and more distinct spot pools to fall back on
         },
         {
+          # Exclude the "flex" variants. They are compute/general instances by category, so the filter above
+          # admits them, and karpenter picks the cheapest match -- c7i-flex and c8i-flex were both selected
+          # on a test cluster. They deliver a ~40% CPU baseline with burst above it, which is the same
+          # sustained-load throttling profile the "t" family is excluded for, arriving through a family name
+          # the category filter does not catch.
+          #
+          # This is a NAME list because karpenter has no label for the behaviour, so a new flex family is
+          # admitted until it is added here. Names that do not exist are harmless -- they simply never match.
+          key      = "karpenter.k8s.aws/instance-family"
+          operator = "NotIn"
+          values   = ["c7i-flex", "m7i-flex", "r7i-flex", "c8i-flex", "m8i-flex", "r8i-flex"]
+        },
+        {
           key      = "kubernetes.io/arch"
           operator = "In"
           values   = ["amd64"] # amd64 linux is the platform arch in use

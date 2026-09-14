@@ -31,7 +31,7 @@ externalSecretsApiVersion: external-secrets.io/v1
 # protected on-demand pool instead (see http-echo-critical.yaml).
 autoscaling:
   enabled: true
-  minReplicas: 2
+  minReplicas: 5
   maxReplicas: 10
   targetCPUUtilizationPercentage: 80
 

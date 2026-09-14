@@ -273,6 +273,12 @@
  *      pools so they are reclaimed more often. Expect a modest unit-price increase per node in exchange for
  *      predictable CPU and fewer interruptions. To keep burstable instances, add `"t"` back to the
  *      `instance-category` values via `karpenter.resource_configs_defaults.default.requirements`.
+ *    - The `flex` instance variants (`c7i-flex`, `m8i-flex` and relatives) are excluded by family name. They
+ *      pass the `instance-category` filter, since they are compute and general instances, and karpenter
+ *      selected them on a test cluster; they carry roughly a 40% CPU baseline with burst above it, which is
+ *      the sustained-load throttling profile the `t` family is excluded for. karpenter exposes no label for
+ *      that behaviour, so the exclusion is a name list and a newly released flex family is admitted until it
+ *      is added. Remove the `instance-family` requirement to allow them.
  *    - Check your CPU-versus-memory reservation balance before accepting the defaults. If nodes consistently run
  *      out of CPU while memory sits idle, constrain to `["c"]` (1:2 memory-per-core) rather than the default
  *      c/m/r set; if the reverse, `["r"]` (1:8). Section 14 of `scripts/eks-assess.sh` reports this per node.

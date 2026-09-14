@@ -707,6 +707,13 @@ Add the protected pool as a standard node pool (section 2.4), then opt workloads
 does not keep the pod off spot.
 
 
+**Burstable is not the only throttling shape.** The `flex` variants -- `c7i-flex`, `m8i-flex` and their
+relatives -- are compute or general instances by category, so a `["c", "m", "r"]` filter admits them, and
+karpenter picks the cheapest match. They deliver roughly a 40% CPU baseline with burst above it, which is
+the same sustained-load profile the `t` family is excluded for. The module's defaults exclude them by family
+name, because karpenter has no label for the behaviour; a new flex family is admitted until it is added to
+that list.
+
 **Do not pay twice.** Protected capacity is already on-demand, which is the premium you are choosing to pay.
 Do not also pay for compute-optimised shapes there unless something on it needs them. The workloads that
 belong on protected capacity -- a controller, a singleton, a small stateful service -- have the same low,

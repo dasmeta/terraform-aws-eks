@@ -271,3 +271,27 @@ run "partial_node_class_ref_keeps_group_and_kind" {
     error_message = "a custom node class name must be preserved"
   }
 }
+
+# Flex instances pass the category filter -- they are c/m/r by category -- but carry the same sustained-load
+# throttling profile the t family is excluded for. Karpenter picked c7i-flex and c8i-flex on a live cluster,
+# so this is asserted rather than assumed.
+run "flex_families_are_excluded_from_the_general_pool" {
+  command = plan
+
+  module {
+    source = "./modules/karpenter"
+  }
+
+  variables {
+    subnet_ids       = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
+    resource_configs = { nodePools = { general = { weight = 1 } } }
+  }
+
+  assert {
+    condition = length([
+      for r in output.node_pools.general.template.spec.requirements :
+      r if r.key == "karpenter.k8s.aws/instance-family" && r.operator == "NotIn" && contains(r.values, "c7i-flex")
+    ]) == 1
+    error_message = "the general pool must exclude the flex families, which the instance-category filter admits"
+  }
+}
