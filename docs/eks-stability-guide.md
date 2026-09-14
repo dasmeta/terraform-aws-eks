@@ -820,6 +820,17 @@ It deletes the objects that own AWS resources, then polls until those AWS resour
 rather than sleeping a guessed interval, and exits non-zero while anything is still holding on -- so the
 `&&` stops you starting a destroy that will fail fifteen minutes later. `--dry-run` changes nothing.
 
+**If you would rather not have a script delete things**, that is a reasonable position and the diagnosis
+half stands alone:
+
+```bash
+./scripts/eks-destroy-prep.sh --check-only
+```
+
+Read-only. It reports what is holding the cluster security groups and nothing else, so it is equally useful
+*after* a destroy has already failed -- which is when you most want it, and when deleting the workload
+objects is no longer the question.
+
 Its last section is what saves the most time: every ENI still attached to a cluster security group, **with
 its description**. The description names the owner and the owner determines the fix. Without it you get
 `DependencyViolation` on a security group that is not the problem and no indication of what is.

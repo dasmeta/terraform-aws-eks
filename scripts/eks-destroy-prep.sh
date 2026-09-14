@@ -17,8 +17,11 @@
 #
 # ZERO CONFIGURATION. Cluster and region come from the current kube context:
 #
-#   ./scripts/eks-destroy-prep.sh              # do it
-#   ./scripts/eks-destroy-prep.sh --dry-run    # show what would be deleted, change nothing
+#   ./scripts/eks-destroy-prep.sh               # delete, wait, then check
+#   ./scripts/eks-destroy-prep.sh --dry-run     # show what would be deleted, change nothing
+#   ./scripts/eks-destroy-prep.sh --check-only  # READ-ONLY: only report what is holding the
+#                                               # security groups. Safe on any cluster, including
+#                                               # one you have no intention of destroying.
 #
 # Requires: kubectl, jq, aws CLI.
 #
@@ -28,11 +31,13 @@
 set -uo pipefail
 
 DRY=0
+CHECK_ONLY=0
 REGION=""
 TIMEOUT=600
 while [ $# -gt 0 ]; do
   case "$1" in
-    --dry-run) DRY=1; shift ;;
+    --dry-run)    DRY=1; shift ;;
+    --check-only) CHECK_ONLY=1; shift ;;
     --region)  REGION="${2:-}"; shift 2 ;;
     --timeout) TIMEOUT="${2:-}"; shift 2 ;;
     -h|--help) sed -n '2,26p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -62,6 +67,11 @@ echo "EKS destroy preparation"
 echo "cluster : $CLUSTER   region: $REGION"
 [ "$DRY" = 1 ] && echo "MODE    : dry run, nothing will be changed"
 
+if [ "$CHECK_ONLY" = 1 ]; then
+  echo "MODE    : check only, READ-ONLY -- nothing is deleted and nothing is waited for"
+fi
+
+if [ "$CHECK_ONLY" = 0 ]; then
 hr "1. DELETE THE OBJECTS THAT OWN AWS RESOURCES"
 echo "  Ingress and Service type=LoadBalancer own load balancers. Deleting them lets the controller remove"
 echo "  those while it is still running, which is the whole point of doing this before terraform starts."
@@ -103,6 +113,8 @@ else
   done
 fi
 
+fi  # end of the mutating sections
+
 hr "4. WHAT STILL REFERENCES THE CLUSTER SECURITY GROUPS"
 echo "  This is the check that turns a fifteen-minute destroy failure into a ten-second answer. Anything"
 echo "  listed here WILL block 'terraform destroy' with DependencyViolation on the security group."
@@ -140,4 +152,8 @@ else
 fi
 
 hr "DONE"
-echo "  Nothing is holding the cluster security groups. 'terraform destroy' should complete."
+if [ "$CHECK_ONLY" = 1 ]; then
+  echo "  Nothing is holding the cluster security groups right now. Read-only: nothing was changed."
+else
+  echo "  Nothing is holding the cluster security groups. 'terraform destroy' should complete."
+fi
