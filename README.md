@@ -329,7 +329,12 @@ Those include:
      their ENIs, and EC2 instances. On a destroy terraform removes the controller while it is still
      cleaning those up, orphaning them; the orphaned ENIs then hold the node security group and the run
      fails several resources later on a security group that is not the cause. A `time_sleep` with
-     `destroy_duration` widens the window. It is a mitigation and has been observed not to be enough: a
+     `destroy_duration` widens the window for that case. It does NOT address the more common one, which
+     is not a race: the VPC CNI leaves secondary network interfaces behind in `available` state whenever
+     a node terminates before it detaches them, nothing ever reclaims them, and they hold the node
+     security group indefinitely. Run `scripts/eks-destroy-prep.sh --delete-orphan-enis` for that. The
+     delays remain because the load balancer race is real, but they were never going to fix the CNI
+     interfaces. Originally documented as a general mitigation, which was wrong: a
      fixed wait cannot know whether AWS finished releasing the ENIs, which happens asynchronously after
      the controller's own work completes. Run `scripts/eks-destroy-prep.sh` before destroying -- it
      deletes the objects that own AWS resources, waits for those resources to actually disappear, and

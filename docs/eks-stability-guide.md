@@ -795,14 +795,21 @@ Terraform owns what it created: the VPC, subnets, security groups, the cluster, 
 balancer controller, the EC2 instances from Karpenter, volumes from the EBS CSI driver, records from
 external-dns. There is no edge in the graph to any of them, so nothing can be ordered against them.
 
-On a destroy that becomes a race. Terraform deletes an Ingress, the controller starts deleting the ALB, and
-terraform -- seeing no dependency -- removes the controller mid-job. The ALB and its ENIs are orphaned, the
-ENIs hold the node security group, and the run fails several resources later pointing at a security group
-that is not the problem. Finalizers exist to prevent this, but once the controller is gone the finalizer has
-nobody to remove it and becomes a deadlock instead of a guard.
+**The usual cause is not a race at all.** The VPC CNI allocates secondary network interfaces on each node
+to hand out pod IPs. When a node terminates before the CNI detaches them -- which is every Karpenter
+consolidation, every spot reclaim and every node group replacement -- those interfaces are left behind in
+`available` state, attached to nothing. **Nothing ever reclaims them.** AWS does not garbage-collect an
+available interface, so they hold the node security group indefinitely, and `terraform destroy` fails on it
+with `DependencyViolation` fifteen minutes after the thing that actually caused it.
 
-Whether it happens depends on whether the controller finished inside the window terraform happened to give
-it, which is why the same configuration usually tears down cleanly.
+This was observed on a teardown where four such interfaces remained, one per Karpenter node, with no load
+balancer anywhere in the account. Waiting does not help, because there is nothing left running that would
+ever clean them up.
+
+There is a second, genuinely racy cause: terraform deletes an Ingress, the load balancer controller starts
+deleting the ALB, and terraform -- seeing no dependency -- removes the controller mid-job, orphaning the
+load balancer and its interfaces. That one is real but rarer, and it is what the module's destroy-time
+delays address.
 
 The module holds the load balancer controller alive for 30 seconds on destroy, and the Karpenter controller
 for 60 -- the first is waiting on API calls, the second on pod drains. **That helps and is not enough.** It
@@ -815,6 +822,11 @@ observed failing on the node security group with the sleeps in place.
 ```bash
 ./scripts/eks-destroy-prep.sh && terraform destroy
 ```
+
+Add `--delete-orphan-enis` to have it remove the detached CNI interfaces as well. That is deliberately
+opt-in and deliberately narrow: an interface is removed only if its description marks it CNI-created, it is
+`available`, and it has no attachment. One belonging to a load balancer, or still attached to anything, is
+left alone -- there the interface is a symptom and deleting it would hide the real owner.
 
 It deletes the objects that own AWS resources, then polls until those AWS resources are actually gone
 rather than sleeping a guessed interval, and exits non-zero while anything is still holding on -- so the

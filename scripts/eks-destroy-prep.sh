@@ -22,6 +22,10 @@
 #   ./scripts/eks-destroy-prep.sh --check-only  # READ-ONLY: only report what is holding the
 #                                               # security groups. Safe on any cluster, including
 #                                               # one you have no intention of destroying.
+#   ./scripts/eks-destroy-prep.sh --delete-orphan-enis
+#                                               # also delete DETACHED VPC CNI interfaces left behind
+#                                               # by terminated nodes. See section 4 for why these
+#                                               # exist and why deleting them is safe.
 #
 # Requires: kubectl, jq, aws CLI.
 #
@@ -32,12 +36,14 @@ set -uo pipefail
 
 DRY=0
 CHECK_ONLY=0
+DELETE_ENIS=0
 REGION=""
 TIMEOUT=600
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run)    DRY=1; shift ;;
     --check-only) CHECK_ONLY=1; shift ;;
+    --delete-orphan-enis) DELETE_ENIS=1; shift ;;
     --region)  REGION="${2:-}"; shift 2 ;;
     --timeout) TIMEOUT="${2:-}"; shift 2 ;;
     -h|--help) sed -n '2,26p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -142,11 +148,39 @@ else
   else
     echo
     echo "  The description names the owner, and that determines the fix:"
-    echo "    'ELB app/k8s-...'   an orphaned load balancer. Delete it; its ENIs go with it."
-    echo "    'aws-K8S-i-...'     a CNI interface from an instance that no longer exists:"
-    echo "                          aws ec2 detach-network-interface --region ${REGION} --attachment-id <id> --force"
+    echo "    'aws-K8S-i-...'     a VPC CNI interface from a terminated node. THE COMMON CASE: the CNI"
+    echo "                        allocates secondary interfaces for pod IPs, and when the node goes away"
+    echo "                        before the CNI detaches them they are left behind in 'available' state."
+    echo "                        Nothing ever reclaims them -- AWS does not garbage-collect an available"
+    echo "                        interface -- so they hold the node security group indefinitely. Rerun"
+    echo "                        with --delete-orphan-enis, or delete them by hand:"
     echo "                          aws ec2 delete-network-interface --region ${REGION} --network-interface-id <eni>"
+    echo "    'ELB app/k8s-...'   an orphaned load balancer. Delete the load balancer; its interfaces go"
+    echo "                        with it. Do NOT delete these interfaces directly."
     echo "    'Amazon EKS ...'    a cluster interface; it clears when the cluster itself finishes deleting."
+
+    if [ "$DELETE_ENIS" = 1 ] && [ "$CHECK_ONLY" = 0 ]; then
+      echo
+      echo "  --delete-orphan-enis: removing DETACHED CNI interfaces only."
+      echo "  Deliberately narrow. An interface is removed only when all three hold: its description marks"
+      echo "  it as CNI-created, it is 'available' so nothing is using it, and it has no attachment. An"
+      echo "  interface belonging to a load balancer or still attached to anything is left alone, because"
+      echo "  there the interface is a symptom and deleting it hides the real owner."
+      for sg in $sgs; do
+        aws ec2 describe-network-interfaces --region "$REGION" \
+          --filters "Name=group-id,Values=${sg}" "Name=status,Values=available" \
+          --query 'NetworkInterfaces[?starts_with(Description, `aws-K8S-i-`) && Attachment == null].NetworkInterfaceId' \
+          --output text 2>/dev/null | tr '\t' '\n' | while read -r eni; do
+            [ -z "$eni" ] && continue
+            if aws ec2 delete-network-interface --region "$REGION" --network-interface-id "$eni" 2>/dev/null; then
+              echo "    deleted ${eni}"
+            else
+              echo "    FAILED to delete ${eni} -- inspect it by hand"
+            fi
+          done
+      done
+      echo "  Re-run this script to confirm the security groups are now free."
+    fi
     exit 1
   fi
 fi
