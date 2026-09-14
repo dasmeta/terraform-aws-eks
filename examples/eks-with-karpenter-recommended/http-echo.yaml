@@ -55,7 +55,7 @@ autoscaling:
 #   enabled: true                       # DEFAULT: adds a preStop sleep so the pod IP leaves the load balancer
 #   preStop:                            # target list before the container stops. Without it, traffic keeps
 #     exec:                             # arriving at a terminating pod -- the 40-50s of dead-IP 502/504s in
-#       command: ["sh", "-c", "sleep 5"] # the originating incident.
+#       command: ["sh", "-c", "sleep 5"] # the failure this prevents.
 
 # Set explicitly: must exceed the preStop sleep plus the application's own shutdown, otherwise the pod is
 # killed mid-shutdown and in-flight requests are cut. This is also the budget a node drain waits on.

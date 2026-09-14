@@ -46,7 +46,7 @@ variable "node_groups" {
 
     SIZING. System nodes carry a small, steady load: one karpenter replica, one coredns, a CSI controller and
     the DaemonSets. Measured karpenter controller CPU across a real fleet scales at roughly 3m per cluster
-    node (45m at 7 nodes, 115m at 26, 350m at 112). t3.medium sustains 400m before credits are consumed, and
+    node t3.medium sustains 400m before credits are consumed, and
     the rest of the system pods take ~250m, so the default holds comfortably to roughly 50 cluster nodes.
 
     Above that, or if you observe CPU credit exhaustion on these nodes, move to a non-burstable type:
@@ -112,7 +112,7 @@ variable "node_groups_system_taint" {
   description = <<-EOT
     Reserves the EKS managed node groups for cluster-critical components by tainting them, so application
     workloads are provisioned by karpenter onto dedicated capacity instead of crowding onto the small system
-    nodes. This is the setting most often forgotten in production setups, and forgetting it is how application
+    nodes. This is the setting most often forgotten, and forgetting it is how application
     pods end up starving the karpenter controller on a 2-node group.
 
     ONLY APPLIED WHEN KARPENTER IS ENABLED. Without karpenter there is nowhere else for workloads to run, so

@@ -256,7 +256,7 @@
  *    windows, workload and third-party chart configuration, and the disruption risk of each step -- see
  *    `docs/eks-stability-guide.md`.
  *  - from <2.30.0 to >=2.30.0 version, Karpenter gets a stability baseline. **Behaviour changes on upgrade with no configuration change; read this before applying to production.** No state migration is required.
- *    - Why: production 502/504 bursts occurred when spot nodes were reclaimed while the Karpenter controller was unavailable, so interruption warnings went unprocessed and nodes were never drained. A fleet-wide review tied ~35 incidents to a small set of causes, several of which were defects in this module.
+ *    - Why: 502/504 bursts occur when spot nodes are reclaimed while the Karpenter controller is unavailable, so interruption warnings went unprocessed and nodes were never drained. A fleet-wide review tied ~a series of incidents to a small set of causes, several of which were defects in this module.
  *    - Controller resources: requests move from `100m`/`128Mi` to `250m`/`512Mi`, the memory limit from `256Mi` to `1Gi`, and **the cpu limit is removed entirely**. The old `200m`/`256Mi` limits were diagnosed as causing cpu throttling and OOMKills during scale-up. The cpu limit is dropped rather than raised on purpose: throttling this controller during a scale-up or spot-interruption storm is the failure being prevented. Override with `karpenter.controller_resources` if you need a cpu limit back.
  *    - Controller priority moves from the priority-class submodule's highest class (`high`, 1,000,000) to `system-cluster-critical` (2,000,000,000), the upstream chart default. The previous value demoted Karpenter below every genuinely cluster-critical component, so under node pressure the component responsible for adding capacity was itself a preemption candidate. The controller pod is recreated by this change.
  *    - **AMI selection changes shape, and this is the one to plan for.** The default node class previously derived its AMI from an arbitrary running instance (`aws_instances...ids[0]`), which meant an unrelated apply could change the fleet's target image and mark every node drifted at once - the "two separate waves of change" noted in the 2.21.0 entry below. It now uses a declarative `alias` (`al2023@latest` by default, family derived from `node_groups_default.ami_type`). If the alias resolves to a different image than your nodes currently run, you get **one paced node roll**, limited by the disruption budget and suppressed during the new protected window. To avoid any roll at upgrade time, pin `karpenter.resource_configs_defaults.default.nodeClass.amiAlias` to the AMI version your nodes already use, then move the pin deliberately later.
@@ -296,9 +296,9 @@
  *      - Capacity buffers (new in Karpenter 1.14) are not adopted. They add another CRD on top of a five-minor-version upgrade whose whole purpose is reducing risk. Revisit once this baseline is proven.
  *    - **If you previously set `budgets = [{ nodes = "0" }]` as a mitigation, remove it when adopting the windows.**
  *      A budget of `nodes: "0"` with no `schedule`/`duration` is always active, so it does not reduce churn -- it
- *      stops ALL voluntary disruption permanently. Observed on a production cluster: four of five node pools carried
+ *      stops ALL voluntary disruption permanently. Seen in practice: most node pools carried
  *      it, and with `expireAfter: Never` alongside it nothing ever replaced a node voluntarily. Nodes had reached
- *      33-102 days old and were still running the previous kubelet minor version after the control plane had moved
+ *      many months old and still running the previous kubelet minor version after the control plane had moved
  *      on, because AMI drift remediation is voluntary disruption and was therefore blocked too. The disruption
  *      windows in this release are the supported way to express the same intent: blocked during your traffic hours,
  *      permitted outside them. Note the module CONCATENATES window budgets with whatever budgets you already set,
@@ -311,7 +311,7 @@
  *      - Why the taint: these nodes exist to host the karpenter controller, coredns and the CSI controllers.
  *        Without the taint, application pods schedule onto them and compete with the controller that
  *        provisions their capacity -- on a 2-node group that is how the controller ends up starved. This is
- *        the setting most often forgotten in production setups, which is why it is now a default rather than
+ *        the setting most often forgotten, which is why it is now a default rather than
  *        a documented recommendation.
  *      - What tolerates it and therefore stays: the karpenter controller, the EKS coredns addon, and the EBS
  *        CSI controller, all of which tolerate `CriticalAddonsOnly` out of the box. Everything else --
@@ -381,8 +381,7 @@
  *      DaemonSets -- and `t3.large` was simply larger than that needs. Burstable is appropriate here precisely
  *      because the load is low and steady, which is the opposite of the sustained-high profile that makes
  *      burstable a poor choice for application nodes.
- *      - Sizing rule: measured karpenter controller CPU scales at roughly 3m per cluster node across a real
- *        fleet (45m at 7 nodes, 115m at 26, 350m at 112). `t3.medium` sustains 400m before credits are
+ *      - Sizing rule: measured karpenter controller CPU scales at roughly 3m per cluster node. `t3.medium` sustains 400m before credits are
  *        consumed and the other system pods take ~250m, so the default holds to roughly 50 cluster nodes.
  *        Beyond that, or on any sign of credit exhaustion, move to a non-burstable type:
  *        `node_groups_default = { instance_types = ["c6a.large", "c6i.large"] }`.
@@ -392,18 +391,17 @@
  *    - Recommended monitoring, because these defaults reduce the chance of the failure but do not make it observable:
  *      - **CloudWatch `ApproximateAgeOfOldestMessage` on the Karpenter interruption SQS queue.** This is the single
  *        best leading indicator and it has an unambiguous threshold: a spot interruption notice gives 120 seconds,
- *        so any sustained age above that means a drain WILL be missed. In one production incident this reached 179s
+ *        so any sustained age above that means a drain WILL be missed. A backlog beyond the notice period means the drain is already lost
  *        while the controller was OOMKilling, and nodes were reclaimed before draining began. Alert above ~60s.
  *      - Karpenter controller restart count and `OOMKilled` terminations. With the corrected resources these should
  *        be flat; any restarts at all mean the memory limit needs raising for that cluster's size.
  *      - Pending pods by reason, NodeClaim lifecycle duration, and node registration time.
  *    - Known limitation of the default disruption window: it protects 06:00-18:00 UTC, which ends at 20:00 in central
- *      European summer time. A recorded incident saw voluntary `Underutilized` eviction at 19:17 UTC (21:17 CEST),
- *      outside that window. If your traffic runs later, extend the window entry in `karpenter.resource_configs_defaults.default.disruption.budgets` accordingly; the default
+ *      European summer time. Voluntary `Underutilized` eviction has been seen in the hour just after a window like this closes. If your traffic runs later, extend the window entry in `karpenter.resource_configs_defaults.default.disruption.budgets` accordingly; the default
  *      is deliberately not stretched to cover every setup, because a wider window means less consolidation and higher spend.
  *    - `karpenter.configs.replicas` stays at 2 by default and should stay there. A single replica has no failover during
- *      any controller restart. A production cluster running a single replica with the old limits had the controller
- *      OOMKilling every ~6 minutes; the interruption queue went unconsumed and nodes were reclaimed undrained.
+ *      any controller restart. While the controller restarts nothing consumes the interruption queue, and a
+ *      backlog past the 120 second notice means nodes are reclaimed before any drain starts.
  *    - Rollback: pin back to `2.29.x`. No state migration is performed in either direction, but rolling back reinstates the controller limits that caused the original OOMKills.
  *    - Recommended order: apply to dev or stage first, confirm the Karpenter deployment shows `250m`/`512Mi` requests with no cpu limit and `system-cluster-critical` priority, confirm `kubectl get nodepool -o yaml` shows the expected `disruption.budgets` entries, then watch one AMI roll complete before promoting to production.
  *

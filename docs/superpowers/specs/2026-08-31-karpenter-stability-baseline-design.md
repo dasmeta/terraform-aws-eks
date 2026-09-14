@@ -7,13 +7,13 @@
 A production API served bursts of 502 and 504 responses when four spot nodes
 were reclaimed while the Karpenter controller was unavailable. The interruption
 notices went unprocessed and the nodes were never drained. A fleet-wide review
-tied roughly 35 incidents to a small set of causes, several of which were live
+tied a series of incidents to a small set of causes, several of which were live
 defects in this module rather than per-cluster misconfiguration.
 
 The causal chain in the originating incident: the controller ran with hard-coded
 limits of `200m` CPU and `256Mi` memory, which caused OOMKills roughly every six
 minutes; with the controller restarting, interruption messages sat in the queue
-for 179 seconds against a 120-second notice; nodes were reclaimed before any
+past the 120-second notice; nodes were reclaimed before any
 drain began; traffic kept arriving at pods on machines that were already gone.
 
 ## Goal

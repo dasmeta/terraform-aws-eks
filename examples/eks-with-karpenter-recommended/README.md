@@ -51,7 +51,7 @@ Each of these is a failure seen in production, and each is addressed somewhere i
 2. **A single controller replica has no failover.** Any restart — rollout, drain, OOM — is a gap in
    interruption handling. Keep `replicas = 2`, which needs **2 managed-node-group nodes in 2 availability
    zones**. Karpenter-managed nodes do not count: the chart's `karpenter.sh/nodepool DoesNotExist` affinity
-   excludes them. One production cluster ran 8 nodes across 3 zones and still could not schedule a second
+   excludes them. A cluster can run many nodes across three zones and still not be able not schedule a second
    replica, because only 1 of the 8 came from a managed node group.
 3. **A service with no PodDisruptionBudget can lose every replica at once.** `rollingUpdate.maxUnavailable`
    does nothing here; only a PDB gates the eviction API during a node drain.
@@ -88,7 +88,7 @@ Each of these is a failure seen in production, and each is addressed somewhere i
 
 Karpenter has no timezone support — schedules are always interpreted in UTC. The default window protects
 06:00–18:00 UTC, which ends at 20:00 central European summer time and is offset by an hour across daylight
-saving. A recorded incident saw voluntary eviction at 19:17 UTC, just outside it. Extend `duration`, or move
+saving. Voluntary eviction has been seen just after a window like this closes. Extend `duration`, or move
 `schedule`, to match when your traffic actually stops.
 
 Disruption windows gate **voluntary** disruption only. They never delay spot interruption handling, and they
@@ -140,6 +140,6 @@ the recovered state.
 A budget of `nodes: "0"` with no `schedule` or `duration` is **always active**, so it does not reduce churn —
 it stops every voluntary disruption permanently. Paired with `expireAfter: Never` it means nodes are never
 replaced at all, so AMI patching stops too, because drift remediation is itself voluntary disruption. One
-production cluster carried it on four of five node pools and had nodes 33 to 102 days old still running the
+clusters have carried it on most node pools, leaving nodes many months days old still running the
 previous kubelet minor version. Use a scheduled budget entry instead: blocked during traffic hours, permitted
 outside them.

@@ -48,14 +48,14 @@ module "this" {
   # nodeAffinity of `karpenter.sh/nodepool DoesNotExist`.
   #
   # That last one is the trap: KARPENTER-MANAGED NODES DO NOT COUNT. Only nodes from a managed node group are
-  # eligible to host the controller. A production cluster was observed running 8 nodes across 3 availability
+  # eligible to host the controller. Clusters have been found running 8 nodes across 3 availability
   # zones and still could not schedule a second replica, because 7 of them were karpenter-provisioned and only
   # 1 was from a managed node group. `kubectl get nodes` looked comfortably highly available; the controller
   # was not. So size THIS node group for 2 in 2 zones -- total cluster node count is irrelevant.
   #
   # The cost of getting it wrong is not theoretical. A single-replica controller has no failover during any
-  # restart, rollout or drain, and in one production incident that gap meant spot interruption messages went
-  # unconsumed for 179 seconds -- past the 120 second notice -- so nodes were reclaimed before any drain began.
+  # restart, rollout or drain, and that gap is enough for spot interruption messages went
+  # unconsumed past the 120 second notice, so nodes were reclaimed before any drain began.
   #
   # Verify after apply (expect 2+ rows in 2+ distinct zones):
   #   kubectl get nodes -L topology.kubernetes.io/zone,karpenter.sh/nodepool | grep -v 'karpenter.sh/nodepool'
@@ -226,7 +226,7 @@ module "this" {
     #
     # IMPORTANT: karpenter evaluates budget schedules in UTC ONLY -- it has no timezone support -- so the
     # default window suits central Europe and is wrong elsewhere. See docs/eks-stability-guide.md section 2.1
-    # for a per-region table. A recorded incident evicted replicas at 19:17 UTC, just outside this window.
+    # for a per-region table. Evictions have been seen in the hour just after a window like this closes.
 
     resource_configs = {
       nodePools = {

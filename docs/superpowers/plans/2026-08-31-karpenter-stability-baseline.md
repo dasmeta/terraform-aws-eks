@@ -123,33 +123,18 @@ tests, Karpenter 1.14 CRDs.
 ## Live validation
 
 - [x] **Scenario 1** — fresh cluster from `examples/eks-with-karpenter-recommended`.
-      Passed. Confirmed on a live cluster: controller at 250m/512Mi with no CPU
-      limit and 164Mi peak usage, `system-cluster-critical`, two replicas across
+      Passed. Confirmed on a live cluster: controller at the new requests with no CPU
+      limit and headroom to spare, `system-cluster-critical`, two replicas across
       two AZs, `al2023@latest` alias, `Balanced`/`15m`, budgets carrying the
       window, `c6a.large` spot and `c5a.large` on-demand selected rather than
       burstable, and no zero-eviction PDBs. The disruption window was verified
-      directly against `karpenter_nodepools_allowed_disruptions`: `general`
-      reported 0 allowed `Underutilized` disruptions inside the window while
-      `protected`, which has no window, reported 1 at the same moment.
-- [x] **Scenario 4** — kubernetes version upgrade, 1.34 -> 1.35 on the same cluster. Passed, and it is
-      where the design's central mechanism was finally proven rather than inferred. The managed node group
-      drained and upgraded with no eviction failures, which is the ticket's PodDisruptionBudget claim tested
-      end to end. Raising the control plane drifted the karpenter fleet, and the window held the roll:
-
-      ```
-      general    Drifted        0     on-demand  Drifted        1
-      general    Underutilized  0     on-demand  Underutilized  1
-      general    Empty          1     on-demand  Empty          1
-      ```
-
-      `general` carries the business-hours window and blocks exactly the two reasons it names, while
-      `on-demand` has none and allows all three -- same cluster, same moment, so the window is the only
-      variable. This also closes a gap left open earlier: `Drifted` had never appeared in the metric before,
-      because nothing had ever been drifted, so only half the window's declared scope had been observed.
-
-      The interruption queue recorded its first event: drained in 3 seconds against a 120-second notice. The
-      originating incident sat at 179 seconds with the old controller limits, so that number is the whole
-      causal chain measured on the other side of the fix.
+      directly against `karpenter_nodepools_allowed_disruptions`: a pool carrying
+      the window reported no allowed disruptions for the reasons it names, while a
+      pool without one allowed them at the same moment.
+- [x] **Scenario 4** — kubernetes version upgrade on the same cluster. Passed. The managed node group
+      drained and upgraded with no eviction failures, which is the PodDisruptionBudget requirement tested
+      end to end. Raising the control plane drifted the karpenter fleet and the disruption window held the
+      roll, blocking exactly the reasons it names while a pool without a window allowed all three.
 
 - [ ] **Scenario 2** — in-place upgrade from the released version. Exercises the
       CRD chart upgrade and the system-node taint landing on an existing node

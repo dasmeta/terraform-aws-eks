@@ -57,7 +57,7 @@ for FILE in "$@"; do
   replicas=$(q '.variables.karpenter.configs.replicas')
   if [ "$replicas" = "1" ]; then
     finding HIGH "karpenter.configs.replicas = 1" \
-      "A single controller has no failover during any restart. One production cluster had the interruption queue back up to 179s -- past the 120s spot notice -- while the controller was restarting, and nodes were reclaimed undrained. Use 2, which needs 2 managed-node-group nodes in 2 AZs."
+      "A single controller has no failover during any restart. While it restarts the interruption queue backs up, and a backlog past the 120s spot notice means nodes are reclaimed undrained. Use 2, which needs 2 managed-node-group nodes in 2 AZs."
   fi
 
   # --- managed node group able to host 2 replicas ---------------------------

@@ -58,7 +58,7 @@ module "this" {
       # cannot host them used to leave the second replica silently Pending, and the module now fails the plan
       # when 2+ replicas are requested with <2 subnets.
       # In production keep the default of 2: a single replica has no failover during any controller restart,
-      # and a real incident showed a single-replica controller OOMKilling every ~6 minutes while spot
+      # and a real incident showed a single-replica controller OOMKilling repeatedly while spot
       # interruption messages went unconsumed for longer than the 120s notice window.
       replicas = 1
     }

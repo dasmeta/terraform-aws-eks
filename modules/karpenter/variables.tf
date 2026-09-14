@@ -92,11 +92,9 @@ variable "configs" {
 
     NOTE on `replicas`: the module default is 2 and lowering it to 1 is supported but carries real risk.
     A single-replica controller has no failover during ANY restart, including a rollout, a node drain or an
-    OOMKill. Field evidence: a production cluster running a single replica with the old 200m/256Mi limits had
-    the controller OOMKilling every ~6 minutes, so spot interruption messages sat unread in the queue for 179
-    seconds -- past the 120 second interruption notice -- and nodes were reclaimed before any drain started.
-    The corrected controller resources remove that OOM cause, but a single replica still means no cover for
-    the restart window. Use 1 only where the cluster genuinely cannot host 2 (a single node, or a single
+    OOMKill. While it is restarting nothing consumes the interruption queue, and a backlog past the 120
+    second notice means nodes are reclaimed before any drain starts. The corrected controller resources
+    remove the OOMKill cause, but a single replica still leaves the restart window uncovered. Use 1 only where the cluster genuinely cannot host 2 (a single node, or a single
     availability zone), and prefer fixing the cluster shape instead.
   EOT
 }

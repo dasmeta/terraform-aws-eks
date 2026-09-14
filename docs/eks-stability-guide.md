@@ -8,7 +8,7 @@ goals pull against each other, and most of this document is about where the line
 **Scope**: one cluster at a time, in the order given. The order matters — several steps are unsafe before the
 one preceding them.
 
-Every recommendation traces to a production incident. Where a step can cause disruption, the risk is stated
+Every recommendation addresses a failure mode seen in practice. Where a step can cause disruption, the risk is stated
 on the step rather than buried in a footnote.
 
 ---
@@ -39,7 +39,7 @@ you, and neither changes anything:
 
 ### The shape of the problem
 
-Almost every incident in this fleet reduces to one of five things:
+Most of these incidents reduce to one of five things:
 
 1. **The node autoscaler is unavailable when capacity is reclaimed.** Nothing drains, and every reclaimed node
    becomes an abrupt kill. No other setting compensates.
@@ -149,7 +149,7 @@ balance (F2). The commands above are the ones most often run on their own.
 
 **The trap in C3**: Karpenter-managed nodes cannot host the Karpenter controller. The chart sets a
 `karpenter.sh/nodepool DoesNotExist` node affinity, so only managed-node-group nodes are eligible. A cluster
-with 8 nodes across 3 zones was observed unable to schedule a second replica because 7 were Karpenter-provisioned.
+with many nodes across three zones can still be unable to schedule a second replica when most were Karpenter-provisioned.
 Count rows where the `NODEPOOL` column is **empty**, not total nodes.
 
 **Reading G1**: the metric publishes only when the queue has activity, so a handful of datapoints across
@@ -290,7 +290,7 @@ all open on the same local day and need no shift.
 
 Verify before applying: convert the opening time to local and confirm both the hour and the weekday.
 
-**A recorded incident evicted replicas at 19:17 UTC**, just outside the default window (21:17 local). If your
+**Evictions have been seen just outside a window like this**, in the hour after it closes. If your
 traffic runs into the evening, extend `duration`.
 
 ```hcl
@@ -320,7 +320,7 @@ Every field of `resource_configs_defaults` is individually optional, so setting 
 
 If assessment section D2 showed a budget of `nodes: "0"` with **no** `schedule` or `duration`, it is always
 active. That does not reduce churn — it stops all voluntary disruption permanently, including AMI drift
-remediation. One cluster carried it on four of five pools and had nodes 33 to 102 days old still running the
+remediation. Clusters have carried it on most pools, leaving nodes many months old still running the
 previous kubelet minor version.
 
 **Remove it.** Protection windows are ordinary entries in the same `budgets` list, so an always-on
@@ -639,7 +639,7 @@ Alert on these, in priority order:
 
 | Signal | Threshold | Why |
 | --- | --- | --- |
-| SQS `ApproximateAgeOfOldestMessage` on the interruption queue | > 60s | The spot notice is 120s. Sustained age above it means a drain **will** be missed. Reached 179s during a real incident |
+| SQS `ApproximateAgeOfOldestMessage` on the interruption queue | > 60s | The spot notice is 120s. Sustained age above it means a drain **will** be missed. Reached the notice period during a real incident |
 | Karpenter controller restarts / `OOMKilled` | any | With correct resources this should be flat. Any restart means the memory limit needs raising for this cluster's size |
 | Deployment ready replicas below desired | > 2 min | Catches both eviction storms and blocked drains |
 | Pending pods by reason | > 5 min | Distinguishes "no capacity" from "cannot schedule" |
@@ -766,14 +766,14 @@ The autoscaler controller cannot run on nodes the autoscaler created — its cha
 
 - **2 nodes minimum, in 2 availability zones.** The chart also sets required hostname anti-affinity and a
   `DoNotSchedule` zone spread, so 2 replicas need 2 eligible nodes in 2 zones. Total cluster node count is
-  irrelevant. One cluster in this fleet runs 8 nodes across 3 zones and still cannot schedule a second
+  irrelevant. A cluster can run many nodes across three zones and still not schedule a second
   replica, because 7 are autoscaler-provisioned and only 1 is eligible.
 - **Small instances, and burstable is correct here.** These nodes carry a small, steady load — one controller
   replica, one CoreDNS, a CSI controller, the DaemonSets. That is exactly the profile burstable instances
   suit, and it is the opposite of the sustained-high load that makes them a poor choice for application
   nodes. The default is `t3.medium`.
 - **Know where the default runs out.** Measured controller CPU scales at roughly **3m per cluster node**
-  (45m at 7 nodes, 115m at 26, 350m at 112). `t3.medium` sustains 400m before credits deplete and the other
+  `t3.medium` sustains 400m before credits deplete and the other
   system pods take ~250m, so the default holds to roughly **50 cluster nodes**. Past that, or on any sign of
   credit exhaustion, move to non-burstable:
 

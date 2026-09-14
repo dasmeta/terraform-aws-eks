@@ -23,3 +23,28 @@ if [ -n "$hits" ]; then
   exit 1
 fi
 echo "no local filesystem paths in committed configuration"
+
+# AWS account IDs are internal data and this module is public. They reach a repository the same way local
+# paths do -- pasted from a working session while testing against a real account -- and are far harder to
+# notice in review than a /Users/ path.
+#
+# Some 12-digit ids are legitimate and must not fail the check:
+#   602401143452  AWS's own account for EKS-optimised AMIs and ECR addon images
+#   123456789012  the placeholder AWS uses throughout its documentation
+#   111111111111  the placeholder this repository uses in examples and tests
+#   2222.../3333...  repeated-digit placeholders in vendored upstream documentation
+echo "Checking for AWS account IDs..."
+# A repeated single digit is a placeholder by construction, never a real account.
+ALLOWED_ACCOUNTS='602401143452|123456789012|([0-9])\\1{11}'
+acct_hits="$(grep -rnE '\b[0-9]{12}\b' \
+  --include='*.tf' --include='*.md' --include='*.sh' --include='*.yaml' --include='*.yml' . 2>/dev/null \
+  | grep -v '\.terraform/' | grep -v 'tfstate' | grep -vE '[0-9]{12}[0-9]' \
+  | grep -vE "${ALLOWED_ACCOUNTS}" || true)"
+if [ -n "$acct_hits" ]; then
+  echo "$acct_hits"
+  echo
+  echo "A 12-digit number that is an AWS account ID must not be committed to this public module."
+  echo "Replace it with a placeholder such as 111111111111, or parameterise it."
+  exit 1
+fi
+echo "  none"
