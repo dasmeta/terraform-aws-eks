@@ -252,9 +252,25 @@ else
 fi
 
 hr "E1. ZERO-EVICTION PDBs (block drains AND fail node group upgrades)"
-found=$(kubectl get pdb -A -o json 2>/dev/null | jq -r '.items[] | select(.status.disruptionsAllowed == 0)
+echo "  A budget permitting nothing is a DEFECT unless somebody chose it. The base chart annotates the ones"
+echo "  chosen deliberately -- a workload rolled by hand that automation must never evict -- so those are"
+echo "  listed separately here rather than reported as faults forever."
+found=$(kubectl get pdb -A -o json 2>/dev/null | jq -r '.items[]
+  | select(.status.disruptionsAllowed == 0)
+  | select((.metadata.annotations // {})["dasmeta.io/zero-evictions"] == null)
   | "  BLOCKING  \(.metadata.namespace)/\(.metadata.name)  allowed=0 expected=\(.status.expectedPods) current=\(.status.currentHealthy)"')
 [ -n "$found" ] && echo "$found" || echo "  none"
+deliberate=$(kubectl get pdb -A -o json 2>/dev/null | jq -r '.items[]
+  | select(.status.disruptionsAllowed == 0)
+  | select((.metadata.annotations // {})["dasmeta.io/zero-evictions"] != null)
+  | "  DELIBERATE  \(.metadata.namespace)/\(.metadata.name)  allowed=0 expected=\(.status.expectedPods)"')
+if [ -n "$deliberate" ]; then
+  echo
+  echo "  Declared deliberate via pdb.allowZeroEvictions. Not a fault, but the consequences still apply:"
+  echo "  drains block on these, and a managed node group upgrade fails on their eviction. Plan node work"
+  echo "  around them."
+  echo "$deliberate"
+fi
 
 hr "E2. PDB COVERAGE FOR MULTI-REPLICA WORKLOADS"
 kubectl get deploy -A -o json 2>/dev/null | jq -r '.items[] | select((.spec.replicas // 0) >= 2)
@@ -266,6 +282,10 @@ echo "-- multi-replica deployments in namespaces with NO pdb at all:"
 while read -r d; do ns="${d%%/*}"; grep -qx "$ns" /tmp/_ka_pdbns.txt || echo "  UNPROTECTED  $d"; done < /tmp/_ka_multi.txt | head -30
 
 hr "E3. PDBs AT RISK FROM THE base 0.4.0 GUARD (minAvailable >= replica floor)"
+echo "  Read from the LIVE object, which is all that exists before the upgrade. That has one blind spot: a"
+echo "  release whose values ALREADY set pdb.allowZeroEvictions renders fine on 0.4.0, but the released"
+echo "  chart ignores that key so nothing here distinguishes it. Check the values of anything listed before"
+echo "  assuming it needs changing -- if the flag is already there, it is a false alarm."
 echo "-- these renders will FAIL after the base chart upgrade and need correcting first:"
 kubectl get pdb -A -o json 2>/dev/null | jq -r '.items[]
   | select(.spec.minAvailable != null and .status.expectedPods != null)
