@@ -188,13 +188,32 @@ bad budget on an unrelated release.
 ./scripts/eks-assess.sh | sed -n '/E3\./,/E4\./p'
 ```
 
-For each one, the fix is usually **deleting configuration rather than adding it**: remove the `pdb` block
-and let the chart supply a safe budget. Where the budget is deliberate — a workload rolled by hand that
-automation must never evict — set `pdb.allowZeroEvictions: true` instead, which keeps the behaviour and
-records that it is intended.
+### Where this work actually happens
 
-Check the values before acting on E3. It reads the live object, and a release that already sets
-`allowZeroEvictions` looks identical to one that needs correcting.
+**Not in the EKS terraform.** Applications are deployed from their own repositories by their own pipelines,
+so the offending values live there and the change is made by the team that owns each service. The cluster
+work in the later phases cannot proceed until those merge, which makes this the item to raise first and the
+one with the longest lead time — it is a set of pull requests against other people's repositories, not a
+terraform apply you control.
+
+What to ask each owning team for, as one change:
+
+1. **Bump `dasmeta/base` to `0.4.0` or later.**
+2. **Delete the `pdb` block.** On 0.4.0 a safe budget is what you get by *not* configuring one, so the
+   corrected values are shorter than what they replace.
+
+Both in the same pull request, and in that combination. Bumping the chart while leaving a zero-eviction
+budget in place makes the render fail, so a version bump on its own turns a latent problem into a broken
+deploy. Removing the block first and bumping later works but leaves the service with no budget in between.
+
+Where the budget is deliberate — a workload rolled by hand that automation must never evict — the change is
+`pdb.allowZeroEvictions: true` instead of deleting the block. That keeps the behaviour and records that it
+is intended, and the rendered budget then carries an annotation so the next person to find a stuck drain
+can see it was a decision.
+
+Check the values before raising any of this. E3 reads the live object, and a release that already sets
+`allowZeroEvictions` looks identical to one that needs correcting — asking a team to "fix" a service that
+was already right costs credibility you will want later.
 
 ---
 
