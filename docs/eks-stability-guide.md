@@ -18,6 +18,21 @@ on the step rather than buried in a footnote.
 Work top to bottom. Each phase has an **entry gate** — do not start it until the gate passes. Each step says
 what changes, why, what can go wrong, and how to verify.
 
+### Every script this module ships, and when to run it
+
+| script | changes anything? | when |
+| --- | --- | --- |
+| `eks-assess.sh` | **no** | first, always. Zero arguments — it discovers cluster, region and account from your kube context. Its output decides which later phases apply |
+| `eks-config-lint.sh <eks.yaml>` | **no** | alongside the assessment, on the setup's config. Needs no cluster access at all, so it works before you have credentials |
+| `eks-destroy-prep.sh --check-only` | **no** | when a `terraform destroy` fails on a security group, and before one as a precaution. Reports what still holds it |
+| `eks-destroy-prep.sh` | **yes** | before a planned teardown. Deletes the objects that own AWS resources and waits for those resources to actually go |
+| `eks-destroy-prep.sh --delete-orphan-enis` | **yes** | to clear leaked CNI interfaces, which hold IPs on a live cluster and block a destroy later. Safe on a running cluster |
+
+`check-no-local-paths.sh` is a CI guard for this repository, not a tool for a cluster.
+
+Nothing else is needed. If a procedure here reads as though it wants a script that does not exist, it is the
+procedure that is wrong — say so rather than writing one.
+
 Start with the two scanners. They tell you which of the later steps actually apply to the cluster in front of
 you, and neither changes anything:
 
@@ -36,6 +51,8 @@ you, and neither changes anything:
   drift is often the finding. One cluster in this fleet has a config declaring one controller replica while
   running two.
 - When you report a finding, give the evidence (the command output), not a summary of it.
+- Use only the scripts in the table above. They are the whole toolset; there is no other entry point, and a
+  step that seems to need one it does not have is a defect in this document.
 
 ### The shape of the problem
 
