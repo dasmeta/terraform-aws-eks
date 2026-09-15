@@ -18,6 +18,36 @@ on the step rather than buried in a footnote.
 Work top to bottom. Each phase has an **entry gate** — do not start it until the gate passes. Each step says
 what changes, why, what can go wrong, and how to verify.
 
+### What you actually edit
+
+Most setups drive this module from a **YAML configuration file**, not from hand-written Terraform. The file
+names the module, pins its version, and supplies its inputs under `variables:`:
+
+```yaml
+source: dasmeta/eks/aws
+version: 2.29.1            # <- the upgrade is this line
+variables:
+  cluster_name: "eks-prod"
+  cluster_version: "1.34"
+  karpenter:
+    enabled: true
+  node_groups:
+    default:
+      min_size: 2
+```
+
+Two consequences worth stating plainly, because they change what the work is:
+
+- **The module upgrade is a one-line change** — `version:` — and everything else in this guide is deciding
+  which `variables:` need to move with it.
+- **Every configuration example below is written in YAML**, in the form that goes under `variables:`. Where
+  this guide shows a nested map, the nesting is the same as the Terraform input it corresponds to; only the
+  syntax differs. A `= {` in the module's own documentation becomes a `:` here.
+
+Application configuration is a separate matter and lives elsewhere: each service is deployed by its own
+pipeline from its own repository, and Phase 0.5 and Phase 3 are pull requests against those, not edits to
+this file.
+
 ### Every script this module ships, and when to run it
 
 | script | changes anything? | when |
@@ -235,6 +265,13 @@ was already right costs credibility you will want later.
 
 **Entry gate**: Phase 0 complete, findings recorded and shared.
 
+The change itself is one line in the setup's YAML:
+
+```yaml
+source: dasmeta/eks/aws
+version: 2.30.0            # was 2.29.x
+```
+
 **Do this first.** Most later configuration options do not exist before this version, and hand-patching the
 cluster in the meantime is actively counterproductive — see the warning below.
 
@@ -254,13 +291,15 @@ the module. Every other cluster therefore kept the failing defaults. Two months 
 found still on `200m`/`256Mi`, with the controller OOMKilling roughly every six minutes during an incident.
 Move the measured values into Terraform:
 
-```hcl
-karpenter = {
-  controller_resources = {
-    requests = { cpu = "500m", memory = "512Mi" } # your MEASURED values, not the module default
-    limits   = { memory = "1Gi" }                  # no cpu limit, on purpose
-  }
-}
+```yaml
+variables:
+  karpenter:
+    controller_resources:
+      requests:
+        cpu: 500m           # your MEASURED values, not the module default
+        memory: 512Mi
+      limits:
+        memory: 1Gi         # no cpu limit, on purpose
 ```
 
 If the cluster is running higher values than the module default and they were measured under load, **pin
@@ -323,8 +362,10 @@ controller. That is the intent, not a side effect.
 
 Opt out where the isolation is not worth the capacity, typically development and test:
 
-```hcl
-node_groups_system_taint = { enabled = false }
+```yaml
+variables:
+  node_groups_system_taint:
+    enabled: false
 ```
 
 ## Phase 2 — Configure for the cluster's region and timezone
@@ -365,25 +406,22 @@ Verify before applying: convert the opening time to local and confirm both the h
 **Evictions have been seen just outside a window like this**, in the hour after it closes. If your
 traffic runs into the evening, extend `duration`.
 
-```hcl
-karpenter = {
-  resource_configs_defaults = {
-    default = {
-      disruption = {
-        budgets = [
-          { nodes = "10%" },                        # never move more than a tenth of the pool at once
-          {
-            nodes    = "0"                          # block the reasons below while the window is open
-            schedule = "0 12 * * mon-fri"           # US East
-            duration = "13h"
-            reasons  = ["Drifted", "Underutilized"] # "Empty" stays allowed: an empty node disrupts nothing
-          },
-        ]
-      }
-    }
-  }
-}
+```yaml
+variables:
+  karpenter:
+    resource_configs_defaults:
+      default:
+        disruption:
+          budgets:
+            - nodes: "10%"                  # never move more than a tenth of the pool at once
+            - nodes: "0"                    # block the reasons below while the window is open
+              schedule: "0 12 * * mon-fri"  # US East
+              duration: "13h"
+              reasons: ["Drifted", "Underutilized"]  # "Empty" stays allowed: an empty node disrupts nothing
 ```
+
+Quote `nodes: "0"` and `nodes: "10%"`. Unquoted, YAML reads `0` as a number where the CRD wants a string,
+and the budget is rejected by the API rather than by the plan.
 
 Every field of `resource_configs_defaults` is individually optional, so setting `disruption.budgets` keeps
 `consolidationPolicy` and `consolidateAfter` on the module defaults rather than dropping them.
@@ -408,21 +446,24 @@ nothing until the always-on block is gone.
 Terraform **silently drops** object attributes that the target type does not declare. There is no error at
 validate, plan or apply. If you write:
 
-```hcl
-resource_configs_defaults = {
-  limits = { cpu = 11 }        # WRONG -- must be nested under `default`
-}
+```yaml
+variables:
+  karpenter:
+    resource_configs_defaults:
+      limits:
+        cpu: 11             # WRONG -- must be nested under `default`
 ```
 
 the `limits` key is discarded and the module uses its own default of `cpu = 1000`. Two examples in this
 repository carried exactly this and had been running a ceiling 90x higher than intended. Correct form:
 
-```hcl
-resource_configs_defaults = {
-  default = {
-    limits = { cpu = 11 }
-  }
-}
+```yaml
+variables:
+  karpenter:
+    resource_configs_defaults:
+      default:
+        limits:
+          cpu: 11
 ```
 
 The module now rejects unexpected top-level keys here, so this specific mistake fails loudly. The general
@@ -446,17 +487,19 @@ out monitoring and made every co-occurring incident harder to diagnose.
 
 There is no special input for this — it is an ordinary node pool with an on-demand requirement and a taint:
 
-```hcl
-karpenter = {
-  resource_configs = {
-    nodePools = {
-      general = { weight = 1 }
-
-      # The whole pool. Referencing the `on-demand` node class brings the preset with it.
-      on-demand = { template = { spec = { nodeClassRef = { name = "on-demand" } } } }
-    }
-  }
-}
+```yaml
+variables:
+  karpenter:
+    resource_configs:
+      nodePools:
+        general:
+          weight: 1
+        # The whole pool. Referencing the `on-demand` node class brings the preset with it.
+        on-demand:
+          template:
+            spec:
+              nodeClassRef:
+                name: on-demand
 ```
 
 The preset supplies `weight = 50`, the on-demand requirement, an instance filter admitting burstable while
@@ -797,25 +840,36 @@ Widen the protected pool's own requirements to admit burstable:
 
 All of this is the `protected` preset, so declaring the pool is:
 
-```hcl
-resource_configs = {
-  nodePools = {
-    on-demand = { template = { spec = { nodeClassRef = { name = "on-demand" } } } }
-  }
-}
+```yaml
+variables:
+  karpenter:
+    resource_configs:
+      nodePools:
+        on-demand:
+          template:
+            spec:
+              nodeClassRef:
+                name: on-demand
 ```
 
 which resolves to the on-demand requirement, the burstable-friendly instance filter with its memory floor,
 the `dedicated=on-demand` taint, weight 50, `WhenEmpty` consolidation and the standard capacity ceiling. Each is
 overridable on the pool. The equivalent written out, if you need to change one of them:
 
-```hcl
-requirements = [
-  { key = "karpenter.sh/capacity-type",            operator = "In", values = ["on-demand"] },
-  { key = "karpenter.k8s.aws/instance-category",   operator = "In", values = ["t", "c", "m", "r"] },
-  { key = "karpenter.k8s.aws/instance-generation", operator = "Gt", values = ["2"] },
-  { key = "karpenter.k8s.aws/instance-memory",     operator = "Gt", values = ["3000"] },
-]
+```yaml
+requirements:
+  - key: karpenter.sh/capacity-type
+    operator: In
+    values: ["on-demand"]
+  - key: karpenter.k8s.aws/instance-category
+    operator: In
+    values: ["t", "c", "m", "r"]
+  - key: karpenter.k8s.aws/instance-generation
+    operator: Gt
+    values: ["2"]
+  - key: karpenter.k8s.aws/instance-memory
+    operator: Gt
+    values: ["3000"]
 ```
 
 The memory floor is not optional once the `t` family is admitted. Without it karpenter reaches 2GiB shapes
@@ -849,8 +903,10 @@ The autoscaler controller cannot run on nodes the autoscaler created — its cha
   system pods take ~250m, so the default holds to roughly **50 cluster nodes**. Past that, or on any sign of
   credit exhaustion, move to non-burstable:
 
-  ```hcl
-  node_groups_default = { instance_types = ["c6a.large", "c6i.large"] }
+  ```yaml
+  variables:
+    node_groups_default:
+      instance_types: ["c6a.large", "c6i.large"]
   ```
 
 - **Never `t3.small`**, at any cluster size. Two hard limits that do not depend on load: the VPC CNI allows
