@@ -159,6 +159,45 @@ event shows only the recovered state.
 
 ---
 
+## Phase 0.5 — Fix what blocks every later phase
+
+**Do this before changing anything else.** A PodDisruptionBudget that permits zero evictions is not just a
+defect to fix eventually — it blocks the phases that follow, and it does so in two different ways that are
+easy to meet separately and hard to diagnose together.
+
+**It fails the module upgrade.** Phase 1 replaces the managed node group: the system taint and the instance
+type both change, and a replacement drains every node in that group. An eviction the budget forbids does not
+wait — it *fails* the node group update. You get a half-replaced group and an error naming pod eviction,
+nowhere near the release that caused it.
+
+**It fails the chart upgrade.** Phase 3 bumps the base chart to 0.4.0, which refuses to render such a budget.
+That failure stops the whole deploy, which is correct, but a deploy that fails halfway through a migration
+is a worse place to be than one that never started.
+
+**And it blocks the node replacement those phases exist to deliver.** Once the module upgrade widens the
+instance requirements, nodes on the old shapes are marked drifted — and a zero-eviction budget on any pod
+they host means they can never be replaced. The cluster ends up configured correctly and unable to act on
+it. This was observed on a test upgrade: two nodes drifted, one at 96% memory, held indefinitely by a single
+bad budget on an unrelated release.
+
+```bash
+# Everything E1 lists, except those marked DELIBERATE
+./scripts/eks-assess.sh | sed -n '/E1\./,/E2\./p'
+
+# And what E3 predicts will be refused by the chart upgrade
+./scripts/eks-assess.sh | sed -n '/E3\./,/E4\./p'
+```
+
+For each one, the fix is usually **deleting configuration rather than adding it**: remove the `pdb` block
+and let the chart supply a safe budget. Where the budget is deliberate — a workload rolled by hand that
+automation must never evict — set `pdb.allowZeroEvictions: true` instead, which keeps the behaviour and
+records that it is intended.
+
+Check the values before acting on E3. It reads the live object, and a release that already sets
+`allowZeroEvictions` looks identical to one that needs correcting.
+
+---
+
 ## Phase 1 — Upgrade the module
 
 **Entry gate**: Phase 0 complete, findings recorded and shared.
