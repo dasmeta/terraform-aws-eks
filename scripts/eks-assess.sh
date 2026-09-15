@@ -422,10 +422,11 @@ if [ -n "${REGION}" ] && [ -n "${CLUSTER}" ]; then
     echo
     echo "  ${n} orphaned interface(s), each holding one private IP. The instance id is in the description,"
     echo "  so \`aws ec2 describe-instances --instance-ids <id>\` names the node it came from while that"
-    echo "  instance is still visible. Remove them with:"
-    echo "    scripts/eks-destroy-prep.sh --delete-orphan-enis"
-    echo "  which is safe to run against a LIVE cluster: it only removes interfaces that are available and"
-    echo "  unattached, which by definition no pod is using."
+    echo "  instance is still visible. Each is 'available', meaning detached, so removal needs no detach"
+    echo "  step and nothing is using it:"
+    echo "    aws ec2 delete-network-interface --region ${REGION} --network-interface-id <eni-...>"
+    echo "  Check the status and the aws-K8S-i- description first. An interface owned by a load balancer,"
+    echo "  or still attached, is a symptom -- remove its owner instead."
   fi
 fi
 

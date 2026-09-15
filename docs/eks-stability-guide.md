@@ -24,9 +24,6 @@ what changes, why, what can go wrong, and how to verify.
 | --- | --- | --- |
 | `eks-assess.sh` | **no** | first, always. Zero arguments — it discovers cluster, region and account from your kube context. Its output decides which later phases apply |
 | `eks-config-lint.sh <eks.yaml>` | **no** | alongside the assessment, on the setup's config. Needs no cluster access at all, so it works before you have credentials |
-| `eks-destroy-prep.sh --check-only` | **no** | when a `terraform destroy` fails on a security group, and before one as a precaution. Reports what still holds it |
-| `eks-destroy-prep.sh` | **yes** | before a planned teardown. Deletes the objects that own AWS resources and waits for those resources to actually go |
-| `eks-destroy-prep.sh --delete-orphan-enis` | **yes** | to clear leaked CNI interfaces, which hold IPs on a live cluster and block a destroy later. Safe on a running cluster |
 
 `check-no-local-paths.sh` is a CI guard for this repository, not a tool for a cluster.
 
@@ -878,21 +875,28 @@ exist. This is the reason to care about it before any teardown.
 **At teardown** they hold the node security group, and `terraform destroy` fails on it with
 `DependencyViolation` fifteen minutes after the thing that caused it.
 
-Assessment section G2 reports them. Remove them with:
+Assessment section G2 reports them. Removing them is manual, and deliberately so:
 
 ```bash
-./scripts/eks-destroy-prep.sh --delete-orphan-enis
+# what is leaked, and which node each came from -- the instance id is in the description
+aws ec2 describe-network-interfaces --region <region> \
+  --filters "Name=status,Values=available" \
+  --query 'NetworkInterfaces[?starts_with(Description, `aws-K8S-i-`)].[NetworkInterfaceId,SubnetId,Description]' \
+  --output table
+
+# delete one. `available` means detached, so there is no detach step and nothing is using it
+aws ec2 delete-network-interface --region <region> --network-interface-id <eni-...>
 ```
 
-Safe against a live cluster: it only removes interfaces that are `available` and unattached, which by
-definition no pod is using.
+Confirm the status is `available` and the description starts `aws-K8S-i-` before deleting anything. An
+interface belonging to a load balancer, or one still attached, is a **symptom**: delete the load balancer
+instead, or the interface comes back and you have hidden its owner.
 
-**Why this is not automated in the module.** Two ways were considered and both are worse than the script. A
-Terraform destroy-time provisioner would make the AWS CLI a hard requirement on every machine and CI runner
-that runs the module -- a cost deliberately rejected elsewhere in this release -- and a failing destroy
-provisioner halts the destroy it was meant to help. Deleting network interfaces from Terraform on a filter
-is also a poor trade: if the filter is ever wrong it removes something live, and the blast radius is other
-people's traffic.
+**Why there is no script for this.** Deleting network interfaces on a filter is a poor thing to automate:
+when the filter is wrong, the blast radius is other people's traffic. The same reasoning rules out a
+Terraform destroy-time provisioner, which would additionally make the AWS CLI a hard requirement on every
+machine and CI runner that runs the module, and would halt the destroy it exists to help if it ever failed.
+Two commands you read before running are the right size for this.
 
 **Reducing how many leak** is the better long-term answer, and it is a configuration change rather than a
 cleanup. `ENABLE_PREFIX_DELEGATION` on the VPC CNI addon assigns each interface a /28 prefix instead of
@@ -934,37 +938,7 @@ only applies where terraform owns the Ingress objects, and a fixed wait cannot k
 releasing the ENIs, which happens asynchronously after the controller's work is done. A destroy has been
 observed failing on the node security group with the sleeps in place.
 
-**Run the preparation script:**
-
-```bash
-./scripts/eks-destroy-prep.sh && terraform destroy
-```
-
-Add `--delete-orphan-enis` to have it remove the detached CNI interfaces as well. That is deliberately
-opt-in and deliberately narrow: an interface is removed only if its description marks it CNI-created, it is
-`available`, and it has no attachment. One belonging to a load balancer, or still attached to anything, is
-left alone -- there the interface is a symptom and deleting it would hide the real owner.
-
-It deletes the objects that own AWS resources, then polls until those AWS resources are actually gone
-rather than sleeping a guessed interval, and exits non-zero while anything is still holding on -- so the
-`&&` stops you starting a destroy that will fail fifteen minutes later. `--dry-run` changes nothing.
-
-**If you would rather not have a script delete things**, that is a reasonable position and the diagnosis
-half stands alone:
-
-```bash
-./scripts/eks-destroy-prep.sh --check-only
-```
-
-Read-only. It reports what is holding the cluster security groups and nothing else, so it is equally useful
-*after* a destroy has already failed -- which is when you most want it, and when deleting the workload
-objects is no longer the question.
-
-Its last section is what saves the most time: every ENI still attached to a cluster security group, **with
-its description**. The description names the owner and the owner determines the fix. Without it you get
-`DependencyViolation` on a security group that is not the problem and no indication of what is.
-
-**The equivalent by hand:**
+**Do this before destroying, in this order.** Each step is a judgement call about resources Terraform does not own, which is why it is a procedure and not a script:
 
 ```bash
 # 1. remove the objects that own cloud resources
@@ -1024,7 +998,7 @@ Check numbers refer to `./scripts/eks-assess.sh` sections.
 | A node keeps an old AMI while others roll | A PDB or `do-not-disrupt` is correctly holding it | D4, guide 3.8 |
 | Control plane upgraded, nodes still on the old kubelet | The disruption window is correctly blocking `Drifted`; it rolls when the window closes | D3, guide "Upgrading the Kubernetes version" |
 | Node group upgrade fails on pod eviction | A PodDisruptionBudget permits zero evictions | E1, guide 3.2 |
-| `terraform destroy` fails deleting a security group | Leaked VPC CNI interfaces from terminated nodes, holding it | G2, `eks-destroy-prep.sh --delete-orphan-enis` |
+| `terraform destroy` fails deleting a security group | Leaked VPC CNI interfaces from terminated nodes, holding it | G2, guide "Leaked CNI network interfaces" |
 | Pods cannot schedule, subnet looks full, no kubernetes explanation | Leaked CNI interfaces holding IPs for nodes that no longer exist | G2 |
 
 ---

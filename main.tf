@@ -332,15 +332,17 @@
  *      `destroy_duration` widens the window for that case. It does NOT address the more common one, which
  *      is not a race: the VPC CNI leaves secondary network interfaces behind in `available` state whenever
  *      a node terminates before it detaches them, nothing ever reclaims them, and they hold the node
- *      security group indefinitely. Run `scripts/eks-destroy-prep.sh --delete-orphan-enis` for that. The
- *      delays remain because the load balancer race is real, but they were never going to fix the CNI
- *      interfaces. Originally documented as a general mitigation, which was wrong: a
+ *      security group indefinitely. Assessment section G2 lists them and the guide carries the two commands
+ *      that clear them. The delays remain because the load balancer race is real, but they were never going
+ *      to fix the CNI interfaces. Originally documented as a general mitigation, which was wrong: a
  *      fixed wait cannot know whether AWS finished releasing the ENIs, which happens asynchronously after
- *      the controller's own work completes. Run `scripts/eks-destroy-prep.sh` before destroying -- it
- *      deletes the objects that own AWS resources, waits for those resources to actually disappear, and
- *      reports any ENI still holding a cluster security group along with what owns it. It exits non-zero
- *      when something is still attached, so `./scripts/eks-destroy-prep.sh && terraform destroy` will not
- *      start a run that fails fifteen minutes later. Applies add nothing; the wait is destroy-only.
+ *      the controller's own work completes. Before destroying, delete the Ingress and
+ *      `Service type=LoadBalancer` objects and the node pools, confirm the load balancers and node claims
+ *      are actually gone, and clear any leaked CNI interfaces -- assessment section G2 lists them, and the
+ *      guide's "Leaked CNI network interfaces" carries the two commands. That is a procedure rather than a
+ *      script on purpose: deleting network interfaces on a filter is a poor thing to automate, because
+ *      when the filter is wrong the blast radius is other people's traffic. Applies add nothing; the wait
+ *      is destroy-only.
  *    - **Known issue, not introduced by this release: a first apply can fail with `Unauthorized`.** The
  *      kubernetes, kubectl and helm providers authenticate with a token from `aws_eks_cluster_auth`. That
  *      token is minted once, is valid for exactly 15 minutes, and terraform cannot refresh it during an
