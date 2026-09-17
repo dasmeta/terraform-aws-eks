@@ -58,10 +58,33 @@ echo "EKS assessment"
 echo "context : ${ctx}"
 echo "cluster : ${CLUSTER:-unknown}   region: ${REGION:-unknown}   account: ${ACCOUNT:-unknown}"
 echo "queue   : ${QUEUE:-not discovered}"
+
+# PREFLIGHT. Every check below reads the API server as `kubectl ... 2>/dev/null | jq`, a shape in which a
+# FAILED read is indistinguishable from an EMPTY result. An expired token therefore rendered as a complete,
+# confident report of a cluster with zero nodes, zero pods and every addon "NOT INSTALLED" -- which is also
+# exactly what a destroyed cluster looks like. Refuse to emit a report at all rather than emit a false one.
+#
+# `kubectl version` cannot do this job: it exits 0 having printed only the client version, leaving
+# serverVersion null. This asks for a resource, so it fails when the server is unreachable OR unauthorized.
+if ! API_VERSION_JSON="$(kubectl get --raw /version 2>&1)"; then
+  echo
+  echo "FATAL: cannot read the kubernetes API server."
+  echo "  context : ${ctx}"
+  echo
+  printf '%s\n' "$API_VERSION_JSON" | sed 's/^/  /'
+  echo
+  echo "  NO ASSESSMENT WAS PRODUCED, deliberately. Every check reads from this API server, and a failed"
+  echo "  read looks identical to an empty one, so the report would have claimed this cluster is gone."
+  echo "  Usually this is just an expired token. Refresh credentials and run again:"
+  echo "    aws eks update-kubeconfig --name ${CLUSTER:-<cluster>} --region ${REGION:-<region>}"
+  exit 1
+fi
 echo "date    : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 hr "A1. CLUSTER AND NODE VERSIONS"
-kubectl version -o json 2>/dev/null | jq -r '"  control plane : \(.serverVersion.gitVersion)"' || echo "  control plane : unknown"
+# Taken from the preflight response rather than `kubectl version`, which prints a null serverVersion and a
+# non-zero exit on the same run, producing both a "null" line and an "unknown" line.
+printf '%s' "$API_VERSION_JSON" | jq -r '"  control plane : \(.gitVersion)"'
 echo "  node kubelet versions (a spread means nodes are not being rotated):"
 kubectl get nodes -o json 2>/dev/null | jq -r '[.items[].status.nodeInfo.kubeletVersion] | group_by(.)
   | map({v: .[0], n: length}) | sort_by(-.n)[] | "    \(.n)x \(.v)"'
@@ -73,7 +96,7 @@ kubectl get nodes -o json 2>/dev/null | jq -r '[.items[].status.nodeInfo.osImage
 # leaving the reader to compare two lists. A PATCH difference is routine -- EKS patches the control plane on
 # its own and the node AMI follows later. A MINOR difference is the upgrade case, where the nodes are waiting
 # on a drift roll that the disruption window may be holding.
-cp_ver="$(kubectl version -o json 2>/dev/null | jq -r '.serverVersion.gitVersion // empty' | sed 's/^v//;s/-.*//')"
+cp_ver="$(printf '%s' "$API_VERSION_JSON" | jq -r '.gitVersion // empty' | sed 's/^v//;s/-.*//')"
 node_vers="$(kubectl get nodes -o json 2>/dev/null | jq -r '[.items[].status.nodeInfo.kubeletVersion] | unique[]' | sed 's/^v//;s/-.*//')"
 if [ -n "$cp_ver" ] && [ -n "$node_vers" ]; then
   cp_mm="$(printf '%s' "$cp_ver" | cut -d. -f1-2)"
@@ -468,11 +491,15 @@ if [ -n "${REGION}" ] && [ -n "${CLUSTER}" ]; then
   echo "    - each one holds a private IP in its subnet, so a cluster with heavy churn quietly loses address"
   echo "      space and eventually cannot schedule pods, with nothing in kubernetes explaining why;"
   echo "    - at teardown they hold the node security group and 'terraform destroy' fails on it."
-  orphans="$(aws ec2 describe-network-interfaces --region "$REGION" \
+  # A failed query used to be swallowed and reported as "none" -- a clean bill of health on the one thing
+  # that blocks a destroy, issued without having looked. Failure and emptiness are now separate outcomes.
+  if ! orphans="$(aws ec2 describe-network-interfaces --region "$REGION" \
     --filters "Name=status,Values=available" \
     --query 'NetworkInterfaces[?starts_with(Description, `aws-K8S-i-`)].[NetworkInterfaceId,SubnetId,PrivateIpAddress,Description]' \
-    --output text 2>/dev/null)"
-  if [ -z "$orphans" ]; then
+    --output text 2>&1)"; then
+    echo "  QUERY FAILED -- this section was NOT checked, which is not the same as finding none:"
+    printf '%s\n' "$orphans" | sed 's/^/    /' | head -5
+  elif [ -z "$orphans" ]; then
     echo "  none"
   else
     n="$(printf '%s\n' "$orphans" | grep -c .)"
