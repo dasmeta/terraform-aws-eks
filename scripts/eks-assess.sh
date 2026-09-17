@@ -334,12 +334,23 @@ else
     kubectl get pods -A --field-selector "spec.nodeName=$n" -o json 2>/dev/null | jq -r '.items[]
       | select(.metadata.annotations["karpenter.sh/do-not-disrupt"] == "true")
       | "      holds it: \(.metadata.namespace)/\(.metadata.name)  (karpenter.sh/do-not-disrupt)"'
-    # budgets that currently permit nothing, for workloads on this node
+    # Budgets that permit nothing AND actually cover a pod on THIS node. The namespace is not a fine
+    # enough filter: a zero-eviction budget elsewhere in the same namespace holds its own pods, not this
+    # node, and naming it here sends someone to change a workload that has nothing to do with the node
+    # they are trying to replace. The selector is matched against the pods really running here.
     kubectl get pods -A --field-selector "spec.nodeName=$n" -o json 2>/dev/null \
       | jq -r '.items[] | .metadata.namespace' | sort -u | while read -r ns; do
-        kubectl -n "$ns" get pdb -o json 2>/dev/null | jq -r --arg ns "$ns" '.items[]
+        pods_here=$(kubectl -n "$ns" get pods --field-selector "spec.nodeName=$n" -o json 2>/dev/null)
+        [ -z "$pods_here" ] && continue
+        kubectl -n "$ns" get pdb -o json 2>/dev/null | jq -r --argjson pods "$pods_here" --arg ns "$ns" '.items[]
           | select(.status.disruptionsAllowed == 0)
-          | "      holds it: \($ns)/\(.metadata.name)  (PDB allows 0 evictions)"'
+          | . as $pdb
+          | (($pdb.spec.selector.matchLabels) // {}) as $sel
+          | select(($sel | length) > 0)
+          | select([ $pods.items[]
+                     | (.metadata.labels // {}) as $pl
+                     | select([ $sel | to_entries[] | ($pl[.key] == .value) ] | all) ] | length > 0)
+          | "      holds it: \($ns)/\($pdb.metadata.name)  (PDB allows 0 evictions)"'
       done
   done
   echo
