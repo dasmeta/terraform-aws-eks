@@ -259,12 +259,25 @@ module "this" {
 
   }
 
+  # Storage. Left at the module default (enabled) rather than switched off with the extras below, because
+  # a cluster without the EBS CSI driver has no usable storage class at all: the `gp2` class EKS creates
+  # for you runs on the in-tree `kubernetes.io/aws-ebs` provisioner, which kubernetes has since removed,
+  # so it provisions nothing unless this driver is present for CSI migration to redirect to. Enabling it
+  # also creates `ebs-gp3` as the default class, so a PVC that names no class gets a gp3 volume instead of
+  # staying Pending forever. Section A3 of scripts/eks-assess.sh reports both halves of that gap.
+  #
+  # One migration note for EXISTING clusters: one created before EKS 1.30 has its `gp2` class annotated as
+  # the default, which collides with `ebs-gp3`. Clear that annotation before applying this --
+  #   kubectl annotate sc gp2 storageclass.kubernetes.io/is-default-class- --overwrite
+  # -- which leaves volumes already provisioned from gp2 untouched. Clusters created on 1.30 or later,
+  # including this example, have no default gp2 and need no such step.
+  enable_ebs_driver = true
+
   # Keep the rest of the example small; these are not part of the karpenter recommendation.
   alarms = {
     enabled   = false
     sns_topic = ""
   }
-  enable_ebs_driver            = false
   enable_external_secrets      = false
   create_cert_manager          = false
   enable_node_problem_detector = false
