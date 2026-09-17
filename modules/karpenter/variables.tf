@@ -505,4 +505,3 @@ variable "controller_resources" {
     scales with node, pod and instance-type-offering counts.
   EOT
 }
-

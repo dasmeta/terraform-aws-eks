@@ -112,16 +112,73 @@ printf '  namespaces      : %s\n' "$(kubectl get ns --no-headers 2>/dev/null | w
 printf '  nodepools       : %s\n' "$(kubectl get nodepool --no-headers 2>/dev/null | wc -l | tr -d ' ')"
 
 hr "A3. STORAGE CLASSES (gp2 is slower and pricier than gp3 for the same money)"
-kubectl get storageclass -o json 2>/dev/null | jq -r '.items[]
+sc_json=$(kubectl get storageclass -o json 2>/dev/null)
+csi_json=$(kubectl get csidrivers -o json 2>/dev/null)
+echo "$sc_json" | jq -r '.items[]
   | "  \(.metadata.name)  provisioner=\(.provisioner)  reclaim=\(.reclaimPolicy)  binding=\(.volumeBindingMode)"
     + (if (.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") then "  <-- DEFAULT" else "" end)'
 echo "  note: WaitForFirstConsumer binding avoids provisioning a volume in a zone with no capacity for the pod"
 
+# A class is only usable if the driver behind it is registered, and the class object gives no sign either
+# way -- it lists cleanly above whether or not anything can serve it. The in-tree kubernetes.io/aws-ebs
+# provisioner has been removed from kubernetes, so the gp2 class every EKS cluster is created with now
+# depends entirely on the EBS CSI driver: with the driver absent, CSI migration has nothing to migrate to
+# and the class provisions nothing. Skipped when the csidrivers list could not be read, so that missing
+# RBAC does not report every class as broken.
+if [ -n "$csi_json" ]; then
+  echo "$sc_json" | jq -r --argjson csi "$csi_json" '
+    [$csi.items[].metadata.name] as $d
+    | .items[]
+    | . as $sc
+    | (if   .provisioner == "kubernetes.io/aws-ebs" then "ebs.csi.aws.com"
+       elif .provisioner == "kubernetes.io/aws-efs" then "efs.csi.aws.com"
+       elif (.provisioner | startswith("kubernetes.io/")) then null
+       else .provisioner end) as $need
+    | select($need != null and ($d | index($need) | not))
+    | "  UNUSABLE  \($sc.metadata.name) needs the \($need) driver, which is not registered here --"
+      + " a PVC on this class stays Pending and provisions nothing"'
+fi
+
+# No default class at all is the quiet version of the same failure: nothing is reported as broken, and
+# every PVC that omits storageClassName simply never binds.
+if ! echo "$sc_json" | jq -e '[.items[]
+     | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true")] | length > 0' >/dev/null 2>&1; then
+  echo "  NO DEFAULT STORAGE CLASS -- a PVC that does not name a class will never bind. Anything that asks"
+  echo "  for storage without setting storageClassName stays Pending indefinitely, with no event saying why."
+fi
+
+pvc_json=$(kubectl get pvc -A -o json 2>/dev/null)
+if [ -n "$pvc_json" ]; then
+  echo "$pvc_json" | jq -r '"  persistentvolumeclaims: \(.items | length) total, "
+    + "\([.items[] | select(.status.phase != "Bound")] | length) not bound"'
+  echo "$pvc_json" | jq -r '.items[] | select(.status.phase != "Bound")
+    | "  PENDING PVC  \(.metadata.namespace)/\(.metadata.name) class=\(.spec.storageClassName // "(none -- wants the default)")"'
+fi
+
 hr "B1. CORE ADDON RESILIENCE (these fail quietly and take everything with them)"
+# An absent addon used to print nothing at all, which made the most severe state the one state with no
+# output. Absence is reported explicitly now, with what it costs -- some of these are a broken cluster and
+# some are a deliberate choice, so the note carries the severity rather than the label.
 for d in kube-system/coredns kube-system/metrics-server kube-system/ebs-csi-controller kube-system/aws-load-balancer-controller; do
   ns="${d%%/*}"; name="${d##*/}"
   out=$(kubectl -n "$ns" get deploy "$name" -o json 2>/dev/null | jq -r '"replicas=\(.spec.replicas) available=\(.status.availableReplicas // 0)"')
-  [ -n "$out" ] && printf '  %-42s %s\n' "$d" "$out"
+  if [ -n "$out" ]; then
+    printf '  %-42s %s\n' "$d" "$out"
+    continue
+  fi
+  case "$name" in
+    coredns)
+      why="name resolution is gone cluster-wide. This is a broken cluster, not a configuration choice" ;;
+    metrics-server)
+      why="no HPA scaling and no kubectl top; the live usage in section C1 comes back empty" ;;
+    ebs-csi-controller)
+      why="no EBS volume can be provisioned or attached. A fault only if anything here uses PVCs -- section A3 reports that" ;;
+    aws-load-balancer-controller)
+      why="Ingress and Service type=LoadBalancer objects are never reconciled" ;;
+    *)
+      why="not installed" ;;
+  esac
+  printf '  %-42s %s\n' "$d" "NOT INSTALLED -- $why"
 done
 echo "  coredns PDB:"
 kubectl -n kube-system get pdb -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name | test("coredns|dns"))
@@ -288,6 +345,7 @@ echo "  chart ignores that key so nothing here distinguishes it. Check the value
 echo "  assuming it needs changing -- if the flag is already there, it is a false alarm."
 echo "-- these renders will FAIL after the base chart upgrade and need correcting first:"
 kubectl get pdb -A -o json 2>/dev/null | jq -r '.items[]
+  | select((.metadata.annotations // {})["dasmeta.io/zero-evictions"] == null)
   | select(.spec.minAvailable != null and .status.expectedPods != null)
   | select((.spec.minAvailable | tostring | test("%") | not) and ((.spec.minAvailable | tonumber) >= .status.expectedPods))
   | "  AT RISK  \(.metadata.namespace)/\(.metadata.name)  minAvailable=\(.spec.minAvailable) expectedPods=\(.status.expectedPods)"'
