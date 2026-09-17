@@ -261,6 +261,23 @@ printf 'nodeclaims       : %s\n' "$(kubectl get nodeclaims --no-headers 2>/dev/n
 printf 'pods_total       : %s\n' "$(kubectl get pods -A --no-headers 2>/dev/null | wc -l | tr -d ' ')"
 printf 'nodepools        : %s\n' "$(kubectl get nodepool --no-headers 2>/dev/null | wc -l | tr -d ' ')"
 
+# The counts above are only useful next to a reference, so here is a measured one. Taken on a test
+# cluster by scaling a deployment with hostname anti-affinity, forcing one node per replica:
+#
+#     4 nodes, idle ......................... ~185 MiB
+#    18 nodes, mid-burst ................... ~240 MiB peak, settling back to ~190 MiB
+#
+# which is roughly 4 MiB per node above a ~180 MiB floor. ONE measurement on ONE cluster -- treat it as
+# an order of magnitude, not a formula. Memory also tracks pod count, nodepool count, and a large
+# constant for the instance types each pool is allowed to choose from, so a cluster with wide instance
+# requirements starts higher.
+#
+# Two things that measurement settled. The peak arrived during TEARDOWN, not during provisioning --
+# processing nodeclaims for disruption costs more than deciding to create them -- so a limit that only
+# ever survives scale-up is not sized. And against the 256Mi limit this module shipped before 2.30, an
+# eighteen-node cluster already sat at 93% of it, which is the OOMKill that motivated the change.
+echo "-- compare against the resources in C1: ~180 MiB floor plus roughly 4 MiB per node (rough)"
+
 hr "C3. CONTROLLER-ELIGIBLE NODES (managed node group only; karpenter nodes cannot host it)"
 # NOTE: `kubectl get -L` pads a missing label with an empty trailing field, which awk collapses when
 # splitting on whitespace, so $(NF) landed on the zone column and this check silently matched nothing.
