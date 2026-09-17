@@ -1090,15 +1090,24 @@ observed failing on the node security group with the sleeps in place.
 kubectl delete ingress --all --all-namespaces
 kubectl delete svc --all-namespaces --field-selector spec.type=LoadBalancer
 
-# 2. let karpenter terminate its own instances
+# 2. clear anything that blocks a drain, or step 3 waits forever
+#    Deleting a nodepool DRAINS its nodes through the eviction API. A budget permitting zero evictions
+#    (E1) or a karpenter.sh/do-not-disrupt pod (D4) refuses that eviction, and terminationGracePeriod is
+#    unset by default -- deliberately, so a workload marked always-up stays up -- so karpenter waits with
+#    no deadline. `kubectl get nodeclaims` simply never empties, and nothing says why.
+./scripts/eks-assess.sh | sed -n '/D4\./,/E2\./p'   # what holds each node, and what holds it
+#    Then remove those workloads first. On a cluster being destroyed there is nothing left to protect:
+#    kubectl delete deploy <name> -n <ns>     (or `helm uninstall <release>`)
+
+# 3. let karpenter terminate its own instances
 kubectl delete nodepool --all
 kubectl get nodeclaims          # wait until this is empty
 
-# 3. confirm the cloud resources are actually gone, not just the objects
+# 4. confirm the cloud resources are actually gone, not just the objects
 aws elbv2 describe-load-balancers --region <region> \
   --query 'LoadBalancers[?contains(LoadBalancerName,`k8s-`)].LoadBalancerName' --output text
 
-# 4. only now
+# 5. only now
 terraform destroy
 ```
 
