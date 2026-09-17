@@ -361,6 +361,27 @@ printf 'namespaces_with_any_pdb   : %s\n' "$(wc -l < /tmp/_ka_pdbns.txt | tr -d 
 echo "-- multi-replica deployments in namespaces with NO pdb at all:"
 while read -r d; do ns="${d%%/*}"; grep -qx "$ns" /tmp/_ka_pdbns.txt || echo "  UNPROTECTED  $d"; done < /tmp/_ka_multi.txt | head -30
 
+# A budget governs the EVICTION API, and nothing else. A drain calls it once per pod, so the second
+# eviction of a two-replica workload is refused and the budget does exactly what it looks like it does.
+# An ungraceful node loss -- spot reclaim, hardware fault, kernel panic -- makes no eviction call at all:
+# the node goes and every pod on it goes with it, budget never consulted. So replicas sharing one node
+# have a budget that protects them from planned work and not from the event it was bought for. This is
+# invisible in `kubectl get pdb`, which shows a healthy ALLOWED DISRUPTIONS either way.
+echo "-- multi-replica workloads whose running pods all sit on ONE node:"
+kubectl get pods -A -o json 2>/dev/null | jq -r '
+  [ .items[]
+    | select(.status.phase == "Running")
+    | select((.metadata.ownerReferences // []) | length > 0)
+    | select(.metadata.ownerReferences[0].kind == "ReplicaSet")
+    | select(.spec.nodeName != null)
+    | {ns: .metadata.namespace, owner: (.metadata.ownerReferences[0].name | sub("-[a-z0-9]+$"; "")), node: .spec.nodeName} ]
+  | group_by(.ns + "/" + .owner)
+  | map(select(length >= 2))
+  | map(select(([.[].node] | unique | length) == 1))
+  | .[]
+  | "  COLOCATED  \(.[0].ns)/\(.[0].owner)  \(length) replicas, all on \(.[0].node)"' | head -20
+echo "  (spread them with topologySpreadConstraints over kubernetes.io/hostname, or podAntiAffinity.)"
+
 hr "E3. PDBs AT RISK FROM THE base 0.4.0 GUARD (minAvailable >= replica floor)"
 echo "  Read from the LIVE object, which is all that exists before the upgrade. That has one blind spot: a"
 echo "  release whose values ALREADY set pdb.allowZeroEvictions renders fine on 0.4.0, but the released"
