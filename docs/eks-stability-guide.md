@@ -579,6 +579,40 @@ drains, and makes EKS node group upgrades **fail** on pod eviction. The symptom 
 cluster upgrade being stuck, nowhere near the service that caused it. The chart now refuses to render such a
 budget, which is why some existing values files will start failing — that failure is the fix working.
 
+### 3.2b A budget cannot protect replicas that share a node
+
+The chart spreads pods across nodes by default — `spread.enabled: true`, `maxSkew: 1` over
+`kubernetes.io/hostname` — but with `whenUnsatisfiable: ScheduleAnyway`, which makes it **advisory**. The
+scheduler prefers a spread placement and takes a co-located one when the preferred one is not immediately
+available. It does not come back and rebalance later.
+
+This was observed on a two-replica release with a perfectly healthy budget: both pods on one node, on a
+cluster with capacity elsewhere, `ALLOWED DISRUPTIONS = 1` the whole time.
+
+That number is not wrong, it is answering a narrower question than it appears to. A budget governs the
+**eviction API**. A drain calls it once per pod, so the second eviction is refused and the budget does
+exactly what it looks like it does. An ungraceful node loss — spot reclaim, hardware fault — makes no
+eviction call at all. The node goes, both replicas go with it, and the budget is never consulted. So
+co-located replicas are protected against planned work and not against the event the budget was bought for.
+
+Section E2 of the assessment reports this; nothing in `kubectl get pdb` will.
+
+Where a budget is load-bearing, make the constraint strict:
+
+```yaml
+spread:
+  whenUnsatisfiable: DoNotSchedule
+```
+
+The usual objection to `DoNotSchedule` is that it leaves a pod Pending. That assumes a fixed-size cluster,
+where Pending means Pending forever. On a Karpenter cluster the assumption is inverted: a pod that cannot be
+placed is precisely what triggers provisioning. Measured on this module's defaults, fourteen nodes went from
+pending to Running in about sixty seconds.
+
+It is still a per-workload decision rather than a new default. A strict constraint can genuinely strand a pod
+when the pool's `limits` ceiling is reached, or when no instance type satisfies both the pool requirements and
+the constraint — so apply it where the budget matters, not everywhere.
+
 ### 3.3 Recommended per-service values
 
 ```yaml
@@ -602,7 +636,7 @@ livenessProbe:            # keep shallow and slower than readiness -- an aggress
   failureThreshold: 5
 ```
 
-Defaults you do not need to set: `pdb` (derived), `spread` (on, node-level, soft), `defaultLifecycle.preStop`
+Defaults you do not need to set: `pdb` (derived), `spread` (on, node-level, and **soft** — see 3.2b for when that is not enough), `defaultLifecycle.preStop`
 (5s sleep so the pod IP leaves the load balancer before the container stops).
 
 ### 3.4 Resource requests are not optional
