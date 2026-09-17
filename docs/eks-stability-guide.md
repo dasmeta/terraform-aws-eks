@@ -368,31 +368,20 @@ variables:
     enabled: false
 ```
 
-### 1.5 The default storage class, on clusters created before EKS 1.30
+### 1.5 This upgrade does not touch storage
 
-Only relevant to an existing cluster, and unlike Phase 0.5 this does not block anything — but it is
-cheapest to handle before the apply rather than to explain afterwards.
+Worth stating plainly, because section A3 of the assessment reports on storage classes and it is reasonable
+to wonder whether the module upgrade will move something underneath you. It will not.
 
-The module installs the EBS CSI driver by default and creates `ebs-gp3` as the default storage class. A
-cluster created before EKS 1.30 already has AWS's own `gp2` class annotated as default, so after the apply
-there are two. Kubernetes resolves that by taking the most recently created one, which is `ebs-gp3`, so in
-practice new claims land where you want them — but the resolution is a tiebreak rather than a decision, and
-the upstream guidance is to not have two. Clear the old annotation first:
+Nothing in this work changes a storage default, adds or removes a StorageClass, or touches an existing
+volume. `gp2` stays exactly as it is, and volumes provisioned from it keep working. The EBS CSI driver was
+already enabled by default before these changes and still is, so clusters already running it see no
+difference.
 
-```bash
-kubectl annotate sc gp2 storageclass.kubernetes.io/is-default-class- --overwrite
-```
-
-Volumes already provisioned from `gp2` are unaffected — this changes which class new claims default to,
-nothing about existing ones. The command is safe to run when `gp2` carries no such annotation, so there is
-no need to check first. Clusters created on 1.30 or later never had the annotation and need no action.
-
-The opposite case is worth recognising too, because it is silent. A cluster with `enable_ebs_driver = false`
-has no usable storage class at all: the `gp2` class EKS creates runs on the in-tree
-`kubernetes.io/aws-ebs` provisioner, which kubernetes has removed, so without the driver present for CSI
-migration to redirect to it provisions nothing, and there is no default class either. Nothing reports this
-until someone deploys a workload with a volume and finds a PVC that stays Pending with no event explaining
-why. Section A3 of the assessment names both halves of it.
+A3 is diagnostic only. If it reports something about your storage — no default class, a class whose driver
+is not installed — that is information about the cluster as it stands today, not a consequence of upgrading,
+and not something this phase asks you to act on. Storage is a separate piece of work with its own blast
+radius; deciding anything there belongs outside a Karpenter change.
 
 ---
 
