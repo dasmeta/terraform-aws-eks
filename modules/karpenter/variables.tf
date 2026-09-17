@@ -364,9 +364,25 @@ variable "resource_configs_defaults" {
         # node that still holds a protected workload is the disruption the pool exists to avoid.
         consolidationPolicy = optional(string, "WhenEmpty")
         consolidateAfter    = optional(string, "15m")
-        # No protection window here on purpose. With WhenEmpty the only voluntary disruption is removing an
-        # empty node, which disrupts nothing and is therefore safe at any hour.
-        budgets = optional(any, [{ nodes = "10%" }])
+        # A window scoped to Drifted only, unlike the general pool which also blocks Underutilized.
+        #
+        # WhenEmpty rules out Underutilized consolidation, so there is nothing to block there. It does NOT
+        # rule out DRIFT: consolidationPolicy governs consolidation, and drift is a separate disruption
+        # reason. This node class tracks al2023@latest, so every AWS AMI republish marks the whole pool
+        # drifted and karpenter replaces the nodes -- the monitoring stores, brokers and singletons this
+        # pool exists to hold -- at whatever hour the republish lands on. A 10% cap paces that; it does not
+        # keep it out of business hours.
+        #
+        # Empty stays permitted at all hours: removing a node with nothing on it disrupts nothing.
+        budgets = optional(any, [
+          { nodes = "10%" },
+          {
+            nodes    = "0"
+            schedule = "0 6 * * mon-fri"
+            duration = "12h"
+            reasons  = ["Drifted"]
+          }
+        ])
       }), {})
 
       # Same ceiling as the other presets. A limit is a runaway guard, not a cost budget: when it binds,
@@ -451,10 +467,16 @@ variable "resource_configs_defaults" {
         consolidateAfter = optional(string, "1m")
         # Voluntary disruption budgets, passed straight to the CRD. Entries carrying `schedule` and
         # `duration` are protection windows: `nodes = "0"` blocks the listed reasons while the window is
-        # open. IMPORTANT -- karpenter evaluates schedules in UTC ONLY and has no timezone support, so the
-        # default below suits central Europe and should be re-cut for other regions. Multiple budgets
-        # resolve most-restrictive-wins. These gate VOLUNTARY disruption only: they never delay spot
-        # interruption handling, and never delay node expiry.
+        # open. IMPORTANT -- karpenter evaluates schedules in UTC ONLY and has no timezone support, so a
+        # window added here must be re-cut per region. Multiple budgets resolve most-restrictive-wins.
+        # These gate VOLUNTARY disruption only: they never delay spot interruption handling, and never
+        # delay node expiry.
+        #
+        # NO WINDOW by default here, unlike the default and on-demand presets. GPU work is usually long
+        # batch jobs rather than traffic-shaped load, so business hours are not the right axis to protect
+        # and a window cut for them would be arbitrary. Drift still replaces these nodes at any hour: for a
+        # job that cannot resume, add a window matching YOUR job schedule, or mark the pod
+        # karpenter.sh/do-not-disrupt and replace the node deliberately.
         budgets = optional(any, [{ nodes = "10%" }])
       }), {})
 
