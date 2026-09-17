@@ -480,6 +480,9 @@ kubectl get nodes -o json 2>/dev/null | jq -r '
   | map({t: .[0].type, c: .[0].cap, p: .[0].pool, n: length})
   | sort_by(-.n)[] | "  \(.n)x  \(.t | . + "                    " | .[0:18])\(.c | . + "            " | .[0:11]) pool=\(.p)"'
 echo "-- family split (t = burstable; c = compute 1:2; m = general 1:4; r = memory 1:8):"
+echo "   Only HALF the heading applies to every t here. Burstable throttles under sustained CPU wherever it"
+echo "   runs, but 'interrupted more often' is about shallower SPOT pools -- an on-demand or managed t node"
+echo "   is never interrupted at all. Read this split against the capacity types above before acting on it."
 kubectl get nodes -o json 2>/dev/null | jq -r '
   [.items[] | (.metadata.labels["node.kubernetes.io/instance-type"] // "unknown") | split(".")[0] | .[0:1]]
   | group_by(.) | map({f: .[0], n: length}) | sort_by(-.n)[] | "  \(.n)x  family=\(.f)"'
