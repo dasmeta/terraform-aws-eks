@@ -499,19 +499,40 @@ echo "   so a lower memory-per-core shape -- c family at 1:2 -- fits better than
 
 if [ -n "$QUEUE" ]; then
   hr "G1. INTERRUPTION QUEUE BACKLOG (>120s means drains are being missed)"
+  g1_start="$(date -u -v-30d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '30 days ago' +%Y-%m-%dT%H:%M:%SZ)"
+  g1_end="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  # How many messages the controller actually consumed. Without this the section could not tell a calm
+  # queue apart from one that was never wired up: both show no backlog rows. A measured handling took
+  # 56ms end to end, which rounds to a Maximum age of 0 and is filtered out of the rows below -- so a real
+  # interruption, correctly handled, can leave NO trace in the backlog listing at all.
+  g1_handled="$(aws cloudwatch get-metric-statistics --namespace AWS/SQS \
+    --metric-name NumberOfMessagesDeleted \
+    --dimensions "Name=QueueName,Value=${QUEUE}" \
+    --start-time "$g1_start" --end-time "$g1_end" \
+    --period 86400 --statistics Sum --region "$REGION" \
+    --query 'Datapoints[].Sum' --output text 2>/dev/null | tr '\t' '\n' | awk '{s+=$1} END {printf "%d", s+0}')"
+  echo "  interruption messages handled in the last 30 days: ${g1_handled:-0}"
+  if [ "${g1_handled:-0}" = "0" ]; then
+    echo "    ZERO. On a cluster running spot instances this is not calm, it is a queue that has processed"
+    echo "    nothing: check that the queue name above matches the karpenter deployment's INTERRUPTION_QUEUE"
+    echo "    and that the EventBridge rules for spot interruption still target it. An unwired queue means"
+    echo "    every reclaim arrives as an unannounced node loss with no drain at all."
+  fi
+
+  echo "-- backlog, worst message age per hour (only hours with a measurable age appear):"
   # CloudWatch caps a single call at 1440 datapoints. 30 days at a 3600s period is 720, comfortably under.
   # A wide period is fine here because the statistic is Maximum: a 300s spike still shows in its hour.
   aws cloudwatch get-metric-statistics --namespace AWS/SQS \
     --metric-name ApproximateAgeOfOldestMessage \
     --dimensions "Name=QueueName,Value=${QUEUE}" \
-    --start-time "$(date -u -v-30d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '30 days ago' +%Y-%m-%dT%H:%M:%SZ)" \
-    --end-time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --start-time "$g1_start" --end-time "$g1_end" \
     --period 3600 --statistics Maximum --region "$REGION" \
     --query 'sort_by(Datapoints,&Timestamp)[?Maximum>`0`].[Timestamp,Maximum]' --output text 2>/dev/null \
     | awk '{ printf "  %-26s %s seconds\n", $1, $2 }' | tail -20 || echo "  query failed (check credentials, queue name, region)"
   echo "  Timestamps are whatever your AWS CLI renders; the disruption windows in D2 are UTC ONLY, so"
   echo "  convert before correlating a backlog with a window."
-  echo "  (no rows means the controller kept up for every event in the 30 day window)"
+  echo "  Read the two together: a handled count above zero with no rows here is the healthy case."
   echo "  ANY value above 120 is a MISSED DRAIN: the spot interruption notice is only 120s."
 else
   hr "G1. INTERRUPTION QUEUE BACKLOG -- SKIPPED"
