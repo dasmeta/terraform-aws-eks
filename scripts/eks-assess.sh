@@ -512,7 +512,11 @@ if [ -n "$QUEUE" ]; then
     --start-time "$g1_start" --end-time "$g1_end" \
     --period 86400 --statistics Sum --region "$REGION" \
     --query 'Datapoints[].Sum' --output text 2>/dev/null | tr '\t' '\n' | awk '{s+=$1} END {printf "%d", s+0}')"
-  echo "  interruption messages handled in the last 30 days: ${g1_handled:-0}"
+  echo "  messages handled on this queue in the last 30 days: ${g1_handled:-0}"
+  echo "    NOT a count of spot reclaims. Karpenter subscribes this one queue to every node-lifecycle"
+  echo "    event it cares about -- spot interruption warnings, rebalance recommendations, EC2 instance"
+  echo "    state changes and scheduled AWS health events -- so an ordinary consolidation contributes"
+  echo "    messages too. It is here to prove the queue is connected and being drained, nothing more."
   if [ "${g1_handled:-0}" = "0" ]; then
     echo "    ZERO. On a cluster running spot instances this is not calm, it is a queue that has processed"
     echo "    nothing: check that the queue name above matches the karpenter deployment's INTERRUPTION_QUEUE"
