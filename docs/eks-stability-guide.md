@@ -597,21 +597,59 @@ co-located replicas are protected against planned work and not against the event
 
 Section E2 of the assessment reports this; nothing in `kubectl get pdb` will.
 
-Where a budget is load-bearing, make the constraint strict:
+#### Making the spread strict is not enough
+
+The obvious move is to harden the chart's own constraint:
 
 ```yaml
 spread:
-  whenUnsatisfiable: DoNotSchedule
+  whenUnsatisfiable: DoNotSchedule     # DOES NOT reliably spread. See below.
 ```
 
-The usual objection to `DoNotSchedule` is that it leaves a pod Pending. That assumes a fixed-size cluster,
-where Pending means Pending forever. On a Karpenter cluster the assumption is inverted: a pod that cannot be
-placed is precisely what triggers provisioning. Measured on this module's defaults, fourteen nodes went from
-pending to Running in about sixty seconds.
+This was tried on a live cluster and **did not spread the replicas**. Both stayed on one node.
 
-It is still a per-workload decision rather than a new default. A strict constraint can genuinely strand a pod
-when the pool's `limits` ceiling is reached, or when no instance type satisfies both the pool requirements and
-the constraint — so apply it where the budget matters, not everywhere.
+A topology spread constraint measures each node against the **emptiest eligible node**. Eligible nodes are
+those a pod could actually use, after its `nodeSelector` and affinity are applied. Reduce that set to one —
+which ordinary consolidation does routinely — and the node is being compared with itself: the skew is always
+zero, so the constraint refuses nothing, no pod is left unschedulable, and Karpenter is never asked for more
+capacity. The setting is not ignored; it becomes vacuously satisfied.
+
+It works while two or more eligible nodes exist and stops silently at one. On a cluster that consolidates,
+that is a normal Tuesday, not an edge case.
+
+#### What does work
+
+Anti-affinity carries no dependency on how many nodes happen to exist: two of these pods may never share a
+node, full stop.
+
+```yaml
+spread:
+  enabled: false        # the chart's soft constraint would otherwise sit alongside this
+
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/instance: <release-name>
+            app.kubernetes.io/name: <release-name>
+        topologyKey: kubernetes.io/hostname
+```
+
+The second replica becomes genuinely unschedulable, goes Pending, and **that** is what makes Karpenter
+provision. Measured on this module's defaults: Pending at 0s, node assigned at 41s, Running at 48s.
+
+The usual objection to a hard constraint is that it leaves a pod Pending. That assumes a fixed-size cluster
+where Pending means Pending forever. Here, Pending is the mechanism.
+
+Two costs, both real. **Replicas become nodes** — three replicas means at least three nodes, which on the
+protected on-demand pool is three on-demand instances. And a hard constraint can genuinely strand a pod when
+the pool's `limits` ceiling is reached or no instance type satisfies both the pool requirements and the
+constraint. Apply it where the budget is load-bearing, not everywhere.
+
+`topologySpreadConstraints` with `minDomains: 2` alongside `DoNotSchedule` is the other documented route to
+the same guarantee, and the chart passes a raw `topologySpreadConstraints` list through. It was not tested
+here; the anti-affinity form above was.
 
 ### 3.3 Recommended per-service values
 
