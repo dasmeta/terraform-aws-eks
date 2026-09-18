@@ -130,9 +130,45 @@ precisely what this work exists to prevent. Switching an existing fleet to a
 finite value would also expire every older node at once. Patching is handled by
 budget-paced AMI drift instead.
 
-**CapacityBuffers (Karpenter 1.14) are not adopted.** They add another CRD on
-top of a five-minor-version upgrade whose whole purpose is reducing risk, and
-the benefit cannot be measured until the baseline is proven.
+**CapacityBuffers (Karpenter 1.14) are not adopted.** Evaluated properly after a
+client spot-interruption incident (DMVP-10665) made the case for them; the
+decision is still defer, but for better reasons than the original two.
+
+*How they actually work.* A CapacityBuffer declares virtual placeholder pods
+that exist only inside Karpenter's scheduling simulation and are never created
+as real pods. Karpenter provisions nodes to fit them, so the capacity arrives as
+genuinely empty nodes, with empty-consolidation suppressed so they are not
+reclaimed. A real pod then lands on idle capacity with no preemption step. This
+is NOT the older pause-pod-and-negative-PriorityClass pattern and needs none of
+its plumbing. `scalableRef` with `percentage` sizes the buffer as a proportion
+of a named workload, so it tracks that workload's replica count.
+
+*Why defer anyway.* The API is `autoscaling.x-k8s.io/v1alpha1` behind a feature
+gate. Alpha APIs change and are withdrawn between minors, and this module is
+deployed across a fleet that cannot absorb that cheaply. It would also add a CRD
+to a change that is already a five-minor-version Karpenter upgrade.
+
+*And the requirement it was proposed for is better served another way.*
+DMVP-10665 asks a workload to retain a minimum number of Ready endpoints while a
+spot node drains. Buffers do not address that: they make the REPLACEMENT arrive
+faster, roughly sixty seconds sooner on measured numbers. What retains endpoints
+is spreading replicas so one node cannot hold several, which costs nothing and
+is already documented in the stability guide.
+
+*Buffers versus simply running more replicas*, which is the obvious alternative
+and usually the better one. The two solve different problems. More replicas
+means more SURVIVORS of a node loss, and because the chart's budget is a
+percentage, a larger replica count also permits more concurrent evictions --
+both of which are exactly what that incident needed. Buffers mean faster
+RECOVERY to full strength. On cost the comparison is unkind to buffers: a buffer
+node is idle EC2, while an extra replica is the same EC2 doing work. Where
+buffers win is cluster-wide reach -- one buffer serves every workload, whereas
+raising `minReplicas` helps one -- and not disturbing HPA, which a raised floor
+does permanently.
+
+*What would reverse this.* The API reaching beta, or a cluster where enough
+distinct workloads need warm headroom that per-workload replica floors become
+the more wasteful option.
 
 ## Versions
 
