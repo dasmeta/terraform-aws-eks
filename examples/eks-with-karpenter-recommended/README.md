@@ -77,10 +77,8 @@ Each of these is a failure seen in production, and each is addressed somewhere i
 - Base chart **0.4.0 or newer**. That release creates PodDisruptionBudgets by default and refuses to render
   one that permits zero evictions.
 
-  > **Release ordering matters.** This example references the published chart, so `dasmeta/base` 0.4.0 must
-  > be released **before** the EKS module version that ships this example. Releasing the module first leaves
-  > the example unappliable for anyone who picks it up. Until both are out, point `chart` at a local checkout
-  > of `dasmeta/helm/charts/base` to try it.
+  > **Requires `dasmeta/base` 0.4.0 or later**, which is the version that creates a safe PodDisruptionBudget
+  > by default and refuses one permitting zero evictions. It is published, so this example applies as written.
 - The account must have a default VPC, since `0-setup.tf` looks one up by tag.
 - Region is `eu-central-1`; change it in `0-setup.tf`.
 

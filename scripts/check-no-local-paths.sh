@@ -34,8 +34,14 @@ echo "no local filesystem paths in committed configuration"
 #   111111111111  the placeholder this repository uses in examples and tests
 #   2222.../3333...  repeated-digit placeholders in vendored upstream documentation
 echo "Checking for AWS account IDs..."
-# A repeated single digit is a placeholder by construction, never a real account.
-ALLOWED_ACCOUNTS='602401143452|123456789012|([0-9])\\1{11}'
+# A repeated single digit is a placeholder by construction, never a real account. Enumerated rather than
+# written as a backreference: `([0-9])\1{11}` needs a backreference ERE does not portably provide, and
+# escaping it for a shell string produced a pattern matching nothing at all -- so every placeholder was
+# flagged, including the ones named above. That went unnoticed because the local-path check above exits
+# first, and this one never ran.
+REPEATED='000000000000|111111111111|222222222222|333333333333|444444444444'
+REPEATED="${REPEATED}|555555555555|666666666666|777777777777|888888888888|999999999999"
+ALLOWED_ACCOUNTS="602401143452|123456789012|${REPEATED}"
 acct_hits="$(grep -rnE '\b[0-9]{12}\b' \
   --include='*.tf' --include='*.md' --include='*.sh' --include='*.yaml' --include='*.yml' . 2>/dev/null \
   | grep -v '\.terraform/' | grep -v 'tfstate' | grep -vE '[0-9]{12}[0-9]' \
