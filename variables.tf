@@ -1072,7 +1072,7 @@ variable "node_local_dns" {
 
 variable "kyverno" {
   type = object({
-    # Default OFF since 2.30.0. kyverno registers admission webhooks with failurePolicy=Fail, which means the
+    # Default OFF since 3.0.0. kyverno registers admission webhooks with failurePolicy=Fail, which means the
     # API calls they match are REJECTED whenever no healthy backend exists rather than being skipped -- so an
     # admission controller with too few replicas is a cluster-wide veto held by a single pod. It was enabled
     # by default only to carry the temporary `bitnami-to-bitnamilegacy` image rewrite, which is a workaround,
@@ -1085,7 +1085,7 @@ variable "kyverno" {
     extra_configs   = optional(any, {})                                    # Configs to pass and override kyverno helm values.yaml defaults and var.default_configs if needed more fine control. for more info check https://artifacthub.io/packages/helm/kyverno/kyverno?modal=values
   })
   default     = {}
-  description = "Allows to enable/install the kyverno k8s policies management tool/operator. Disabled by default since 2.30.0: it carries a cluster-wide admission webhook with failurePolicy=Fail, and the predefined \"bitnami-to-bitnamilegacy\" policy it shipped for was a temporary migration aid. Pin the registry in each workload image instead -- eks-assess.sh section E8 lists any that still need it."
+  description = "Allows to enable/install the kyverno k8s policies management tool/operator. Disabled by default since 3.0.0: it carries a cluster-wide admission webhook with failurePolicy=Fail, and the predefined \"bitnami-to-bitnamilegacy\" policy it shipped for was a temporary migration aid. Pin the registry in each workload image instead -- eks-assess.sh section E8 lists any that still need it."
 }
 
 variable "tags" {

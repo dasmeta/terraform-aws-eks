@@ -269,7 +269,7 @@ The change itself is one line in the setup's YAML:
 
 ```yaml
 source: dasmeta/eks/aws
-version: 2.30.0            # was 2.29.x
+version: 3.0.0             # was 2.29.x
 ```
 
 **Do this first.** Most later configuration options do not exist before this version, and hand-patching the
@@ -277,7 +277,7 @@ cluster in the meantime is actively counterproductive — see the warning below.
 
 ### 1.1 Read the upgrade guide
 
-The `2.30.0` entry in the module header docs (`main.tf`) is the authoritative list of what changes. Read it
+The `3.0.0` entry in the module header docs (`main.tf`) is the authoritative list of what changes. Read it
 in full before applying. This document does not repeat it.
 
 ### 1.2 Never rely on an in-cluster hotfix
@@ -335,7 +335,7 @@ Apply to development or staging first, confirm Phase 0 checks now read healthy, 
 
 ### 1.4 The system node group taint
 
-From `2.30.0` the managed node groups are tainted `CriticalAddonsOnly=true:NoSchedule` by default whenever
+From `3.0.0` the managed node groups are tainted `CriticalAddonsOnly=true:NoSchedule` by default whenever
 Karpenter is enabled.
 
 **Why it is a default rather than a recommendation.** These nodes exist to host the Karpenter controller,

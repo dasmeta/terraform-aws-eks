@@ -225,7 +225,7 @@
  *       - Action: set `cluster_version = "1.34"` (or remove the pin entirely, 1.34 is the module default). Apply.
  *       - Verify: `aws eks describe-cluster --name <cluster> --query cluster.version` returns `1.34`; `kubectl get nodes -o wide` shows nodes on a `1.34.x` kubelet version; `aws eks describe-addon` reports coredns/vpc-cni/kube-proxy/EBS/S3/ADOT as `ACTIVE`/healthy; all tooling verified in earlier stages is still healthy post-upgrade.
  *       - Exit criteria: cluster and all node groups report 1.34; all addons `ACTIVE`; no `CrashLoopBackOff` across kube-system or tooling namespaces. Upgrade complete.
- *  - from version >= 2.30.0, the AWS Load Balancer Controller's IAM identity is wired before its pods start. **No configuration change is required; expect the controller to roll once on the first apply.**
+ *  - from version >= 3.0.0, the AWS Load Balancer Controller's IAM identity is wired before its pods start. **No configuration change is required; expect the controller to roll once on the first apply.**
  *    - The problem this fixes: on a fresh install the controller could start before its IAM policy attachment (or, in `pod_identity_association` mode, before its Pod Identity association) existed. The controller receives credentials only at pod start - IRSA binds the annotated service account into the projected token at pod creation, Pod Identity injects the credential environment variables at admission - so a pod that started too early never recovered. The symptom was an Ingress stuck reporting `AccessDenied` on calls such as `elasticloadbalancing:DescribeLoadBalancers` while the policy was visibly attached to the role, cleared only by restarting the controller pods.
  *    - What changes: the role, the policy attachment and the Pod Identity association are now all created before the Helm release; the association no longer depends on the release; a short wait absorbs IAM/STS eventual consistency; and the identity is stamped onto the controller pod template so a later identity change rolls the deployment instead of leaving stale credentials in a running pod.
  *    - On upgrade: the added pod annotation changes the pod template, so the controller deployment rolls once. This is brief and self-healing, and it also clears any controller currently stuck on bad credentials. No resource is replaced and no input is removed.
@@ -255,7 +255,7 @@
  *    For configuring a cluster end to end -- assessment, upgrade order, region/timezone-specific disruption
  *    windows, workload and third-party chart configuration, and the disruption risk of each step -- see
  *    `docs/eks-stability-guide.md`.
- *  - from <2.30.0 to >=2.30.0 version, Karpenter gets a stability baseline. **Behaviour changes on upgrade with no configuration change; read this before applying to production.** No state migration is required.
+ *  - from <3.0.0 to >=3.0.0 version, Karpenter gets a stability baseline. **Behaviour changes on upgrade with no configuration change; read this before applying to production.** No state migration is required.
  *    - Why: 502/504 bursts occur when spot nodes are reclaimed while the Karpenter controller is unavailable, so interruption warnings went unprocessed and nodes were never drained. A fleet-wide review tied ~a series of incidents to a small set of causes, several of which were defects in this module.
  *    - Controller resources: requests move from `100m`/`128Mi` to `250m`/`512Mi`, the memory limit from `256Mi` to `1Gi`, and **the cpu limit is removed entirely**. The old `200m`/`256Mi` limits were diagnosed as causing cpu throttling and OOMKills during scale-up. The cpu limit is dropped rather than raised on purpose: throttling this controller during a scale-up or spot-interruption storm is the failure being prevented. Override with `karpenter.controller_resources` if you need a cpu limit back.
  *    - Controller priority moves from the priority-class submodule's highest class (`high`, 1,000,000) to `system-cluster-critical` (2,000,000,000), the upstream chart default. The previous value demoted Karpenter below every genuinely cluster-critical component, so under node pressure the component responsible for adding capacity was itself a preemption candidate. The controller pod is recreated by this change.
@@ -632,7 +632,7 @@
  *
  * ## karpenter enabled
  * ### NOTES:
- * ###  - enabling karpenter automatically disables cluster auto-scaler, starting from 2.30.0 version karpenter is enabled by default
+ * ###  - enabling karpenter automatically disables cluster auto-scaler, starting from 3.0.0 version karpenter is enabled by default
  * ###  - if vpc have been created externally(not inside this module) then you may need to set the following tags on private subnets `karpenter.sh/discovery=<cluster-name>`
  * ###  - then enabling karpenter on existing old cluster there is possibility to see cycle-dependency error, to overcome this you need at first to apply main eks module change (`terraform apply --target "module.<eks-module-name>.module.eks-cluster"`) and then rest of cluster-autoloader destroy and karpenter install ones
  * ###  - when destroying cluster which have karpenter enabled there is possibility of failure on karpenter resource removal, you need to run destruction one more time to get it complete
