@@ -45,9 +45,34 @@ locals {
   #
   # Emitted only when set, via a for-expression rather than a ternary: a rendered `amiFamily: null` is not
   # the same as the field being absent, and the alias form must not carry one.
-  defaultEc2NodeClassOnDemandAmiFamily = {
-    for k, v in { amiFamily = var.resource_configs_defaults["on-demand"].nodeClass.amiFamily } : k => v if v != null
-  }
+  # Whether to derive the on-demand AMI from the managed node groups. False as soon as the consumer pinned
+  # the class themselves, which also skips the lookups in data.tf. Both inputs are variables, so this is
+  # known at plan time and can gate a count.
+  onDemandAmiAuto = (
+    var.resource_configs_defaults["on-demand"].nodeClass.amiSelectorTerms == null &&
+    var.resource_configs_defaults["on-demand"].nodeClass.amiAlias == null
+  )
+
+  # Read off the image we actually found, NOT from configuration. The two can disagree -- a node group may
+  # override ami_type while node_groups_default says something else -- and a node booted with the wrong
+  # family gets the wrong bootstrap. Deriving both from the same AMI makes that impossible.
+  onDemandAmiFamilyDerived = local.onDemandAmiAuto ? (
+    (strcontains(data.aws_ami.managed_node[0].name, "al2023") || strcontains(data.aws_ami.managed_node[0].description, "Amazon Linux 2023")) ? "AL2023" :
+    (strcontains(lower(data.aws_ami.managed_node[0].name), "bottlerocket")) ? "Bottlerocket" :
+    (strcontains(data.aws_ami.managed_node[0].name, "amzn2") || strcontains(data.aws_ami.managed_node[0].description, "AmazonLinux2")) ? "AL2" :
+    "AL2023"
+  ) : null
+
+  # amiFamily is MANDATORY whenever amiSelectorTerms carries an id rather than an alias: the CRD rejects the
+  # class with "must specify amiFamily if amiSelectorTerms does not contain an alias". It rejects it on
+  # APPLY, not at plan, so a missing family surfaces when the helm release patches rather than in review.
+  # Key presence is decided by config-known conditions so the rendered object's shape never depends on a
+  # value that is only known after apply.
+  defaultEc2NodeClassOnDemandAmiFamily = (
+    var.resource_configs_defaults["on-demand"].nodeClass.amiFamily != null
+    ? { amiFamily = var.resource_configs_defaults["on-demand"].nodeClass.amiFamily }
+    : local.onDemandAmiAuto ? { amiFamily = local.onDemandAmiFamilyDerived } : {}
+  )
 
   defaultEc2NodeClassOnDemand = merge(local.defaultEc2NodeClassOnDemandAmiFamily, {
     tags                = var.tags
@@ -56,9 +81,15 @@ locals {
     securityGroupSelectorTerms = [
       { tags = { "karpenter.sh/discovery" = var.cluster_name, "Name" = "${var.cluster_name}-node" } }
     ]
-    amiSelectorTerms = coalesce(
-      var.resource_configs_defaults["on-demand"].nodeClass.amiSelectorTerms,
-      [{ alias = coalesce(
+    # The derived pin only applies when the consumer set neither AMI field. Their own amiSelectorTerms wins
+    # outright; their own amiAlias falls through to the alias branch below. Checked in that order because the
+    # submodule prefers amiSelectorTerms, so injecting a derived one would silently beat a consumer's alias.
+    amiSelectorTerms = (
+      var.resource_configs_defaults["on-demand"].nodeClass.amiSelectorTerms != null
+      ? var.resource_configs_defaults["on-demand"].nodeClass.amiSelectorTerms
+      : local.onDemandAmiAuto
+      ? [{ id = data.aws_instance.managed_node[0].ami }]
+      : [{ alias = coalesce(
         var.resource_configs_defaults["on-demand"].nodeClass.amiAlias,
         var.resource_configs_defaults["default"].nodeClass.amiAlias,
         "al2023@latest"

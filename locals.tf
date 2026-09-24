@@ -121,49 +121,7 @@ locals {
   )
   karpenter_ami_alias = "${local.karpenter_ami_family}@latest"
 
-  # The CRD spells the family differently from the alias: "AL2023" in spec.amiFamily, "al2023" in an alias.
-  # Needed because amiFamily is mandatory whenever amiSelectorTerms carries an id instead of an alias.
-  karpenter_ami_family_crd = (
-    startswith(local.karpenter_node_ami_type, "AL2023") ? "AL2023" :
-    startswith(local.karpenter_node_ami_type, "BOTTLEROCKET") ? "Bottlerocket" :
-    startswith(local.karpenter_node_ami_type, "AL2") ? "AL2" :
-    "AL2023"
-  )
 
-  # The managed node groups the on-demand AMI can be read from. Keyed on var.node_groups so the keys are
-  # known at plan time -- that is what lets the reads in data.tf defer to apply on a first create rather than
-  # resolving empty. A cluster configured with no managed node groups at all gets an empty map here, which is
-  # also known at plan, so the lookup is skipped entirely and the on-demand pool keeps the alias.
-  karpenter_ami_lookup_node_groups = var.create && var.karpenter.enabled ? local.node_groups : {}
-
-  # node_group_id is "<cluster>:<group>-<suffix>" and the tag holds only the second half. Referencing it is
-  # what makes the instance read depend on the node group existing.
-  karpenter_ami_lookup_node_group_names = {
-    for k, _ in local.karpenter_ami_lookup_node_groups :
-    k => split(":", module.eks-cluster[0].eks_managed_node_groups[k].node_group_id)[1]
-  }
-
-  # Any running managed instance, used only so a group sitting at desired_size 0 does not fail its read.
-  managed_node_any_instance_id = try(
-    flatten([for g in data.aws_instances.managed_nodes : g.ids])[0],
-    null
-  )
-
-  # The AMIs currently running on the managed node groups.
-  managed_node_ami_ids = distinct([for i in data.aws_instance.managed_node : i.ami])
-
-  # An AMI id rather than an alias version, so there is no "1.34.10-20260915" to "al2023@v20260915" date
-  # mapping to get wrong. A mapping that was ever wrong would make the node class invalid and stop the pool
-  # provisioning entirely.
-  karpenter_on_demand_ami_id = try(data.aws_ami.managed_node[0].id, null)
-
-  # Suppressed when the consumer has set either AMI field on the on-demand node class. Needed because the
-  # submodule prefers amiSelectorTerms over amiAlias: injecting a derived amiSelectorTerms would silently
-  # beat a consumer's own amiAlias, so they would set it and nothing would change.
-  karpenter_on_demand_ami_is_overridden = (
-    try(var.karpenter.resource_configs_defaults["on-demand"].nodeClass.amiAlias, null) != null ||
-    try(var.karpenter.resource_configs_defaults["on-demand"].nodeClass.amiSelectorTerms, null) != null
-  )
 
   # The consumer's defaults bucket wins; the derived alias only fills the gap when they left it unset.
   # Written as a nested merge rather than a whole-object replacement so that setting any single field
@@ -177,25 +135,6 @@ locals {
           nodeClass = merge(
             { amiAlias = local.karpenter_ami_alias },
             try(var.karpenter.resource_configs_defaults.default.nodeClass, {}),
-          )
-        }
-      )
-    },
-    # Absent when there are no managed nodes to read, or when the consumer set an AMI field themselves. In
-    # either case the on-demand preset keeps the module default and nothing changes.
-    local.karpenter_on_demand_ami_id == null || local.karpenter_on_demand_ami_is_overridden ? {} : {
-      on-demand = merge(
-        try(var.karpenter.resource_configs_defaults["on-demand"], {}),
-        {
-          nodeClass = merge(
-            {
-              amiSelectorTerms = [{ id = local.karpenter_on_demand_ami_id }]
-              # Mandatory alongside an id. Without it the CRD refuses the class with "must specify amiFamily
-              # if amiSelectorTerms does not contain an alias" -- and it refuses it on APPLY, not at plan, so
-              # the failure surfaces when the helm release patches rather than when the change is reviewed.
-              amiFamily = local.karpenter_ami_family_crd
-            },
-            try(var.karpenter.resource_configs_defaults["on-demand"].nodeClass, {}),
           )
         }
       )
