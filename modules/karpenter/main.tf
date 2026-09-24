@@ -57,15 +57,45 @@ module "this" {
   create_instance_profile           = true
   create_node_iam_role              = true
 
-  # Required for Karpenter 1.9+ instance profile garbage collection (iam:ListInstanceProfiles cannot be resource-scoped)
-  # TODO: with module version >=v21.15.1 this policy being set automatically, so we can remove this after upgrading the module version
-  iam_policy_statements = [
-    {
-      sid       = "AllowUnscopedInstanceProfileListAction"
-      actions   = ["iam:ListInstanceProfiles"]
-      resources = ["*"]
-    }
-  ]
+  # Our two extra actions are attached as a SEPARATE managed policy (below) rather than through
+  # `iam_policy_statements`, which would inline them into the upstream document. See that resource for why.
+  iam_role_policies = {
+    unscoped_read = aws_iam_policy.controller_unscoped_read.arn
+  }
+}
+
+# AWS caps a managed policy at 6144 characters, whitespace excluded. The upstream controller document is
+# already 5966 of those for a 30-character cluster name, and the cluster name appears in it 16 times -- so
+# every additional character of cluster name costs 16, and the 178 characters of headroom are gone once the
+# name grows by 11. `iam_policy_statements` therefore is not a usable escape hatch: anything added there
+# competes for a budget the cluster name already owns, and going over does not degrade gracefully. The policy
+# fails to create, the controller has no permissions at all, and karpenter cannot launch a single instance --
+# which surfaces as unrelated workloads hanging with nowhere to schedule.
+#
+# A separate managed policy gets its own 6144 budget and leaves the upstream document untouched.
+#
+# iam:ListInstanceProfiles   -- instance profile garbage collection, karpenter 1.9+. Cannot be scoped.
+# ec2:DescribeInstanceStatus -- interruption-controller health checks, karpenter 1.12+. The pinned upstream
+#                               version omits it from AllowRegionalReadActions, so without it that path fails
+#                               with AccessDenied and the capability is silently absent.
+#
+# TODO: both are granted upstream from eks module v21.15.1+; drop this policy when that upgrade lands.
+resource "aws_iam_policy" "controller_unscoped_read" {
+  name_prefix = "KarpenterControllerRead-${substr(var.cluster_name, 0, 20)}-"
+  description = "Unscoped read actions the karpenter controller needs that the pinned upstream policy omits"
+  tags        = var.tags
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "AllowUnscopedReadActions"
+        Effect   = "Allow"
+        Action   = ["iam:ListInstanceProfiles", "ec2:DescribeInstanceStatus"]
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 # installs karpenter operator crds helm package (we need this separate chart for crds, as the below main chart do not support crds upgrade, doc: https://karpenter.sh/docs/upgrading/upgrade-guide/#crd-upgrades)
@@ -84,6 +114,18 @@ resource "helm_release" "this_crds" {
 
 # installs karpenter operator helm package
 resource "helm_release" "this" {
+  # The upstream chart requires each karpenter replica to sit on a distinct node in a distinct availability
+  # zone (required hostname podAntiAffinity + DoNotSchedule zone topologySpread + a nodeAffinity excluding
+  # karpenter's own nodes). An unsatisfiable request does not fail: the extra replica simply stays Pending
+  # forever, so the setup looks highly available while it is not. Subnet count is knowable here, so we fail
+  # on it. Node count and their zone spread are not knowable at plan time and are documented instead.
+  lifecycle {
+    precondition {
+      condition     = try(var.configs.replicas, 2) <= 1 || length(var.subnet_ids) >= 2
+      error_message = "karpenter is configured with ${try(var.configs.replicas, 2)} replicas but only ${length(var.subnet_ids)} subnet(s) were provided. Each replica needs a separate node in a separate availability zone, so 2+ replicas require 2+ subnets. Either provide subnets in at least 2 availability zones, or set karpenter.configs.replicas = 1."
+    }
+  }
+
   name             = "karpenter"
   repository       = "oci://public.ecr.aws/karpenter"
   chart            = "karpenter"
@@ -108,16 +150,7 @@ resource "helm_release" "this" {
         interruptionQueue = module.this.queue_name
       }
       controller = {
-        resources = {
-          requests = {
-            cpu    = "100m"
-            memory = "128Mi"
-          }
-          limits = {
-            cpu    = "200m"
-            memory = "256Mi"
-          }
-        }
+        resources = local.controller_resources
       }
     }),
     jsonencode(var.configs)
@@ -127,6 +160,34 @@ resource "helm_release" "this" {
 }
 
 # allows to create karpenter crd resources such as NodeClasses, NodePools
+# Holds the karpenter controller alive for a window on DESTROY, so it can terminate the EC2 instances it owns.
+#
+# Deleting a NodePool marks its NodeClaims for deletion, but draining and terminating the instance is the
+# controller's job, and terraform has no edge to those instances at all -- it never created them. Remove the
+# controller first and the instances are orphaned, still holding the `-node` security group, so the destroy
+# fails later on a security group whose real blocker is an EC2 instance nothing is tracking.
+#
+# Ordering matters and is easy to get backwards. This sleep is created AFTER the controller and BEFORE the
+# node classes below, which on destroy gives: node classes (NodePools deleted) -> this wait -> controller.
+# Hanging the sleep off the node classes instead would place the wait before the NodePools are deleted, which
+# is useless.
+#
+# A fixed wait is a mitigation, not a guarantee: draining respects PodDisruptionBudgets and can outlast it.
+# Delete the node pools and confirm `kubectl get nodeclaims` is empty before destroying for the reliable path.
+resource "time_sleep" "karpenter_teardown" {
+  depends_on = [helm_release.this]
+
+  # Only on destroy. Creation is unaffected.
+  #
+  # 60s rather than the 30s used for the load balancer controller, because this one is not waiting on API
+  # calls. Deleting a NodePool cascades to its NodeClaims, and each one cordons its node and evicts the pods,
+  # respecting PodDisruptionBudgets and each pod's terminationGracePeriodSeconds. The bound is the workloads,
+  # not the AWS API -- the recommended example alone sets grace periods of 45s and 60s, so a shorter wait
+  # would cut its own drains short. Anything with long grace periods or tight budgets will still outlast
+  # this; that is what the documented pre-destroy procedure is for.
+  destroy_duration = "60s"
+}
+
 resource "helm_release" "karpenter_nodes" {
   name             = "karpenter-node-classes"
   repository       = "https://dasmeta.github.io/helm"
@@ -142,8 +203,9 @@ resource "helm_release" "karpenter_nodes" {
       var.resource_configs,
       {
         ec2NodeClasses = {
-          default = local.defaultEc2NodeClass,
-          gpu     = local.defaultEc2NodeClassGpu
+          default     = local.defaultEc2NodeClass,
+          gpu         = local.defaultEc2NodeClassGpu,
+          "on-demand" = local.defaultEc2NodeClassOnDemand
         }
         nodePools               = local.nodePools
         karpenterServiceAccount = module.this.service_account
@@ -153,5 +215,5 @@ resource "helm_release" "karpenter_nodes" {
     jsonencode({ ec2NodeClasses = try(var.resource_configs.ec2NodeClasses, {}) })
   ]
 
-  depends_on = [helm_release.this]
+  depends_on = [time_sleep.karpenter_teardown]
 }

@@ -1,24 +1,7 @@
-# select an random ec2 instance from eks node pools to get its ami id for using in karpenter
-data "aws_instances" "ec2_from_eks_node_pools" {
-  filter {
-    name   = "tag:karpenter.sh/discovery"
-    values = [var.cluster_name]
-  }
-
-  instance_state_names = ["running"]
-}
-
-data "aws_instance" "ec2_from_eks_node_pool" {
-  instance_id = data.aws_instances.ec2_from_eks_node_pools.ids[0]
-}
-
-data "aws_ami" "this" {
-  most_recent = true
-  filter {
-    name   = "image-id"
-    values = [data.aws_instance.ec2_from_eks_node_pool.ami]
-  }
-}
+# NOTE: the aws_instances/aws_instance/aws_ami lookups that used to derive the default node class AMI from an
+# arbitrary running instance were removed. They made AMI selection a function of live infrastructure rather than
+# configuration, so an unrelated apply could change the fleet's target image and drift every node at once.
+# The default node class now uses a declarative `alias` selector, see resource_configs_defaults.default.nodeClass.amiAlias.
 
 data "aws_ami" "gpu" {
   most_recent = true

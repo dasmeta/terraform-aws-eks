@@ -66,20 +66,26 @@ module "this" {
 
   karpenter = {
     enabled = true
-    configs = {
-      # Optional: defaults are replicas=2 and priorityClassName="high".
-      # Set only if you want to override defaults explicitly.
-      # replicas          = 2
-      # priorityClassName = "high"
-    }
+    # Defaults now cover the stability baseline, so nothing needs setting for a normal setup:
+    #   replicas          = 2
+    #   priorityClassName = "system-cluster-critical"
+    #   controller resources 250m/512Mi requested, 1Gi memory limit, deliberately no cpu limit
+    #   node AMI alias derived from node_groups_default.ami_type with @latest
+    #   Balanced consolidation with a 15m settle time
+    #   voluntary disruption suppressed 06:00-18:00 UTC Mon-Fri (UTC only, override outside central Europe)
+    #   terminationGracePeriod 24h as a stuck-node safety net
+    configs = {}
+
     resource_configs_defaults = { # this is optional param, look into karpenter submodule to get available defaults
-      limits = {
-        cpu = 11 # the default is 10 and we can add limit restrictions on memory also
+      default = {                 # NOTE: must be nested under `default`; a top-level `limits` here fails at plan time
+        limits = {
+          cpu = 11 # the default is 1000 and we can add limit restrictions on memory also
+        }
       }
     }
     resource_configs = {
       nodePools = {
-        general = { weight = 1 } # by default it use linux amd64 cpu<=8, memory<=32Gi, >2 generation and  ["spot", "on-demand"] type nodes so that it tries to get spot at first and if no then on-demand
+        general = { weight = 1 } # by default it uses linux amd64 cpu 2-32, memory 2-128Gi, >2 generation and ["spot", "on-demand"] type nodes, so it prefers spot and falls back to on-demand
         on-demand = {
           # weight = 0 # by default the weight is 0 and this is lowest priority, we can schedule pod in this not
           template = {

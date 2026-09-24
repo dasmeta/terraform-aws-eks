@@ -225,7 +225,7 @@
  *       - Action: set `cluster_version = "1.34"` (or remove the pin entirely, 1.34 is the module default). Apply.
  *       - Verify: `aws eks describe-cluster --name <cluster> --query cluster.version` returns `1.34`; `kubectl get nodes -o wide` shows nodes on a `1.34.x` kubelet version; `aws eks describe-addon` reports coredns/vpc-cni/kube-proxy/EBS/S3/ADOT as `ACTIVE`/healthy; all tooling verified in earlier stages is still healthy post-upgrade.
  *       - Exit criteria: cluster and all node groups report 1.34; all addons `ACTIVE`; no `CrashLoopBackOff` across kube-system or tooling namespaces. Upgrade complete.
- *  - from version >= 2.30.0, the AWS Load Balancer Controller's IAM identity is wired before its pods start. **No configuration change is required; expect the controller to roll once on the first apply.**
+ *  - from version >= 3.0.0, the AWS Load Balancer Controller's IAM identity is wired before its pods start. **No configuration change is required; expect the controller to roll once on the first apply.**
  *    - The problem this fixes: on a fresh install the controller could start before its IAM policy attachment (or, in `pod_identity_association` mode, before its Pod Identity association) existed. The controller receives credentials only at pod start - IRSA binds the annotated service account into the projected token at pod creation, Pod Identity injects the credential environment variables at admission - so a pod that started too early never recovered. The symptom was an Ingress stuck reporting `AccessDenied` on calls such as `elasticloadbalancing:DescribeLoadBalancers` while the policy was visibly attached to the role, cleared only by restarting the controller pods.
  *    - What changes: the role, the policy attachment and the Pod Identity association are now all created before the Helm release; the association no longer depends on the release; a short wait absorbs IAM/STS eventual consistency; and the identity is stamped onto the controller pod template so a later identity change rolls the deployment instead of leaving stale credentials in a running pod.
  *    - On upgrade: the added pod annotation changes the pod template, so the controller deployment rolls once. This is brief and self-healing, and it also clears any controller currently stuck on bad credentials. No resource is replaced and no input is removed.
@@ -251,6 +251,166 @@
  *      ```
  *    - No action is needed where Linkerd is the only Gateway API consumer, or where `linkerd.enabled = false`.
  *    - `examples/` now pin `dasmeta/base` `0.3.32`, and the `namespaces-and-docker-auth` submodule defaults to chart `0.1.3`. Both chart releases default their generated External Secrets resources to `external-secrets.io/v1`; see the chart release notes for the operator requirement and the per-release override.
+ *
+ *    For configuring a cluster end to end -- assessment, upgrade order, region/timezone-specific disruption
+ *    windows, workload and third-party chart configuration, and the disruption risk of each step -- see
+ *    `docs/eks-stability-guide.md`.
+ *  - from <3.0.0 to >=3.0.0 version, Karpenter gets a stability baseline. **Behaviour changes on upgrade with no configuration change; read this before applying to production.** No state migration is required.
+ *    - Why: 502/504 bursts occur when spot nodes are reclaimed while the Karpenter controller is unavailable, so interruption warnings went unprocessed and nodes were never drained. A fleet-wide review tied ~a series of incidents to a small set of causes, several of which were defects in this module.
+ *    - Controller resources: requests move from `100m`/`128Mi` to `250m`/`512Mi`, the memory limit from `256Mi` to `1Gi`, and **the cpu limit is removed entirely**. The old `200m`/`256Mi` limits were diagnosed as causing cpu throttling and OOMKills during scale-up. The cpu limit is dropped rather than raised on purpose: throttling this controller during a scale-up or spot-interruption storm is the failure being prevented. Override with `karpenter.controller_resources` if you need a cpu limit back.
+ *    - Controller priority moves from the priority-class submodule's highest class (`high`, 1,000,000) to `system-cluster-critical` (2,000,000,000), the upstream chart default. The previous value demoted Karpenter below every genuinely cluster-critical component, so under node pressure the component responsible for adding capacity was itself a preemption candidate. The controller pod is recreated by this change.
+ *    - **AMI selection changes shape, and this is the one to plan for.** The default node class previously derived its AMI from an arbitrary running instance (`aws_instances...ids[0]`), which meant an unrelated apply could change the fleet's target image and mark every node drifted at once - the "two separate waves of change" noted in the 2.21.0 entry below. It now uses a declarative `alias` (`al2023@latest` by default, family derived from `node_groups_default.ami_type`). If the alias resolves to a different image than your nodes currently run, you get **one paced node roll**, limited by the disruption budget and suppressed during the new protected window. To avoid any roll at upgrade time, pin `karpenter.resource_configs_defaults.default.nodeClass.amiAlias` to the AMI version your nodes already use, then move the pin deliberately later.
+ *      - Be clear about what `@latest` means AFTERWARDS: node replacement becomes **continuous and unattended**, not something tied to a terraform run. Karpenter resolves the alias itself and re-checks AMI data on its own interval (chart default `amiRefreshInterval: 1m`), so a new AWS AMI release starts a paced roll within about a minute, with no apply involved. That is the intended behaviour -- it is how nodes receive OS and kernel patches without anyone remembering to act -- and it is safe because drift is voluntary disruption, so the budgets and windows apply. If your change control requires a human to schedule node replacement, pin the version instead and put a recurring task in place to move the pin, otherwise nodes stop receiving patches.
+ *    - Voluntary consolidation is now suppressed 06:00-18:00 UTC Monday to Friday by default, blocking `Drifted` and `Underutilized` while still allowing empty nodes to be removed. **Karpenter evaluates these schedules in UTC only - it has no timezone support - so this default is off by an hour across European daylight saving and is wrong outright for other regions.** The window is an ordinary entry in `karpenter.resource_configs_defaults.default.disruption.budgets`; remove it there to restore always-on consolidation. These budgets never delay spot interruption handling.
+ *    - Consolidation policy moves from `WhenEmptyOrUnderutilized` to `Balanced`, and `consolidateAfter` from `3m` to `15m`. Expect less node churn and therefore somewhat higher spend; that is the intended trade.
+ *    - **Instance selection changes shape, and this will change which instance types you get.** Requirements widen
+ *      from cpu<9 / memory<32Gi to cpu 2-32 / memory 2-128Gi, which deepens the spot candidate pool and lowers
+ *      interruption frequency. At the same time the burstable `t` family is now EXCLUDED via
+ *      `instance-category In [c, m, r]`, and the generation floor moves from >2 to >4. Karpenter picks the
+ *      cheapest instance satisfying the constraints, and without a category constraint that was very often a
+ *      `t3.2xlarge`: burstable instances throttle to a fraction of their advertised vCPU under sustained load,
+ *      which surfaces as latency that looks like an application fault, and they sit in the most contended spot
+ *      pools so they are reclaimed more often. Expect a modest unit-price increase per node in exchange for
+ *      predictable CPU and fewer interruptions. To keep burstable instances, add `"t"` back to the
+ *      `instance-category` values via `karpenter.resource_configs_defaults.default.requirements`.
+ *    - The `flex` instance variants (`c7i-flex`, `m8i-flex` and relatives) are excluded by family name. They
+ *      pass the `instance-category` filter, since they are compute and general instances, and karpenter
+ *      selected them on a test cluster; they carry roughly a 40% CPU baseline with burst above it, which is
+ *      the sustained-load throttling profile the `t` family is excluded for. karpenter exposes no label for
+ *      that behaviour, so the exclusion is a name list and a newly released flex family is admitted until it
+ *      is added. Remove the `instance-family` requirement to allow them.
+ *    - Check your CPU-versus-memory reservation balance before accepting the defaults. If nodes consistently run
+ *      out of CPU while memory sits idle, constrain to `["c"]` (1:2 memory-per-core) rather than the default
+ *      c/m/r set; if the reverse, `["r"]` (1:8). Section 14 of `scripts/eks-assess.sh` reports this per node.
+ *    - `karpenter.resource_configs_defaults.default.terminationGracePeriod`, **unset by default**. It bounds how long a node may drain before remaining pods are removed. It is deliberately NOT enabled by default: setting it does more than bound a drain already underway, it makes a node ELIGIBLE for drift even when it hosts pods with blocking PodDisruptionBudgets or the `karpenter.sh/do-not-disrupt` annotation, and force-deletes those pods when it elapses. That converts both protections from a guarantee into a delay. A workload marked always-up stays up, and its node keeps an older AMI until a human moves it -- assessment section D4 lists such nodes and names what is holding them.
+ *    - **Protected on-demand capacity is now a preset.** `resource_configs_defaults` gains a third key,
+ *      `on-demand`, alongside `default` and `gpu`, and the module creates a matching `on-demand` EC2NodeClass.
+ *      A pool referencing it inherits the on-demand requirement, an instance filter that admits burstable
+ *      with a memory floor above the 2GiB shapes, the `dedicated=on-demand` taint, weight 50, `WhenEmpty`
+ *      consolidation and the standard capacity ceiling -- so declaring the pool is three lines rather than fifty,
+ *      and every field stays overridable. Nothing is created unless a pool references it.
+ *    - Protected on-demand capacity for ingress, monitoring, singleton and stateful workloads is configured with a standard node pool in `karpenter.resource_configs.nodePools` -- an on-demand capacity-type requirement plus a taint -- not a bespoke input. Standard pools already express this and more (labels, multiple taints, a custom node class), and a pool that declares its own `budgets` is excluded from the module's disruption windows, which is what such a pool wants. See `examples/eks-with-karpenter-recommended`.
+ *    - Karpenter charts move `1.9.0` -> `1.14.1` and `karpenter-nodes` `0.1.0` -> `0.1.2`. The CRD chart is upgraded before the main chart. If you are coming from a much older release you may still need the `kubectl patch` commands in the 2.20.0 entry below. `ec2:DescribeInstanceStatus` is granted to the controller role, which Karpenter 1.12+ requires for its interruption health checks; without it that code path fails silently with AccessDenied. It is granted through a SEPARATE managed policy attached via `iam_role_policies`, not through `iam_policy_statements`. AWS caps a managed policy at 6144 characters and the upstream controller document already measures 5966 of those for a 30-character cluster name, in which the cluster name appears 16 times -- so a name 11 characters longer exhausts the remaining headroom on its own, with or without anything we add. Going over does not degrade gracefully: the policy fails to create, the controller has no permissions at all, and karpenter launches nothing, which surfaces as unrelated workloads hanging with nowhere to schedule. A new IAM policy is created per cluster; no action is required on upgrade. Note 1.9 is the LTS line, so this moves off LTS deliberately, in exchange for the interruption health checks and `Balanced` consolidation this incident needs.
+ *    - **Two things deliberately did NOT change**, both for the same reason - they would bypass the pacing this release adds:
+ *      - `expireAfter` stays `Never`. Node expiry is not gated by disruption budgets, so any finite value would replace nodes unpaced and outside the protected window, and switching an existing fleet to a finite value would expire every older node at once. AMI patching is handled by budget-paced drift via the alias instead.
+ *      - Capacity buffers (new in Karpenter 1.14) are not adopted. They add another CRD on top of a five-minor-version upgrade whose whole purpose is reducing risk. Revisit once this baseline is proven.
+ *    - **If you previously set `budgets = [{ nodes = "0" }]` as a mitigation, remove it when adopting the windows.**
+ *      A budget of `nodes: "0"` with no `schedule`/`duration` is always active, so it does not reduce churn -- it
+ *      stops ALL voluntary disruption permanently. Seen in practice: most node pools carried
+ *      it, and with `expireAfter: Never` alongside it nothing ever replaced a node voluntarily. Nodes had reached
+ *      many months old and still running the previous kubelet minor version after the control plane had moved
+ *      on, because AMI drift remediation is voluntary disruption and was therefore blocked too. The disruption
+ *      windows in this release are the supported way to express the same intent: blocked during your traffic hours,
+ *      permitted outside them. Note the module CONCATENATES window budgets with whatever budgets you already set,
+ *      so an existing always-on `nodes: "0"` keeps winning (budgets resolve most-restrictive-wins) and must be
+ *      removed for the windows to have any effect.
+ *    - **The managed node groups are now tainted `CriticalAddonsOnly=true:NoSchedule` by default, and their
+ *      instance type is no longer burstable.** Both are node group changes, so both cause a ROLLING NODE
+ *      REPLACEMENT of the managed group on the apply that introduces them. Do it in a maintenance window, and
+ *      do both in the same apply so the group is replaced once rather than twice.
+ *      - Why the taint: these nodes exist to host the karpenter controller, coredns and the CSI controllers.
+ *        Without the taint, application pods schedule onto them and compete with the controller that
+ *        provisions their capacity -- on a 2-node group that is how the controller ends up starved. This is
+ *        the setting most often forgotten, which is why it is now a default rather than
+ *        a documented recommendation.
+ *      - What tolerates it and therefore stays: the karpenter controller, the EKS coredns addon, and the EBS
+ *        CSI controller, all of which tolerate `CriticalAddonsOnly` out of the box. Everything else --
+ *        ingress controllers, cert-manager, external-dns, keda, service mesh -- moves onto
+ *        karpenter-provisioned capacity. That is the intent, not a side effect.
+ *      - `NoSchedule` does not evict anything already running, so application pods currently on system nodes
+ *        stay until they are next rescheduled and then migrate. The change is gradual.
+ *      - **It is applied only when karpenter is enabled.** With karpenter off there is nowhere else for
+ *        workloads to run, so tainting the only node groups would leave the cluster unable to schedule
+ *        anything. Any node group that declares its own `taints` is left exactly as written.
+ *      - Opt out with `node_groups_system_taint = { enabled = false }`, which is the right choice for
+ *        development or test clusters where the isolation is not worth the extra capacity.
+ *    - **Destroys now hold two controllers alive briefly** -- the load balancer controller for 30 seconds, karpenter for 60. The load balancer controller and the
+ *      karpenter controller own AWS resources terraform did not create and cannot see -- load balancers and
+ *      their ENIs, and EC2 instances. On a destroy terraform removes the controller while it is still
+ *      cleaning those up, orphaning them; the orphaned ENIs then hold the node security group and the run
+ *      fails several resources later on a security group that is not the cause. A `time_sleep` with
+ *      `destroy_duration` widens the window for that case. It does NOT address the more common one, which
+ *      is not a race: the VPC CNI leaves secondary network interfaces behind in `available` state whenever
+ *      a node terminates before it detaches them, nothing ever reclaims them, and they hold the node
+ *      security group indefinitely. Assessment section G2 lists them and the guide carries the two commands
+ *      that clear them. The delays remain because the load balancer race is real, but they were never going
+ *      to fix the CNI interfaces. Originally documented as a general mitigation, which was wrong: a
+ *      fixed wait cannot know whether AWS finished releasing the ENIs, which happens asynchronously after
+ *      the controller's own work completes. Before destroying, delete the Ingress and
+ *      `Service type=LoadBalancer` objects and the node pools, confirm the load balancers and node claims
+ *      are actually gone, and clear any leaked CNI interfaces -- assessment section G2 lists them, and the
+ *      guide's "Leaked CNI network interfaces" carries the two commands. That is a procedure rather than a
+ *      script on purpose: deleting network interfaces on a filter is a poor thing to automate, because
+ *      when the filter is wrong the blast radius is other people's traffic. Applies add nothing; the wait
+ *      is destroy-only.
+ *    - **Known issue, not introduced by this release: a first apply can fail with `Unauthorized`.** The
+ *      kubernetes, kubectl and helm providers authenticate with a token from `aws_eks_cluster_auth`. That
+ *      token is minted once, is valid for exactly 15 minutes, and terraform cannot refresh it during an
+ *      apply. Creating a cluster takes about 8 minutes and the managed node group another 2, so a first
+ *      apply can reach its first kubernetes resource with little of that budget left; any apply that runs
+ *      longer than 15 minutes past the token being minted loses it outright.
+ *      - It presents as `Unauthorized`, or "the server has asked for the client to provide credentials",
+ *        attributed to whichever resource happened to be scheduled next -- a namespace, a priority class,
+ *        the aws-auth config map, a helm release. Those resources are not at fault; they share one expired
+ *        credential. This is why it reads as a random first-run failure rather than an auth problem.
+ *      - **Nothing is broken and no cleanup is needed. Run `terraform apply` again.** Everything created so
+ *        far is in state, the cluster now exists, and the second apply mints a fresh token and finishes the
+ *        remaining resources well inside the window.
+ *      - To avoid the failure entirely on a first creation, build the cluster first and then the rest:
+ *        `terraform apply -target=module.<name>.module.eks-cluster` followed by a plain `terraform apply`.
+ *      - The permanent fix is the `exec` credential plugin, which mints a token per API request and cannot
+ *        age out. It is not adopted here because it would make the AWS CLI a hard requirement on every
+ *        machine and CI runner that runs terraform. Consumers who already have the CLI everywhere can opt in
+ *        by configuring their own providers with `exec`; the `cluster_token` output stays available for
+ *        those who do not.
+ *    - **`kyverno.enabled` now defaults to `false`.** It was on by default only to carry the temporary
+ *      `bitnami-to-bitnamilegacy` image rewrite, and most clusters have since migrated those references
+ *      directly. Keeping it costs more than it gives: kyverno registers admission webhooks with
+ *      `failurePolicy: Fail`, so the API calls they match are REJECTED whenever no healthy backend exists --
+ *      not skipped. Its admission controller runs a single replica by default, which makes a cluster-wide veto
+ *      depend on one pod surviving every spot reclaim, consolidation and node group upgrade. The rejections
+ *      typically land on pod creation, so the workload that cannot start looks like the fault while the cause
+ *      is several layers away. The same property makes it awkward to remove: the pods go, the webhooks stay
+ *      registered, and the cleanup is rejected by itself, which presents as a `helm delete` or
+ *      `terraform destroy` that never finishes.
+ *      - **Before upgrading**, run `scripts/eks-assess.sh` and read section E8. It lists every running image
+ *        still pointing at the retired `bitnami` repository. Fix each one in the workload's OWN image config
+ *        -- a values override or a chart upgrade to `bitnamilegacy` -- rather than relying on the mutating
+ *        policy. Doing it in the image reference means a pod no longer needs an admission webhook to be
+ *        healthy in order to get a working image.
+ *      - If E8 is empty, nothing needs doing: the policy has no work left and this default simply removes it.
+ *      - Set `kyverno = { enabled = true }` to keep it, which is the right choice where the cluster genuinely
+ *        uses policy enforcement. Give the admission controller 2+ replicas if you do -- assessment section B3
+ *        reports every `Fail`-policy webhook alongside how many ready backends it currently has.
+ *      - Disabling it uninstalls the release. Delete its webhook configurations first if the uninstall hangs.
+ *    - The system node group instance type changes from `t3.large` to `t3.medium`. Same family, one size down:
+ *      these nodes carry a small steady load -- one karpenter replica, one coredns, a CSI controller and the
+ *      DaemonSets -- and `t3.large` was simply larger than that needs. Burstable is appropriate here precisely
+ *      because the load is low and steady, which is the opposite of the sustained-high profile that makes
+ *      burstable a poor choice for application nodes.
+ *      - Sizing rule: measured karpenter controller CPU scales at roughly 3m per cluster node. `t3.medium` sustains 400m before credits are
+ *        consumed and the other system pods take ~250m, so the default holds to roughly 50 cluster nodes.
+ *        Beyond that, or on any sign of credit exhaustion, move to a non-burstable type:
+ *        `node_groups_default = { instance_types = ["c6a.large", "c6i.large"] }`.
+ *      - `t3.small` is NOT a valid choice at any cluster size. The VPC CNI allows only 11 pods on it, and the
+ *        DaemonSets alone take about 5; and its ~1.5 GiB allocatable cannot hold the karpenter memory limit
+ *        alongside coredns, the CSI controller and the DaemonSets.
+ *    - Recommended monitoring, because these defaults reduce the chance of the failure but do not make it observable:
+ *      - **CloudWatch `ApproximateAgeOfOldestMessage` on the Karpenter interruption SQS queue.** This is the single
+ *        best leading indicator and it has an unambiguous threshold: a spot interruption notice gives 120 seconds,
+ *        so any sustained age above that means a drain WILL be missed. A backlog beyond the notice period means the drain is already lost
+ *        while the controller was OOMKilling, and nodes were reclaimed before draining began. Alert above ~60s.
+ *      - Karpenter controller restart count and `OOMKilled` terminations. With the corrected resources these should
+ *        be flat; any restarts at all mean the memory limit needs raising for that cluster's size.
+ *      - Pending pods by reason, NodeClaim lifecycle duration, and node registration time.
+ *    - Known limitation of the default disruption window: it protects 06:00-18:00 UTC, which ends at 20:00 in central
+ *      European summer time. Voluntary `Underutilized` eviction has been seen in the hour just after a window like this closes. If your traffic runs later, extend the window entry in `karpenter.resource_configs_defaults.default.disruption.budgets` accordingly; the default
+ *      is deliberately not stretched to cover every setup, because a wider window means less consolidation and higher spend.
+ *    - `karpenter.configs.replicas` stays at 2 by default and should stay there. A single replica has no failover during
+ *      any controller restart. While the controller restarts nothing consumes the interruption queue, and a
+ *      backlog past the 120 second notice means nodes are reclaimed before any drain starts.
+ *    - Rollback: pin back to `2.29.x`. No state migration is performed in either direction, but rolling back reinstates the controller limits that caused the original OOMKills.
+ *    - Recommended order: apply to dev or stage first, confirm the Karpenter deployment shows `250m`/`512Mi` requests with no cpu limit and `system-cluster-critical` priority, confirm `kubectl get nodepool -o yaml` shows the expected `disruption.budgets` entries, then watch one AMI roll complete before promoting to production.
  *
  *  - from <2.28.0 to >=2.28.0 version, External Secrets moves off IAM users and static access keys onto EKS Pod Identity with IAM role chaining. **This is a two-repository change: the EKS module and every `external-secret-store` call must both be upgraded, in that order.** Read this whole entry before starting.
  *    - What changes: the controller now runs with an EKS Pod Identity association instead of reading credentials from a Kubernetes Secret. It holds no Secrets Manager access itself; it may only `sts:AssumeRole` the per-store roles (`external-secrets-store-*`) created by the `external-secret-store` module, and each of those is scoped to its own `secret:<store-name>*` prefix. The IAM user, its access keys and the `<store>-awssm-secret` Kubernetes Secret are destroyed by this upgrade, which is the intent of the change. The `eks-pod-identity-agent` addon is now installed by default, since a Pod Identity association delivers nothing without it.
@@ -472,7 +632,7 @@
  *
  * ## karpenter enabled
  * ### NOTES:
- * ###  - enabling karpenter automatically disables cluster auto-scaler, starting from 2.30.0 version karpenter is enabled by default
+ * ###  - enabling karpenter automatically disables cluster auto-scaler, starting from 3.0.0 version karpenter is enabled by default
  * ###  - if vpc have been created externally(not inside this module) then you may need to set the following tags on private subnets `karpenter.sh/discovery=<cluster-name>`
  * ###  - then enabling karpenter on existing old cluster there is possibility to see cycle-dependency error, to overcome this you need at first to apply main eks module change (`terraform apply --target "module.<eks-module-name>.module.eks-cluster"`) and then rest of cluster-autoloader destroy and karpenter install ones
  * ###  - when destroying cluster which have karpenter enabled there is possibility of failure on karpenter resource removal, you need to run destruction one more time to get it complete
@@ -545,7 +705,7 @@ module "eks-cluster" {
   subnets      = local.subnet_ids
 
   users                                = var.users
-  node_groups                          = var.node_groups
+  node_groups                          = local.node_groups
   node_groups_default                  = var.node_groups_default
   worker_groups                        = var.worker_groups
   workers_group_defaults               = var.workers_group_defaults
@@ -817,8 +977,11 @@ module "karpenter" {
   subnet_ids                = local.subnet_ids
   configs                   = local.karpenter_configs
   resource_configs          = var.karpenter.resource_configs
-  resource_configs_defaults = var.karpenter.resource_configs_defaults
+  resource_configs_defaults = local.karpenter_resource_configs_defaults
   tags                      = var.tags
+
+  # Only forward when the consumer actually set something, so the submodule's own documented defaults apply otherwise.
+  controller_resources = var.karpenter.controller_resources != null ? var.karpenter.controller_resources : {}
 
   depends_on = [module.eks-core-components, module.priority_class]
 }

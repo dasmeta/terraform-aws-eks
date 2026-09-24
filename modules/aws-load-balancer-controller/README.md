@@ -133,6 +133,7 @@ No modules.
 | [aws_iam_role.aws-load-balancer-role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role_policy_attachment.AWSLoadBalancerControllerIAMPolicy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [helm_release.aws-load-balancer-controller](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
+| [time_sleep.controller_teardown](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) | resource |
 | [time_sleep.iam_propagation](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) | resource |
 | [aws_eks_cluster.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_cluster) | data source |
 | [aws_iam_openid_connect_provider.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_openid_connect_provider) | data source |
@@ -164,3 +165,93 @@ No modules.
 | <a name="output_iam_role_name"></a> [iam\_role\_name](#output\_iam\_role\_name) | The IAM role name used by the controller. |
 | <a name="output_pod_identity_association_id"></a> [pod\_identity\_association\_id](#output\_pod\_identity\_association\_id) | The EKS Pod Identity association ID when iam.attachment\_method is pod\_identity\_association. |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+
+<!-- BEGIN_TF_DOCS -->
+# Creates aws load balancer controller on eks cluster
+
+Docs and supported ingress annotations:
+https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/ingress/annotations/
+
+## Identity wiring and pod restarts
+
+The controller receives its AWS credentials once, when its pod starts: with IRSA the annotated
+service account is bound into the pod's projected token at creation, and with EKS Pod Identity
+the agent injects the credential environment variables at admission. A pod that starts before
+the role, its policy attachment or the Pod Identity association exist never gets working
+credentials, and nothing brings it back on its own - the ingress keeps reporting
+`AccessDenied` on calls like `elasticloadbalancing:DescribeLoadBalancers` even though the
+policy is visibly attached to the role, and only a pod restart clears it.
+
+This module therefore:
+
+- creates the role, the policy attachment and the Pod Identity association *before* the Helm
+  release, so the identity is complete by the time the first pod starts;
+- waits `iam.propagation_delay` after that wiring, because IAM and STS are eventually
+  consistent and a just-attached policy is not necessarily effective the instant the API
+  returns (set it to `"0s"` to skip the wait);
+- stamps the identity onto the pod template as a `checksum/aws-identity` annotation, so any
+  later change to the role or its policy attachment rolls the deployment and the replacement
+  pods pick the new credentials up.
+
+## Requirements
+
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.3 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | > 5.0, < 7.0 |
+| <a name="requirement_helm"></a> [helm](#requirement\_helm) | ~> 2.0 |
+| <a name="requirement_time"></a> [time](#requirement\_time) | ~> 0.9 |
+
+## Providers
+
+| Name | Version |
+|------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | > 5.0, < 7.0 |
+| <a name="provider_helm"></a> [helm](#provider\_helm) | ~> 2.0 |
+| <a name="provider_time"></a> [time](#provider\_time) | ~> 0.9 |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name | Type |
+|------|------|
+| [aws_eks_pod_identity_association.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_pod_identity_association) | resource |
+| [aws_iam_policy.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_iam_role.aws-load-balancer-role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy_attachment.AWSLoadBalancerControllerIAMPolicy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [helm_release.aws-load-balancer-controller](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
+| [time_sleep.controller_teardown](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) | resource |
+| [time_sleep.iam_propagation](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) | resource |
+| [aws_eks_cluster.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_cluster) | data source |
+| [aws_iam_openid_connect_provider.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_openid_connect_provider) | data source |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_chart"></a> [chart](#input\_chart) | Chart source settings. name can be a chart name or a direct packaged-chart URL ending with .tgz; repository is ignored for direct URLs. | <pre>object({<br/>    version    = optional(string, "3.4.2")<br/>    repository = optional(string, "https://aws.github.io/eks-charts")<br/>    name       = optional(string, "aws-load-balancer-controller")<br/>  })</pre> | `{}` | no |
+| <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | eks cluster name | `string` | `""` | no |
+| <a name="input_configs"></a> [configs](#input\_configs) | Configurations to pass and override default ones. Check the chart values here: https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller | `any` | `{}` | no |
+| <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | wether or no to create namespace | `bool` | `false` | no |
+| <a name="input_enable_waf"></a> [enable\_waf](#input\_enable\_waf) | Enables WAF and WAF V2 addons for ALB | `bool` | `false` | no |
+| <a name="input_iam"></a> [iam](#input\_iam) | Optional IAM naming controls. Explicit names win when set. When use\_descriptive\_names is true, names are generated as aws-load-balancer-controller-{cluster\_name} and aws-load-balancer-controller-{cluster\_name}\_iam\_role. Otherwise the legacy cluster\_name-based defaults are used. Enable by default in new-cluster use cases when possible. | <pre>object({<br/>    policy_name           = optional(string, null)                              # Optional IAM policy name override<br/>    policy_description    = optional(string, null)                              # Optional IAM policy description override<br/>    role_name             = optional(string, null)                              # Optional IAM role name override<br/>    attachment_method     = optional(string, "service_account_role_annotation") # IAM role attachment mode: service_account_role_annotation or pod_identity_association; set null to manage the association externally<br/>    use_descriptive_names = optional(bool, false)                               # When true, generate descriptive names instead of legacy cluster-based defaults<br/>    propagation_delay     = optional(string, "15s")                             # How long to wait after the role/policy/association are created before installing the chart, so the first controller pod does not start against not-yet-effective IAM. Set "0s" to skip.<br/>  })</pre> | `{}` | no |
+| <a name="input_image"></a> [image](#input\_image) | Optional controller image override. When repository/tag are null, the chart default image is used. | <pre>object({<br/>    repository = optional(string, null)<br/>    tag        = optional(string, null)<br/>  })</pre> | `{}` | no |
+| <a name="input_namespace"></a> [namespace](#input\_namespace) | namespace load balancer controller should be deployed into | `string` | `"kube-system"` | no |
+| <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | OIDC provider ARN used for the IRSA trust policy. If not provided and resolve\_oidc\_from\_cluster is true, it is resolved from the EKS cluster identified by cluster\_name. | `string` | `null` | no |
+| <a name="input_region"></a> [region](#input\_region) | AWS Region name. | `string` | n/a | yes |
+| <a name="input_resolve_oidc_from_cluster"></a> [resolve\_oidc\_from\_cluster](#input\_resolve\_oidc\_from\_cluster) | Whether to look up the OIDC provider from the EKS cluster identified by cluster\_name when oidc\_provider\_arn is not supplied. Set to false when the caller always supplies oidc\_provider\_arn (e.g. from a cluster created in the same plan), otherwise Terraform cannot evaluate the data source count while the cluster's OIDC provider ARN is still unknown at plan time. | `bool` | `true` | no |
+| <a name="input_service_account_name"></a> [service\_account\_name](#input\_service\_account\_name) | The service account name to attach balancer deployment | `string` | `"aws-load-balancer-controller"` | no |
+| <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | The AWS VPC Id where EKS deployed. Issue https://github.com/kubernetes-sigs/aws-load-balancer-controller/issues/3695 | `string` | `null` | no |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| <a name="output_iam_policy_arn"></a> [iam\_policy\_arn](#output\_iam\_policy\_arn) | The IAM policy ARN used by the controller role. |
+| <a name="output_iam_role_arn"></a> [iam\_role\_arn](#output\_iam\_role\_arn) | The IAM role ARN used by the controller. |
+| <a name="output_iam_role_name"></a> [iam\_role\_name](#output\_iam\_role\_name) | The IAM role name used by the controller. |
+| <a name="output_pod_identity_association_id"></a> [pod\_identity\_association\_id](#output\_pod\_identity\_association\_id) | The EKS Pod Identity association ID when iam.attachment\_method is pod\_identity\_association. |
+<!-- END_TF_DOCS -->

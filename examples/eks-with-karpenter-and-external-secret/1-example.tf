@@ -52,17 +52,28 @@ module "this" {
   karpenter = {
     enabled = true
     configs = {
+      # A single replica here is a constraint of this small example, NOT a production pattern.
+      # Two replicas need a node in each of two availability zones, because the karpenter chart combines
+      # required hostname anti-affinity with a DoNotSchedule zone spread; asking for two on a cluster that
+      # cannot host them used to leave the second replica silently Pending, and the module now fails the plan
+      # when 2+ replicas are requested with <2 subnets.
+      # In production keep the default of 2: a single replica has no failover during any controller restart,
+      # and a real incident showed a single-replica controller OOMKilling repeatedly while spot
+      # interruption messages went unconsumed for longer than the 120s notice window.
       replicas = 1
     }
+
     resource_configs_defaults = { # this is optional param, look into karpenter submodule to get available defaults
-      limits = {
-        cpu = 11 # the default is 10 and we can add limit restrictions on memory also
+      default = {                 # NOTE: must be nested under `default`; a top-level `limits` here fails at plan time
+        limits = {
+          cpu = 11 # the default is 1000 and we can add limit restrictions on memory also
+        }
       }
     }
 
     resource_configs = {
       nodePools = {
-        general = { weight = 1 } # by default it use linux amd64 cpu<=8, memory<=32Gi, >2 generation and  ["spot", "on-demand"] type nodes so that it tries to get spot at first and if no then on-demand
+        general = { weight = 1 } # by default it uses linux amd64 cpu 2-32, memory 2-128Gi, >2 generation and ["spot", "on-demand"] type nodes, so it prefers spot and falls back to on-demand
         on-demand = {
           # weight = 0 # by default the weight is 0 and this is lowest priority, we can schedule pod in this not
           template = {

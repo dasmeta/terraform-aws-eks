@@ -68,10 +68,74 @@ locals {
     for name, pc in local.priority_class_map : name
     if tonumber(pc.value) == local.highest_priority_class_value
   ]
-  karpenter_priority_class_name = try(local.highest_priority_class_names[0], "high")
+  # Karpenter runs at system-cluster-critical (2,000,000,000), the upstream chart default. An earlier revision
+  # substituted the priority-class submodule's highest class (1,000,000), which demoted karpenter below every
+  # genuinely cluster-critical component and forfeited kubelet critical-pod protection -- so under node pressure
+  # the component responsible for ADDING capacity became a preemption candidate. Override via
+  # var.karpenter.configs.priorityClassName if a setup genuinely needs a different class.
+  karpenter_priority_class_name = "system-cluster-critical"
   karpenter_default_configs = {
     replicas          = 2
     priorityClassName = local.karpenter_priority_class_name
   }
   karpenter_configs = merge(local.karpenter_default_configs, try(var.karpenter.configs, {}))
+
+  # Reserve the managed node groups for cluster-critical components. Application workloads are then provisioned
+  # by karpenter onto dedicated capacity instead of crowding onto the small system nodes, where they compete
+  # with the very controller that provisions their capacity.
+  #
+  # Gated on karpenter being enabled: without it there is nowhere else for workloads to run, so tainting the
+  # only node groups would leave the cluster unable to schedule anything at all.
+  #
+  # A node group that declares its own `taints` is left exactly as the operator wrote it.
+  node_groups_taint_enabled = var.karpenter.enabled && var.node_groups_system_taint.enabled
+
+  # Built through a for-expression over a conditional list rather than a ternary on the object itself.
+  # A ternary would have to unify `{ system = {...} }` with `{}`, which terraform rejects as inconsistent
+  # types -- and it rejects it at plan time, not at validate, so the failure would reach consumers.
+  # This yields map(object({key,value,effect})) in both the enabled and disabled cases.
+  node_groups_system_taint = {
+    for name in(local.node_groups_taint_enabled ? ["system"] : []) : name => {
+      key    = var.node_groups_system_taint.key
+      value  = var.node_groups_system_taint.value
+      effect = var.node_groups_system_taint.effect
+    }
+  }
+
+  # A node group that declares its own taints keeps them exactly as written; the rest receive the system
+  # taint, or an empty map when tainting is off.
+  node_groups = {
+    for name, config in var.node_groups : name => merge(config, {
+      taints = try(config.taints, local.node_groups_system_taint)
+    })
+  }
+
+  # Karpenter node AMI family is derived from the DECLARED managed node group ami_type rather than sampled from a
+  # running instance, so the selection is a pure function of configuration and cannot change on its own.
+  karpenter_node_ami_type = try(var.node_groups_default.ami_type, "AL2023_x86_64_STANDARD")
+  karpenter_ami_family = (
+    startswith(local.karpenter_node_ami_type, "AL2023") ? "al2023" :
+    startswith(local.karpenter_node_ami_type, "BOTTLEROCKET") ? "bottlerocket" :
+    startswith(local.karpenter_node_ami_type, "AL2") ? "al2" :
+    "al2023"
+  )
+  karpenter_ami_alias = "${local.karpenter_ami_family}@latest"
+
+  # The consumer's defaults bucket wins; the derived alias only fills the gap when they left it unset.
+  # Written as a nested merge rather than a whole-object replacement so that setting any single field
+  # keeps its siblings on the module defaults.
+  karpenter_resource_configs_defaults = merge(
+    try(var.karpenter.resource_configs_defaults, {}),
+    {
+      default = merge(
+        try(var.karpenter.resource_configs_defaults.default, {}),
+        {
+          nodeClass = merge(
+            { amiAlias = local.karpenter_ami_alias },
+            try(var.karpenter.resource_configs_defaults.default.nodeClass, {}),
+          )
+        }
+      )
+    }
+  )
 }

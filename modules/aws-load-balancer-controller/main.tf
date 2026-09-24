@@ -48,3 +48,33 @@ resource "helm_release" "aws-load-balancer-controller" {
     time_sleep.iam_propagation,
   ]
 }
+
+# Holds the controller alive for a window on DESTROY, so it can finish deleting the load balancers it owns.
+#
+# Terraform cannot order against those: it knows this release exists, but it has no edge to the ALB the
+# controller created while reconciling somebody's Ingress. On a destroy it deletes the Ingress, the controller
+# begins deleting the ALB, and terraform -- seeing no dependency -- removes the controller mid-job. The ALB
+# and its ENIs are then orphaned, and the ENIs hold the node security group, so the destroy fails several
+# resources later on a security group that is not the problem.
+#
+# The controller puts a finalizer on the Ingress to prevent exactly this, but `wait = false` means helm does
+# not wait for it, and once the controller is gone the finalizer has nobody to remove it: it turns from a
+# guard into a deadlock that also stops the namespace terminating.
+#
+# Ordering: this sleep is created AFTER the release, so it is destroyed BEFORE it. Reversing the dependency
+# would put the wait on the wrong side and achieve nothing.
+#
+# This is a mitigation, not a guarantee -- a fixed wait cannot know whether cleanup finished. The reliable
+# procedure is to delete Ingress and Service type=LoadBalancer objects and confirm the load balancers are
+# gone before running destroy at all; see docs/eks-stability-guide.md.
+resource "time_sleep" "controller_teardown" {
+  depends_on = [helm_release.aws-load-balancer-controller]
+
+  # Only on destroy. Creation is unaffected.
+  #
+  # 30s because this controller's teardown work is API calls, not waiting on workloads: it sees the Ingress
+  # deletion within a second or two, deletes the listeners, the load balancer and the target groups, then
+  # drops the finalizer. Target group deletion can retry while the load balancer finishes going away, which
+  # is the case that occasionally runs longer.
+  destroy_duration = "30s"
+}

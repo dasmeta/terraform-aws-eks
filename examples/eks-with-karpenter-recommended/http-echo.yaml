@@ -1,0 +1,108 @@
+# Values for the `http-echo` release, applied by helm_release in 1-example.tf.
+# To render standalone:
+#   helm template http-echo dasmeta/base --version 0.4.0 -f ./http-echo.yaml
+#
+# A normal spot-backed application. Options the base chart already applies are written out but COMMENTED,
+# so the whole recommended shape is visible in one place. Uncommented options are set on purpose, with the
+# reason on the line above.
+#
+# Requires base chart >= 0.4.0.
+
+image:
+  repository: mendhak/http-https-echo
+  tag: 34
+
+containerPort: 8080
+
+service:
+  enabled: true
+  # ClusterIP, not NodePort. The chart's default `target-type: ip` registers pod IPs directly with the ALB, so
+  # traffic bypasses the node port hop entirely and a pod leaving no longer depends on kube-proxy rules being
+  # reprogrammed. NodePort is only needed for `target-type: instance`.
+  type: ClusterIP
+
+# Set explicitly: the newer external-secrets operator that ships with this module version serves v1.
+externalSecretsApiVersion: external-secrets.io/v1
+
+# Set explicitly: a floor of 2 is the smallest value at which disruption protection means anything. At 1
+# replica the chart creates no PodDisruptionBudget at all -- correctly, since a budget over a single replica
+# either blocks every drain or protects nothing -- so a single-replica service is unprotected during node
+# drains no matter what else you configure. If a service genuinely cannot run 2 replicas, move it to the
+# protected on-demand pool instead (see http-echo-critical.yaml).
+autoscaling:
+  enabled: true
+  minReplicas: 5
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+# pdb:
+#   enabled: <derived>      # DEFAULT: created automatically when the effective replica floor is >= 2.
+#   maxUnavailable: 1       # DEFAULT and RECOMMENDED: always permits exactly one eviction, at any replica
+#                           # count, so it can never become a budget that permits nothing.
+#
+# WARNING, the single most common mistake: do NOT set `minAvailable` equal to `autoscaling.minReplicas`.
+# At the floor that permits ZERO evictions, which blocks node consolidation, blocks spot replacement drains,
+# and makes EKS node group upgrades FAIL on pod eviction. It presents as karpenter or the cluster upgrade
+# being stuck, nowhere near this file. The chart now refuses to render such a budget.
+
+# spread:
+#   enabled: true                       # DEFAULT: spreads replicas across nodes.
+#   maxSkew: 1                          # DEFAULT
+#   whenUnsatisfiable: ScheduleAnyway   # DEFAULT: soft. Set to DoNotSchedule only if you would rather leave a
+#                                       # pod Pending than let two replicas share a node.
+
+# defaultLifecycle:
+#   enabled: true                       # DEFAULT: adds a preStop sleep so the pod IP leaves the load balancer
+#   preStop:                            # target list before the container stops. Without it, traffic keeps
+#     exec:                             # arriving at a terminating pod -- the 40-50s of dead-IP 502/504s in
+#       command: ["sh", "-c", "sleep 5"] # the failure this prevents.
+
+# Set explicitly: must exceed the preStop sleep plus the application's own shutdown, otherwise the pod is
+# killed mid-shutdown and in-flight requests are cut. This is also the budget a node drain waits on.
+terminationGracePeriodSeconds: 45
+
+# Set explicitly: probes are what let Kubernetes take a pod out of service without killing it. Keep liveness
+# shallow and slower to fire than readiness -- an aggressive liveness probe restarts pods during dependency
+# slowness and turns a brief blip into a rollout.
+readinessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 1
+  httpGet:
+    path: /health
+    port: http
+livenessProbe:
+  initialDelaySeconds: 15
+  failureThreshold: 5
+  httpGet:
+    path: /health
+    port: http
+
+# Set explicitly: karpenter provisions capacity from pod REQUESTS. Missing or wildly low requests make it
+# under-provision, so pods pend after every disruption and recovery is slow.
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+ingress:
+  enabled: true
+  class: alb
+  # Set explicitly: the chart's default listen-ports are '[{"HTTP":80},{"HTTPS":443}]'. A 443 listener needs a
+  # certificate, and with no `certificate-arn` annotation the controller tries to discover one in ACM matching
+  # the host -- if none matches, the Ingress fails to reconcile and NO load balancer is created. HTTP only
+  # keeps the example self-contained. Add 443 back together with a certificate for anything real.
+  #
+  # Set explicitly: `group.name` puts every Ingress sharing the name behind ONE ALB. Without it the controller
+  # provisions a separate ALB per Ingress, which is a per-hour charge each for what is usually one entry point.
+  annotations:
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/group.name: recommended-example
+  hosts:
+    - host: http-echo-recommended.devops.dasmeta.com
+      paths:
+        - path: "/ping"
+          backend:
+            serviceName: http-echo
+            servicePort: 80

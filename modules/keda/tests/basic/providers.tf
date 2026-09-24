@@ -1,5 +1,5 @@
 data "aws_eks_cluster" "eks" {
-  name = "buycycle-cluster"
+  name = "example-cluster"
 }
 
 data "aws_eks_cluster_auth" "eks" {

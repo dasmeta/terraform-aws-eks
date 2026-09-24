@@ -22,14 +22,50 @@ variable "worker_groups" {
 }
 
 variable "node_groups" {
-  description = "Map of EKS managed node group definitions to create"
+  description = <<-EOT
+    Map of EKS managed node group definitions to create.
+
+    These nodes exist to host the cluster's own control components -- the karpenter controller, coredns, CSI
+    controllers -- not application workloads. Karpenter provisions everything else, and by default this group
+    is tainted so applications land there instead (see var.node_groups_system_taint).
+
+    Defaults are sized for that job:
+      - min/desired 2, spread across availability zones. The karpenter chart requires each of its 2 replicas
+        on a SEPARATE node in a SEPARATE zone, and karpenter-provisioned nodes are ineligible to host it, so
+        fewer than 2 nodes here makes a highly available controller impossible regardless of cluster size.
+      - t3.medium as a cost-appropriate default for the common case. See the sizing note below; the one type
+        that does NOT work is t3.small.
+      - max 2, equal to desired. Nothing scales this group on its own -- karpenter does not manage managed
+        node groups and no cluster autoscaler runs alongside it -- so the node count stays at desired_size
+        and a ceiling above it is only ever used by EKS to surge during a rolling replacement. Production
+        clusters in the fleet run max equal to desired, including at 1/1/1, with no node group upgrade
+        problems, so the surge is not needed in practice. The consequence to know: a rolling replacement
+        dips to a single node, so one karpenter replica is Pending until the new node joins. The surviving
+        replica keeps reconciling throughout. Raise to 3 to keep both replicas schedulable during a
+        replacement, at the cost of one node's headroom you otherwise never use.
+
+    SIZING. System nodes carry a small, steady load: one karpenter replica, one coredns, a CSI controller and
+    the DaemonSets. Measured karpenter controller CPU across a real fleet scales at roughly 3m per cluster
+    node t3.medium sustains 400m before credits are consumed, and
+    the rest of the system pods take ~250m, so the default holds comfortably to roughly 50 cluster nodes.
+
+    Above that, or if you observe CPU credit exhaustion on these nodes, move to a non-burstable type:
+
+      node_groups_default = { instance_types = ["c6a.large", "c6i.large"] }
+
+    Do NOT use t3.small. It fails on two hard limits regardless of load: the VPC CNI allows only 11 pods on it
+    ((3 ENIs x (4 IPs - 1)) + 2), and the DaemonSets alone take about 5 of those; and its 2 GiB leaves roughly
+    1.5 GiB allocatable, which cannot hold the karpenter memory limit plus coredns, the CSI controller and the
+    DaemonSets. t3.medium gives 17 pods and 4 GiB, which fits with headroom.
+  EOT
   type        = any
   default = {
     default = {
       min_size                     = 2
-      max_size                     = 4
+      max_size                     = 2
       desired_size                 = 2
-      instance_types               = ["t3.large"]
+      instance_types               = ["t3.medium", "t3a.medium"]
+      capacity_type                = "ON_DEMAND"
       ami_type                     = "AL2023_x86_64_STANDARD"
       iam_role_additional_policies = { CloudWatchAgentServerPolicy = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy" }
     }
@@ -51,14 +87,47 @@ variable "node_security_group_additional_rules" {
 }
 
 variable "node_groups_default" {
-  description = "Map of EKS managed node group default configurations"
+  description = <<-EOT
+    Map of EKS managed node group default configurations, applied to every entry in var.node_groups.
+    See var.node_groups for the instance sizing rationale and when to move off the default type.
+  EOT
   type        = any
   default = {
     disk_size                    = 50
-    instance_types               = ["t3.large"]
+    instance_types               = ["t3.medium", "t3a.medium"]
+    capacity_type                = "ON_DEMAND"
     iam_role_additional_policies = { CloudWatchAgentServerPolicy = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy" }
     ami_type                     = "AL2023_x86_64_STANDARD"
   }
+}
+
+variable "node_groups_system_taint" {
+  type = object({
+    enabled = optional(bool, true)                   # whether to taint managed node groups so only cluster-critical components run there
+    key     = optional(string, "CriticalAddonsOnly") # the conventional key; karpenter, coredns and the EBS CSI controller all tolerate it out of the box
+    value   = optional(string, "true")               # taint value
+    effect  = optional(string, "NO_SCHEDULE")        # NO_SCHEDULE keeps new pods off without evicting anything already running
+  })
+  default     = {}
+  description = <<-EOT
+    Reserves the EKS managed node groups for cluster-critical components by tainting them, so application
+    workloads are provisioned by karpenter onto dedicated capacity instead of crowding onto the small system
+    nodes. This is the setting most often forgotten, and forgetting it is how application
+    pods end up starving the karpenter controller on a 2-node group.
+
+    ONLY APPLIED WHEN KARPENTER IS ENABLED. Without karpenter there is nowhere else for workloads to run, so
+    tainting the only node groups would leave the cluster unable to schedule anything.
+
+    It is also skipped for any node group that already declares its own `taints`, so an explicit choice always
+    wins.
+
+    Components that tolerate this key by default and therefore stay on system nodes: the karpenter controller,
+    the EKS coredns addon, and the EBS CSI controller. Everything else -- ingress controllers, cert-manager,
+    external-dns, keda, service mesh -- moves to karpenter-provisioned capacity, which is the intent.
+
+    Set enabled = false for development or test clusters where the isolation is not worth the extra capacity,
+    or where karpenter is enabled but you want workloads to be able to fall back onto the system group.
+  EOT
 }
 
 variable "workers_group_defaults" {
@@ -852,14 +921,35 @@ variable "nvidia_gpu_driver" {
 variable "karpenter" {
   type = object({
     enabled                   = optional(bool, true)
-    configs                   = optional(any, {})                               # karpenter chart configs, merged on top of module defaults (replicas=2 and highest predefined priorityClassName). Available options: https://github.com/aws/karpenter-provider-aws/blob/v1.0.8/charts/karpenter/values.yaml
+    configs                   = optional(any, {})                               # karpenter chart configs, merged on top of module defaults (replicas=2, priorityClassName=system-cluster-critical). Lowering replicas to 1 leaves the controller with no failover during any restart; see modules/karpenter/variables.tf. Options: https://github.com/aws/karpenter-provider-aws/blob/v1.14.1/charts/karpenter/values.yaml
     resource_configs          = optional(any, { nodePools = { general = {} } }) # karpenter resources creation configs, available options can be fount here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources
     resource_configs_defaults = optional(any, {})                               # the default used for karpenter node pool creation, the available values to override/set can be found in karpenter submodule corresponding variable modules/karpenter/values.tf
+    controller_resources      = optional(any, null)                             # resources for the karpenter controller container; defaults to requests 250m/512Mi with a 1Gi memory limit and deliberately no cpu limit, see modules/karpenter/variables.tf
   })
   default = {
     enabled = true
   }
-  description = "Allows to create/deploy/configure karpenter operator and its resources to have custom node auto-calling. By default, Karpenter configs include replicas=2 and priorityClassName set to the highest predefined priority class."
+
+  # Terraform object type conversion SILENTLY DROPS attributes the target type does not declare. The submodule
+  # types resource_configs_defaults as an object with only `default` and `gpu`, so anything placed at the top
+  # level is discarded on the way in and the module falls back to its own defaults -- with no error at plan or
+  # apply. Two examples in this repository carried `limits` at the top level and had been silently running the
+  # default cpu ceiling of 1000 instead of the 11 they asked for. This validation turns that into a loud failure.
+  validation {
+    condition = alltrue([
+      for key in keys(try(var.karpenter.resource_configs_defaults, {})) : contains(["default", "gpu", "on-demand"], key)
+    ])
+    error_message = "karpenter.resource_configs_defaults accepts only the keys `default`, `gpu` and `on-demand`. Any other key is silently dropped by terraform and never takes effect. Nest your settings, e.g. resource_configs_defaults = { default = { limits = { cpu = 11 } } }."
+  }
+
+  description = <<-EOT
+    Allows to create/deploy/configure karpenter operator and its resources to have custom node auto-scaling.
+
+    Defaults include replicas=2, priorityClassName=system-cluster-critical, Balanced consolidation with a 15m
+    settle time, declarative AMI selection via alias, and a 06:00-18:00 UTC Mon-Fri window during which
+    voluntary consolidation is suppressed. Disruption windows are evaluated in UTC only and should be
+    overridden for setups outside central Europe.
+  EOT
 }
 
 variable "keda" {
@@ -982,13 +1072,20 @@ variable "node_local_dns" {
 
 variable "kyverno" {
   type = object({
-    enabled         = optional(bool, true)
+    # Default OFF since 3.0.0. kyverno registers admission webhooks with failurePolicy=Fail, which means the
+    # API calls they match are REJECTED whenever no healthy backend exists rather than being skipped -- so an
+    # admission controller with too few replicas is a cluster-wide veto held by a single pod. It was enabled
+    # by default only to carry the temporary `bitnami-to-bitnamilegacy` image rewrite, which is a workaround,
+    # not a permanent policy engine requirement. Pin the registry in the workload's own image config instead;
+    # assessment section E8 lists any image still pointing at `bitnami`. Enable this only where the cluster
+    # genuinely uses policy enforcement, and give the admission controller 2+ replicas when you do.
+    enabled         = optional(bool, false)
     policies        = optional(list(string), ["bitnami-to-bitnamilegacy"]) # Predefined kyverno rules to apply/enable. supported rule are "bitnami-to-bitnamilegacy"
     custom_policies = optional(any, [])                                    # Custom kyverno rules to apply. The custom policies are list of objects. check for more details in terraform module "dasmeta/shared/any//modules/kyverno"
     extra_configs   = optional(any, {})                                    # Configs to pass and override kyverno helm values.yaml defaults and var.default_configs if needed more fine control. for more info check https://artifacthub.io/packages/helm/kyverno/kyverno?modal=values
   })
   default     = {}
-  description = "Allows to enable/install the kyverno k8s policies management tool/operator, by default we have predefined \"bitnami-to-bitnamilegacy\" policy enabled"
+  description = "Allows to enable/install the kyverno k8s policies management tool/operator. Disabled by default since 3.0.0: it carries a cluster-wide admission webhook with failurePolicy=Fail, and the predefined \"bitnami-to-bitnamilegacy\" policy it shipped for was a temporary migration aid. Pin the registry in each workload image instead -- eks-assess.sh section E8 lists any that still need it."
 }
 
 variable "tags" {

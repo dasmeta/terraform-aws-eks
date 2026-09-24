@@ -1,0 +1,99 @@
+# Values for the `http-echo-critical` release, applied by helm_release in 1-example.tf.
+# To render standalone:
+#   helm template http-echo-critical dasmeta/base --version 0.4.0 -f ./http-echo-critical.yaml
+#
+# A workload that must NOT be moved by spot reclamation: monitoring, a message broker, single-replica or
+# stateful services. This is the shape that repeatedly turned a routine spot reclaim into an outage --
+# a singleton database pod on a spot node sharing capacity with bulk workloads.
+#
+# Requires base chart >= 0.4.0, and an `on-demand` node pool defined under karpenter.resource_configs.nodePools
+# in the eks module -- see 1-example.tf. There is no dedicated input for it; it is an ordinary node pool.
+
+image:
+  repository: mendhak/http-https-echo
+  tag: 34
+
+containerPort: 8080
+
+service:
+  enabled: true
+  # ClusterIP, not NodePort. The chart's default `target-type: ip` registers pod IPs directly with the ALB, so
+  # traffic bypasses the node port hop entirely and a pod leaving no longer depends on kube-proxy rules being
+  # reprogrammed. NodePort is only needed for `target-type: instance`.
+  type: ClusterIP
+
+externalSecretsApiVersion: external-secrets.io/v1
+
+# Set explicitly: this is how a workload opts in to the protected pool. The nodes carry a NoSchedule taint so
+# ordinary workloads never land on the on-demand capacity you are paying for; only pods that tolerate it do.
+tolerations:
+  - key: "dedicated"
+    operator: "Equal"
+    value: "on-demand"
+    effect: "NoSchedule"
+
+# Set explicitly: the toleration alone only makes the protected nodes ELIGIBLE -- it does not keep this pod off
+# spot capacity. The nodeSelector is what actually pins it. Without this pair, the workload can still be
+# scheduled onto a reclaimable node and the protection is silent and absent.
+nodeSelector:
+  karpenter.sh/capacity-type: on-demand
+
+# Set explicitly: 2 replicas even for a "critical singleton". On-demand placement protects against SPOT
+# reclamation only -- it does not protect against node drains from consolidation, AMI drift or cluster
+# upgrades, all of which still move this pod. Two replicas plus the default PDB is what survives those.
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 80
+
+# podAnnotations:
+#   karpenter.sh/do-not-disrupt: "true"
+#
+# Use this ONLY for a workload that genuinely cannot be moved and has no HA story -- a single-writer database,
+# a long-running job that cannot resume. It blocks karpenter from voluntarily disrupting the node, which means
+# that node also stops receiving AMI patches and stops being consolidated, and you must disrupt it by hand
+# during upgrades. Prefer replicas + a PDB. Left commented because it is a last resort, not a default.
+
+terminationGracePeriodSeconds: 60
+
+readinessProbe:
+  initialDelaySeconds: 5
+  failureThreshold: 1
+  httpGet:
+    path: /health
+    port: http
+livenessProbe:
+  initialDelaySeconds: 15
+  failureThreshold: 5
+  httpGet:
+    path: /health
+    port: http
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+ingress:
+  enabled: true
+  class: alb
+  # Set explicitly: the chart's default listen-ports are '[{"HTTP":80},{"HTTPS":443}]'. A 443 listener needs a
+  # certificate, and with no `certificate-arn` annotation the controller tries to discover one in ACM matching
+  # the host -- if none matches, the Ingress fails to reconcile and NO load balancer is created. HTTP only
+  # keeps the example self-contained. Add 443 back together with a certificate for anything real.
+  #
+  # Set explicitly: `group.name` puts every Ingress sharing the name behind ONE ALB. Without it the controller
+  # provisions a separate ALB per Ingress, which is a per-hour charge each for what is usually one entry point.
+  annotations:
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/group.name: recommended-example
+  hosts:
+    - host: http-echo-critical.devops.dasmeta.com
+      paths:
+        - path: "/ping"
+          backend:
+            serviceName: http-echo-critical
+            servicePort: 80

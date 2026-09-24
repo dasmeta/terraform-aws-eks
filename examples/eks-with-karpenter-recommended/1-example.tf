@@ -1,0 +1,345 @@
+# Recommended Karpenter setup.
+#
+# WHAT THIS IS: a KARPENTER-focused reference for a stable spot-backed cluster. It shows how the node
+# pools, disruption settings, capacity types and workload protections fit together, with the reasoning for
+# each choice written next to it.
+#
+# WHAT THIS IS NOT: a standard every cluster must match. Nothing here is mandatory. Real setups differ --
+# by region, traffic shape, cost target, compliance, what the workloads actually do -- and the module is
+# built to be configured for each of them rather than to enforce one answer. Every value shown can be
+# overridden, and several SHOULD be for a given cluster: the disruption window is UTC and cut for central
+# Europe, the instance filters assume general-purpose workloads, and the on-demand pool assumes a handful
+# of singletons rather than something CPU-hungry. Treat these as informed starting points, not as settings
+# to copy unexamined.
+#
+# Where a choice has a real trade-off, the comment says what you give up by changing it, so a deliberate
+# difference is easy to make and an accidental one is easy to spot. `docs/eks-stability-guide.md` covers
+# the same ground for an existing cluster, including how to pick values for a setup unlike this one.
+#
+# HOW TO READ IT: options the module already applies by default are written out but COMMENTED, so the full
+# picture is visible in one place without re-declaring behaviour you already get. Anything left UNCOMMENTED
+# is set on purpose and says why on the line above it.
+#
+# Rule of thumb when copying this: start by deleting every commented block. If the result still expresses
+# what you need, you are done -- the defaults are the recommendation.
+
+module "this" {
+  source = "../.."
+
+  cluster_name    = local.cluster_name
+  cluster_version = "1.35"
+
+  # The subnets must span at least 2 availability zones, otherwise the system node group cannot place its 2
+  # nodes in 2 zones and karpenter's second replica can never schedule. The module fails the plan when 2+
+  # karpenter replicas are requested with fewer than 2 subnets, but it cannot see how those subnets map to
+  # zones, so confirm the spread yourself.
+  vpc = {
+    link = {
+      id                 = data.aws_vpcs.ids.ids[0]
+      private_subnet_ids = data.aws_subnets.subnets.ids
+    }
+  }
+
+  # The system node group hosts karpenter itself plus the other cluster-critical addons.
+  #
+  # Set explicitly, and this is the single most important sizing decision here: karpenter's own chart requires
+  # each of its 2 replicas to sit on a SEPARATE node in a SEPARATE availability zone. Three chart defaults
+  # combine to force it -- required hostname podAntiAffinity, a DoNotSchedule zone topologySpread, and a
+  # nodeAffinity of `karpenter.sh/nodepool DoesNotExist`.
+  #
+  # That last one is the trap: KARPENTER-MANAGED NODES DO NOT COUNT. Only nodes from a managed node group are
+  # eligible to host the controller. Clusters have been found running 8 nodes across 3 availability
+  # zones and still could not schedule a second replica, because 7 of them were karpenter-provisioned and only
+  # 1 was from a managed node group. `kubectl get nodes` looked comfortably highly available; the controller
+  # was not. So size THIS node group for 2 in 2 zones -- total cluster node count is irrelevant.
+  #
+  # The cost of getting it wrong is not theoretical. A single-replica controller has no failover during any
+  # restart, rollout or drain, and that gap is enough for spot interruption messages went
+  # unconsumed past the 120 second notice, so nodes were reclaimed before any drain began.
+  #
+  # Verify after apply (expect 2+ rows in 2+ distinct zones):
+  #   kubectl get nodes -L topology.kubernetes.io/zone,karpenter.sh/nodepool | grep -v 'karpenter.sh/nodepool'
+  # node_groups = {                            # ALL of the following are DEFAULTS and RECOMMENDED, so the
+  #   default = {                              # whole block can be omitted -- it is shown for visibility.
+  #     min_size     = 2                       # DEFAULT. Two nodes in two zones is a hard requirement for
+  #     desired_size = 2                       # karpenter's 2 replicas: the chart pins each to a separate
+  #                                            # node in a separate zone, and karpenter's own nodes are
+  #                                            # ineligible to host it.
+  #     max_size     = 2                       # DEFAULT, equal to desired. Nothing scales this group on its
+  #                                            # own -- karpenter does not manage managed node groups and no
+  #                                            # cluster autoscaler runs alongside it -- so the count stays
+  #                                            # at desired_size and never drifts up to a ceiling. Raise to
+  #                                            # 3 only if you want both karpenter replicas to stay
+  #                                            # schedulable during a rolling node replacement.
+  #     taints = {                             # DEFAULT when karpenter is enabled.
+  #       system = {                           # Reserves this group for cluster-critical components so
+  #         key    = "CriticalAddonsOnly"      # application pods do not compete with the karpenter
+  #         value  = "true"                    # controller on two small nodes. Karpenter, the coredns
+  #         effect = "NO_SCHEDULE"             # addon and the EBS CSI controller all tolerate this key.
+  #       }                                    # Disable with node_groups_system_taint.enabled = false,
+  #     }                                      # which suits dev/test clusters.
+  #   }
+  # }
+
+  # node_groups_default = {
+  #   instance_types = ["t3.medium", "t3a.medium"]            # DEFAULT and RECOMMENDED up to ~50 cluster nodes.
+  #   capacity_type  = "ON_DEMAND"                            # DEFAULT
+  #   ami_type       = "AL2023_x86_64_STANDARD"               # DEFAULT. Also determines the karpenter AMI alias family.
+  #   disk_size      = 50                                     # DEFAULT
+  # }
+  #
+  # Burstable is the right choice HERE, unlike for application nodes: system node load is low and steady
+  # (one karpenter replica, one coredns, a CSI controller, the DaemonSets), which is exactly the profile
+  # burstable instances suit. t3.medium sustains 400m and the system pods take ~250m plus roughly 3m per
+  # cluster node of karpenter, so it holds to about 50 nodes. Past that use ["c6a.large", "c6i.large"].
+  #
+  # t3.small does NOT work at any size: 11 pods max via the VPC CNI, of which DaemonSets take ~5, and 2 GiB
+  # cannot hold the karpenter memory limit plus coredns and the CSI controller.
+
+  karpenter = {
+    enabled = true
+
+    # configs = {
+    #   replicas          = 2                         # DEFAULT and RECOMMENDED, and the reason the system node
+    #                                                 # group above is sized 2-across-2-zones. Do not lower to 1
+    #                                                 # in production: a single replica has no failover during any
+    #                                                 # controller restart, rollout or node drain. If a cluster
+    #                                                 # cannot host 2, fix the node group rather than dropping to 1.
+    #   priorityClassName = "system-cluster-critical" # DEFAULT and RECOMMENDED. Keeps karpenter from being
+    #                                                 # preempted ahead of other cluster-critical components.
+    # }
+
+    # controller_resources = {                        # DEFAULT and RECOMMENDED.
+    #   requests = { cpu = "250m", memory = "512Mi" }
+    #   limits   = { memory = "1Gi" }                 # NOTE there is deliberately NO cpu limit: throttling the
+    #                                                 # controller during a scale-up or spot-interruption storm
+    #                                                 # is the exact failure being prevented.
+    # }
+    #
+    # Raise `limits.memory` on large clusters -- controller memory scales with node, pod and instance-type
+    # counts. If you measured different values for your cluster, set them here rather than relying on a live
+    # hotfix: an in-cluster patch is silently reverted by the next terraform apply.
+
+    # resource_configs_defaults = {              # ALL of the following are DEFAULTS and RECOMMENDED.
+    #                                            #
+    #                                            # Three presets, selected per pool by nodeClassRef name:
+    #                                            #   default   -- every pool that names no class
+    #                                            #   on-demand -- capacity ordinary workloads must not use
+    #                                            #   gpu       -- GPU pools
+    #                                            # A pool inherits its preset's requirements, taints,
+    #                                            # weight, disruption and limits, which is why the pools
+    #                                            # below are so short. Override any single field on the
+    #                                            # pool itself; the rest of the preset still applies.
+    #   default = {                                # Every field is individually optional, so setting one
+    #                                              # leaves its siblings on the module defaults. Settings
+    #                                              # MUST be nested under `default`, `gpu` or `on-demand`:
+    #                                              # terraform silently drops a key the type does not
+    #                                              # declare, so a top-level one never takes effect. The
+    #                                              # root module validates against that.
+    #     nodeClass = {
+    #       amiAlias = "al2023@latest"             # derived from node_groups_default.ami_type when unset.
+    #     }                                        # `@latest` means node replacement is CONTINUOUS AND
+    #                                              # UNATTENDED: karpenter re-checks about every minute and
+    #                                              # rolls nodes when AWS publishes a new AMI, with no
+    #                                              # terraform run involved. That is how nodes get OS and
+    #                                              # kernel patches; it is paced by the budgets below.
+    #                                              # Pin a version to stop drift, at the cost of no patching.
+    #
+    #     terminationGracePeriod = null            # DEFAULT, and leaving it unset is the recommendation.
+    #                                              # Setting it makes nodes hosting blocking PDBs or
+    #                                              # do-not-disrupt pods ELIGIBLE for drift and force-deletes
+    #                                              # those pods, turning both protections into a delay.
+    #
+    #     expireAfter = "Never"                    # DEFAULT. Expiry is NOT gated by disruption budgets, so a
+    #                                              # finite value replaces nodes unpaced and outside any
+    #                                              # window. AMI drift handles patching instead, and it IS paced.
+    #
+    #     disruption = {
+    #       consolidationPolicy = "Balanced"       # weighs saving against disruption
+    #       consolidateAfter    = "15m"            # a brief dip no longer triggers removal
+    #       budgets = [
+    #         { nodes = "10%" },                   # never move more than a tenth of the pool at once
+    #         {                                    # the protection window, as an ordinary budget entry
+    #           nodes    = "0"
+    #           schedule = "0 6 * * mon-fri"       # 06:00 UTC weekdays
+    #           duration = "12h"                   # through 18:00 UTC
+    #           reasons  = ["Drifted", "Underutilized"] # "Empty" stays allowed
+    #         },
+    #       ]
+    #     }
+    #
+    #     requirements = [ ... ]                   # DEFAULT: linux amd64, cpu 2-32, memory 2-128Gi,
+    #                                              # generation > 4, categories c/m/r, spot and on-demand.
+    #                                              # Wide on purpose: instance flexibility is what lowers
+    #                                              # spot interruption frequency.
+    #     limits = { cpu = 1000 }                  # DEFAULT ceiling on provisioned capacity.
+    #   }
+    #
+    #   # The `on-demand` preset, used by the pool below. Overriding anything here changes that pool without
+    #   # touching `general`, because a pool inherits the preset named by its nodeClassRef -- that is the
+    #   # whole mechanism. `default` applies to every pool that names no class; `gpu` to GPU pools.
+    #   on-demand = {
+    #     weight = 50                              # DEFAULT. Orders pools when both could take a pod;
+    #                                              # highest wins and an unset weight counts as 0, so this
+    #                                              # MUST exceed general's. It matters even though the pod
+    #                                              # also selects on-demand: `general` accepts both capacity
+    #                                              # types and would otherwise satisfy the pod itself.
+    #
+    #     taints = [                               # DEFAULT. `dedicated=<class>` is the kubernetes
+    #       {                                      # convention for reserved nodes. Declaring your own
+    #         key    = "dedicated"                 # taints REPLACES this list rather than adding to it,
+    #         value  = "on-demand"                 # so re-state this entry if you want both.
+    #         effect = "NoSchedule"
+    #       }
+    #     ]
+    #
+    #     requirements = [ ... ]                   # DEFAULT: on-demand only, categories t/c/m/r,
+    #                                              # generation > 2, memory > 3000MiB, cpu < 33.
+    #                                              # Differs from `default` on purpose: burstable is ALLOWED
+    #                                              # here because this pool carries small steady workloads,
+    #                                              # which is the profile t suits -- while the general pool
+    #                                              # excludes it because bulk load throttles it. Generation
+    #                                              # drops to >2 because >4 would exclude t3 (gen 3)
+    #                                              # entirely, and the memory floor rises to 3000 because
+    #                                              # admitting t makes 2GiB shapes reachable and karpenter
+    #                                              # picks the cheapest that fits -- a t3a.small, which the
+    #                                              # VPC CNI limits to 11 pods. Narrow back to c/m/r if
+    #                                              # something CPU-hungry lands here.
+    #
+    #     disruption = {
+    #       consolidationPolicy = "WhenEmpty"      # DEFAULT, and stricter than general's Balanced: only
+    #                                              # ever remove a node that is already empty. Consolidating
+    #                                              # a node still holding one of these workloads is exactly
+    #                                              # the disruption this pool exists to avoid.
+    #       consolidateAfter    = "15m"            # DEFAULT
+    #       budgets = [{ nodes = "10%" }]          # DEFAULT. No protection window, deliberately: with
+    #                                              # WhenEmpty the only voluntary disruption is removing an
+    #                                              # empty node, which disrupts nothing at any hour.
+    #     }
+    #
+    #     limits = { cpu = 1000 }                  # DEFAULT, same ceiling as the other presets. A limit is
+    #                                              # a runaway guard, not a cost budget -- when it binds,
+    #                                              # these pods pend, and these are the pods that were put
+    #                                              # here because they must stay up.
+    #   }
+    # }
+    #
+    # IMPORTANT: karpenter evaluates budget schedules in UTC ONLY -- it has no timezone support -- so the
+    # default window suits central Europe and is wrong elsewhere. See docs/eks-stability-guide.md section 2.1
+    # for a per-region table. Evictions have been seen in the hour just after a window like this closes.
+
+    resource_configs = {
+      nodePools = {
+        # The general spot-first pool. Everything without a specific placement requirement lands here.
+        general = { weight = 1 }
+
+        # DELETE THIS POOL unless the cluster runs something that cannot survive its node disappearing:
+        # the metrics store or its database, a message broker, or any single-replica or stateful service.
+        # If everything here is stateless with 2+ replicas, spot handles it and this is wasted on-demand
+        # spend. Enabling it is the fix for the pattern where a routine spot reclaim took out monitoring and
+        # made every co-occurring incident harder to diagnose. Note that ingress is NOT a reason to keep it
+        # here: with an ALB the load balancer lives outside the cluster and survives any node loss.
+        #
+        # Referencing the `on-demand` node class is the whole configuration. It carries the on-demand
+        # requirement, an instance filter that admits burstable and excludes the specialised families, a
+        # memory floor above the 2GiB shapes, the `dedicated=on-demand` taint, weight 50, WhenEmpty
+        # consolidation and the standard capacity ceiling. Every one of those stays overridable here; see the
+        # module's resource_configs_defaults for what each defaults to and why. Workloads opt in by
+        # tolerating the taint AND selecting on-demand -- see http-echo-critical.yaml.
+        on-demand = {
+          template = {
+            spec = {
+              nodeClassRef = { name = "on-demand" }
+            }
+          }
+        }
+      }
+    }
+
+
+  }
+
+  # Storage. Left at the module default (enabled) rather than switched off with the extras below, because
+  # a cluster without the EBS CSI driver has no usable storage class at all: the `gp2` class EKS creates
+  # for you runs on the in-tree `kubernetes.io/aws-ebs` provisioner, which kubernetes has since removed,
+  # so it provisions nothing unless this driver is present for CSI migration to redirect to. Enabling it
+  # also creates `ebs-gp3` as the default class, so a PVC that names no class gets a gp3 volume instead of
+  # staying Pending forever. Section A3 of scripts/eks-assess.sh reports both halves of that gap.
+  #
+  # One migration note for EXISTING clusters: one created before EKS 1.30 has its `gp2` class annotated as
+  # the default, which collides with `ebs-gp3`. Clear that annotation before applying this --
+  #   kubectl annotate sc gp2 storageclass.kubernetes.io/is-default-class- --overwrite
+  # -- which leaves volumes already provisioned from gp2 untouched. Clusters created on 1.30 or later,
+  # including this example, have no default gp2 and need no such step.
+  enable_ebs_driver = true
+
+  # Keep the rest of the example small; these are not part of the karpenter recommendation.
+  alarms = {
+    enabled   = false
+    sns_topic = ""
+  }
+  enable_external_secrets      = false
+  create_cert_manager          = false
+  enable_node_problem_detector = false
+  metrics_exporter             = "disabled"
+  fluent_bit_configs = {
+    enabled = false
+  }
+
+  # ingress-nginx is retired upstream, so a new setup should not adopt it. The AWS Load Balancer Controller
+  # is enabled by default and is what serves ingress here: an `Ingress` with class `alb` provisions an ALB,
+  # and with target-type `ip` the load balancer sends traffic straight to pod IPs.
+  #
+  # That removes an entire class of the disruption this configuration is about. An in-cluster ingress
+  # controller is a data-plane component -- lose its nodes and everything behind it goes with them, which is
+  # why it needed protected capacity, a spread constraint and a PDB of its own. An ALB is managed by AWS and
+  # sits outside the cluster, so there is nothing left to reclaim. The controller itself only reconciles
+  # Ingress objects into ALB configuration; it is not in the request path, and it already runs 2 replicas on
+  # the managed node group, which it tolerates via CriticalAddonsOnly.
+  nginx_ingress_controller_config = {
+    enabled = false
+  }
+
+  # FOR THIS EXAMPLE ONLY -- most real setups should leave this disabled.
+  #
+  # external-dns watches Ingress objects and writes the matching Route53 records, which is what makes the two
+  # example hostnames resolve without anyone creating DNS by hand. It is here so the example is testable end
+  # to end, not because it is part of the karpenter recommendation.
+  #
+  # Leave it off wherever DNS is already managed somewhere else -- a separate terraform stack, another
+  # account, or a provider that is not Route53. Two systems writing the same zone will overwrite each other's
+  # records, and the loser is whichever ran last.
+  external_dns = {
+    enabled = true
+  }
+}
+
+# A normal application: spot-backed, protected by the base chart's disruption defaults.
+resource "helm_release" "http_echo" {
+  name = "http-echo"
+  # 0.4.0 or later is required: it is the version that creates a safe budget by default and refuses one
+  # permitting zero evictions. Pinned rather than floating so the example stays reproducible.
+  repository = "https://dasmeta.github.io/helm"
+  chart      = "base"
+  version    = "0.4.0"
+  namespace  = "default"
+  wait       = false
+
+  values = [file("${path.module}/http-echo.yaml")]
+
+  depends_on = [module.this]
+}
+
+# A workload that must not be moved by spot reclamation, pinned to the protected on-demand pool.
+resource "helm_release" "http_echo_critical" {
+  name       = "http-echo-critical"
+  repository = "https://dasmeta.github.io/helm"
+  chart      = "base"
+  version    = "0.4.0"
+  namespace  = "default"
+  wait       = false
+
+  values = [file("${path.module}/http-echo-critical.yaml")]
+
+  depends_on = [module.this]
+}
