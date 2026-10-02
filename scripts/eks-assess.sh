@@ -463,15 +463,43 @@ echo "  Bitnami moved its free images to the \`bitnamilegacy\` repository. Pin t
 echo "  OWN image config -- a values override, a chart upgrade -- and not with the kyverno mutating policy."
 echo "  That policy was a stopgap for the cutover. Keeping it means every pod creation in the cluster depends"
 echo "  on an admission webhook staying healthy (section B3) in order to get a working image reference."
-hits=$(kubectl get pods -A -o json 2>/dev/null | jq -r '
-  .items[] | .metadata.namespace as $ns
-  | (.spec.containers[]?, .spec.initContainers[]?)
+# Read the WORKLOAD SPEC, not the running pod. A mutating admission webhook rewrites the image on its way
+# in, so a pod can show bitnamilegacy while its own deployment still says bitnami. This check previously
+# read pods and reported "none" on a cluster whose specs were entirely unmigrated -- a kyverno policy was
+# rewriting every one of them. Disabling that policy, which 3.0.0 does by default, then sent every new pod
+# to the retired repository and they failed to pull. The spec is what survives the webhook going away.
+spec_hits=$(kubectl get deploy,sts,ds -A -o json 2>/dev/null | jq -r '
+  .items[]
+  | .kind as $k | .metadata.namespace as $ns | .metadata.name as $n
+  | (.spec.template.spec.containers[]?, .spec.template.spec.initContainers[]?)
   | select(.image | test("(^|/)bitnami/"))
-  | "  SWITCH  \($ns)  \(.image)"' | sort -u)
+  | "  SWITCH  \($ns)/\($k | ascii_downcase)/\($n)  \(.image)"' | sort -u)
+cron_hits=$(kubectl get cronjob -A -o json 2>/dev/null | jq -r '
+  .items[]
+  | .metadata.namespace as $ns | .metadata.name as $n
+  | (.spec.jobTemplate.spec.template.spec.containers[]?, .spec.jobTemplate.spec.template.spec.initContainers[]?)
+  | select(.image | test("(^|/)bitnami/"))
+  | "  SWITCH  \($ns)/cronjob/\($n)  \(.image)"' | sort -u)
+hits=$(printf '%s\n%s' "$spec_hits" "$cron_hits" | grep -v '^$' || true)
+
+# Is a policy actively rewriting these images? Checked by looking for the POLICY rather than by comparing
+# pod images to specs: a workload that legitimately migrated also runs bitnamilegacy, so pod images alone
+# cannot tell "being rewritten" from "already fixed". The policy's presence is unambiguous.
+rewriter=$(kubectl get clusterpolicy,policy -A -o json 2>/dev/null \
+  | jq -r '.items[]? | select((.spec | tostring) | test("bitnamilegacy"))
+           | "\(.kind)/\(.metadata.name)"' | sort -u | head -3)
 if [ -n "$hits" ]; then
   echo "$hits"
   echo "  -> replace the 'bitnami/' path with 'bitnamilegacy/' in the chart values for each of these,"
-  echo "     then set kyverno.enabled = false (it is false by default from 2.30.0)."
+  echo "     then set kyverno.enabled = false (it is false by default from 3.0.0)."
+  if [ -n "$rewriter" ]; then
+    echo
+    echo "  AND A POLICY IS CURRENTLY REWRITING THEM, so these specs are only working because of it:"
+    printf '    %s\n' $rewriter
+    echo "  That rewrite is load-bearing. Remove it -- kyverno is OFF by default from 3.0.0 -- and every"
+    echo "  workload above stops pulling, as soon as its next pod is created rather than immediately."
+    echo "  Fix the specs FIRST, then drop the policy. The order is the whole point."
+  fi
 else
   echo "  none -- no image references the retired repository, so the kyverno rewrite policy is not needed here"
 fi

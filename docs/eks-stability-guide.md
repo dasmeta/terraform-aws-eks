@@ -78,6 +78,12 @@ you, and neither changes anything:
   drift is often the finding. One cluster in this fleet has a config declaring one controller replica while
   running two.
 - When you report a finding, give the evidence (the command output), not a summary of it.
+- Read the cluster's own configuration before proposing node pool changes, and migrate what is already
+  there rather than adding alongside it. A hand-rolled on-demand pool should become a `nodeClassRef`
+  reference with its restated defaults deleted — section 2.4 lists exactly which. Propose the deletions
+  explicitly; leaving them is how a pool drifts away from the module over the next upgrade.
+- On a development or test cluster, set `node_groups_system_taint.enabled = false` rather than inheriting
+  the production default. Section 1.4 explains why.
 - Use only the scripts in the table above. They are the whole toolset; there is no other entry point, and a
   step that seems to need one it does not have is a defect in this document.
 
@@ -360,13 +366,19 @@ controller. That is the intent, not a side effect.
 > pods currently on system nodes stay until they are next rescheduled and then migrate — the change is
 > gradual, but the node replacement itself is not.
 
-Opt out where the isolation is not worth the capacity, typically development and test:
+**On a development or test cluster, turn this off.** The taint exists so application workloads cannot crowd
+the controller that provisions their capacity — a production concern. On dev the managed nodes are capacity
+you have already paid for, the point is to use all of it, and reserving two nodes for system components on a
+small cluster is a meaningful fraction of the whole thing. Set it explicitly rather than leaving the
+production default to apply by accident:
 
 ```yaml
 variables:
   node_groups_system_taint:
-    enabled: false
+    enabled: false   # dev/test: use the whole cluster. Leave ON (default) for production.
 ```
+
+Keep it on for production and staging, where the isolation is the point.
 
 ### 1.5 This upgrade does not touch storage
 
@@ -517,6 +529,53 @@ variables:
             spec:
               nodeClassRef:
                 name: on-demand
+```
+
+#### If the cluster already has a hand-rolled on-demand pool
+
+Most clusters that needed protected capacity before this release built it by hand, and those pools are worth
+migrating rather than leaving alone — every setting they restate is one that can now drift away from the
+module's.
+
+**How to recognise one.** A node pool that is not named `on-demand` but carries any of:
+
+- a `karpenter.sh/capacity-type` requirement of `on-demand`
+- a `taints` entry reserving it for particular workloads
+- a `weight` above the general pool's
+- instance requirements narrowed by hand — categories, generation, cpu or memory bounds
+
+**What to replace it with.** The `nodeClassRef` reference above, and nothing else. Then delete every setting
+the preset already provides, because restating them is how they diverge:
+
+| Delete | The preset's value |
+| --- | --- |
+| `karpenter.sh/capacity-type` requirement | `In [on-demand]` |
+| `taints` | `dedicated=on-demand:NoSchedule` |
+| `weight` | `50`, above the general pool so it wins for pods that tolerate the taint |
+| instance category / generation / cpu / memory requirements | `t,c,m,r`, generation `>2`, memory `>3000` and `<131073`, cpu `<33`, `amd64` |
+| `consolidationPolicy` / `consolidateAfter` | `WhenEmpty` at `15m` — a node holding a protected workload is never consolidated |
+| `expireAfter` | `Never` |
+| `limits` | `cpu: 1000` |
+| `disruption.budgets` | `10%` plus a window blocking `Drifted` |
+
+Keep anything that is genuinely specific to the cluster — a different instance family because the workload
+needs one, a second taint, a lower ceiling. Those are decisions; the rows above are defaults.
+
+**Leave a one-line comment**, not a paragraph. The config should say what is deliberate, and the reader can
+find the rest in the module:
+
+```yaml
+        # on-demand node class carries the taint, weight, instance filter and disruption budget
+        on-demand:
+          template:
+            spec:
+              nodeClassRef:
+                name: on-demand
+              # kept deliberately: this cluster's metrics store needs r-family memory ratios
+              requirements:
+                - key: karpenter.k8s.aws/instance-category
+                  operator: In
+                  values: ["r"]
 ```
 
 The preset supplies `weight = 50`, the on-demand requirement, an instance filter admitting burstable while
