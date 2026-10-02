@@ -121,6 +121,15 @@ locals {
   )
   karpenter_ami_alias = "${local.karpenter_ami_family}@latest"
 
+  # The CRD spells the family differently from the alias: "AL2023" in spec.amiFamily, "al2023" in an alias.
+  # Needed because amiFamily is mandatory whenever amiSelectorTerms carries an id instead of an alias.
+  karpenter_ami_family_crd = (
+    startswith(local.karpenter_node_ami_type, "AL2023") ? "AL2023" :
+    startswith(local.karpenter_node_ami_type, "BOTTLEROCKET") ? "Bottlerocket" :
+    startswith(local.karpenter_node_ami_type, "AL2") ? "AL2" :
+    "AL2023"
+  )
+
   # The AMIs currently running on the managed node group. Empty on a cluster with no managed nodes yet, which
   # is the whole fresh-install case: the on-demand pool then falls back to the alias like the others, and the
   # pin takes over on the next apply once the nodes exist. No hard failure either way.
@@ -162,7 +171,13 @@ locals {
         try(var.karpenter.resource_configs_defaults["on-demand"], {}),
         {
           nodeClass = merge(
-            { amiSelectorTerms = [{ id = local.karpenter_on_demand_ami_id }] },
+            {
+              amiSelectorTerms = [{ id = local.karpenter_on_demand_ami_id }]
+              # Mandatory alongside an id. Without it the CRD refuses the class with "must specify amiFamily
+              # if amiSelectorTerms does not contain an alias" -- and it refuses it on APPLY, not at plan, so
+              # the failure surfaces when the helm release patches rather than when the change is reviewed.
+              amiFamily = local.karpenter_ami_family_crd
+            },
             try(var.karpenter.resource_configs_defaults["on-demand"].nodeClass, {}),
           )
         }

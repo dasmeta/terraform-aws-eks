@@ -38,7 +38,18 @@ locals {
   # Identical in shape to the default class. It exists as its own class because the defaults preset is
   # selected by nodeClassRef name, so a pool referencing "on-demand" inherits that preset's requirements,
   # taints, weight, disruption and limits without restating any of them.
-  defaultEc2NodeClassOnDemand = {
+  # amiFamily is REQUIRED by the CRD whenever amiSelectorTerms carries an `id` rather than an `alias`: with
+  # an alias the family is implied, with a raw id karpenter cannot infer the bootstrap format and rejects the
+  # class with "must specify amiFamily if amiSelectorTerms does not contain an alias". That rejection happens
+  # server-side on APPLY, so a plan looks clean and the failure only appears when the helm release patches.
+  #
+  # Emitted only when set, via a for-expression rather than a ternary: a rendered `amiFamily: null` is not
+  # the same as the field being absent, and the alias form must not carry one.
+  defaultEc2NodeClassOnDemandAmiFamily = {
+    for k, v in { amiFamily = var.resource_configs_defaults["on-demand"].nodeClass.amiFamily } : k => v if v != null
+  }
+
+  defaultEc2NodeClassOnDemand = merge(local.defaultEc2NodeClassOnDemandAmiFamily, {
     tags                = var.tags
     role                = module.this.node_iam_role_name
     subnetSelectorTerms = [for id in var.subnet_ids : { id = id }]
@@ -56,7 +67,7 @@ locals {
     detailedMonitoring  = var.resource_configs_defaults["on-demand"].nodeClass.detailedMonitoring
     metadataOptions     = var.resource_configs_defaults["on-demand"].nodeClass.metadataOptions
     blockDeviceMappings = var.resource_configs_defaults["on-demand"].nodeClass.blockDeviceMappings
-  }
+  })
 
   defaultEc2NodeClassGpu = {
     tags                = var.tags
