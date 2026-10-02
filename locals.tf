@@ -130,9 +130,26 @@ locals {
     "AL2023"
   )
 
-  # The AMIs currently running on the managed node group. Empty on a cluster with no managed nodes yet, which
-  # is the whole fresh-install case: the on-demand pool then falls back to the alias like the others, and the
-  # pin takes over on the next apply once the nodes exist. No hard failure either way.
+  # The managed node groups the on-demand AMI can be read from. Keyed on var.node_groups so the keys are
+  # known at plan time -- that is what lets the reads in data.tf defer to apply on a first create rather than
+  # resolving empty. A cluster configured with no managed node groups at all gets an empty map here, which is
+  # also known at plan, so the lookup is skipped entirely and the on-demand pool keeps the alias.
+  karpenter_ami_lookup_node_groups = var.create && var.karpenter.enabled ? local.node_groups : {}
+
+  # node_group_id is "<cluster>:<group>-<suffix>" and the tag holds only the second half. Referencing it is
+  # what makes the instance read depend on the node group existing.
+  karpenter_ami_lookup_node_group_names = {
+    for k, _ in local.karpenter_ami_lookup_node_groups :
+    k => split(":", module.eks-cluster[0].eks_managed_node_groups[k].node_group_id)[1]
+  }
+
+  # Any running managed instance, used only so a group sitting at desired_size 0 does not fail its read.
+  managed_node_any_instance_id = try(
+    flatten([for g in data.aws_instances.managed_nodes : g.ids])[0],
+    null
+  )
+
+  # The AMIs currently running on the managed node groups.
   managed_node_ami_ids = distinct([for i in data.aws_instance.managed_node : i.ami])
 
   # An AMI id rather than an alias version, so there is no "1.34.10-20260915" to "al2023@v20260915" date

@@ -966,59 +966,6 @@ module "flagger" {
   depends_on = [module.eks-core-components-and-alb]
 }
 
-# The AMI the EKS managed node group is ACTUALLY running, so the on-demand karpenter pool can match it.
-#
-# EKS resolves a managed node group's AMI once at create or update and the group then stays on it -- the
-# upstream module leaves ami_release_version unset and use_latest_ami_release_version defaults to false.
-# That "resolve once, then stay" is why managed nodes have never rolled on an AWS AMI release, and the
-# on-demand pool needs the same property: it holds the workloads that must not be replaced on somebody
-# else's schedule. The al2023@latest alias is re-evaluated continuously and cannot provide it.
-#
-# Deliberately at the ROOT, not inside modules/karpenter: a data source in that module is deferred to apply
-# by the module-level depends_on, which would leave the AMI unknown at plan and churn the EC2NodeClass on
-# every run -- the same mechanism that churns the karpenter IAM attachments today.
-#
-# Filtered on the tags EKS itself puts on managed node group instances rather than on our own
-# karpenter.sh/discovery tag. That tag reaches these instances through the cluster module today, but keying
-# on EKS's own tags cannot be broken by a change to how we propagate ours, and it can never match a
-# karpenter-provisioned node -- which would make the lookup circular.
-data "aws_instances" "managed_nodes" {
-  count = var.create && var.karpenter.enabled ? 1 : 0
-
-  instance_state_names = ["running"]
-
-  filter {
-    name   = "tag:eks:cluster-name"
-    values = [var.cluster_name]
-  }
-  filter {
-    name   = "tag-key"
-    values = ["eks:nodegroup-name"]
-  }
-}
-
-data "aws_instance" "managed_node" {
-  for_each = toset(try(data.aws_instances.managed_nodes[0].ids, []))
-
-  instance_id = each.value
-}
-
-# most_recent, not the first id. The previous implementation took ids[0] from an unordered list, so while the
-# group was mid-roll and running two AMIs the pick could flip between applies and drift the whole fleet.
-# Resolving the newest of whatever is running is stable, and converges on the new image during a roll
-# instead of oscillating.
-data "aws_ami" "managed_node" {
-  count = length(local.managed_node_ami_ids) > 0 ? 1 : 0
-
-  most_recent = true
-  owners      = ["602401143452"] # EKS official AMIs are owned by this AWS account
-
-  filter {
-    name   = "image-id"
-    values = local.managed_node_ami_ids
-  }
-}
-
 module "karpenter" {
   count = var.create && var.karpenter.enabled ? 1 : 0
 
