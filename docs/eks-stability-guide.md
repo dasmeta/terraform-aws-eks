@@ -1149,24 +1149,42 @@ observed failing on the node security group with the sleeps in place.
 kubectl delete ingress --all --all-namespaces
 kubectl delete svc --all-namespaces --field-selector spec.type=LoadBalancer
 
-# 2. clear anything that blocks a drain, or step 3 waits forever
-#    Deleting a nodepool DRAINS its nodes through the eviction API. A budget permitting zero evictions
-#    (E1) or a karpenter.sh/do-not-disrupt pod (D4) refuses that eviction, and terminationGracePeriod is
-#    unset by default -- deliberately, so a workload marked always-up stays up -- so karpenter waits with
-#    no deadline. `kubectl get nodeclaims` simply never empties, and nothing says why.
-./scripts/eks-assess.sh | sed -n '/D4\./,/E2\./p'   # what holds each node, and what holds it
-#    Then remove those workloads first. On a cluster being destroyed there is nothing left to protect:
-#    kubectl delete deploy <name> -n <ns>     (or `helm uninstall <release>`)
+# 2. clear anything that blocks a drain, or step 4 waits forever
+#    Deleting a nodepool DRAINS its nodes through the eviction API, and the evicted pods cannot
+#    reschedule, because the pool that would have taken them is the one being deleted. So the budgets
+#    converge on allowed=0 as their pods go Pending, karpenter waits with no deadline (terminationGrace-
+#    Period is unset by default, deliberately), `kubectl get nodeclaims` never empties, and nothing in
+#    the karpenter log says why.
+./scripts/eks-assess.sh | sed -n '/E9\./,/F1\./p'   # what will block, before it blocks
+#    Then remove those workloads. On a cluster being destroyed there is nothing left to protect:
+#    helm uninstall <release>     (or `kubectl delete deploy <name> -n <ns>`)
+#
+#    DO NOT check disruptionsAllowed and conclude you are clear. It is measured while pods can still
+#    reschedule, so it says nothing about a teardown. Measured on one teardown: http-echo read
+#    allowed=2 healthy=5/3 beforehand, and allowed=0 healthy=3/3 once the pools were gone -- two pods
+#    held three nodes for nine minutes. desiredHealthy is the number that does not move, which is what
+#    E9 reports.
 
-# 3. let karpenter terminate its own instances
+# 3. uninstall the releases whose own pods run on karpenter nodes, BEFORE step 4
+#    A helm uninstall waits on its pods terminating. Once the pools are gone those pods can never
+#    schedule, so it burns its whole timeout and fails the destroy -- observed on keda as
+#    `context deadline exceeded` after 5m10s, on a release that had in fact already been removed from
+#    the cluster. Check `helm list -A` before any state surgery; re-running `terraform destroy` is
+#    enough, because the release really is gone. Uninstalling the same release while nodes were still
+#    up took seconds.
+helm list -A       # anything whose pods sit on karpenter nodes (E9 lists the namespaces)
+
+# 4. let karpenter terminate its own instances
 kubectl delete nodepool --all
 kubectl get nodeclaims          # wait until this is empty
+#    With steps 2 and 3 done this takes under a minute. Nine minutes with no progress means step 2
+#    missed something.
 
-# 4. confirm the cloud resources are actually gone, not just the objects
+# 5. confirm the cloud resources are actually gone, not just the objects
 aws elbv2 describe-load-balancers --region <region> \
   --query 'LoadBalancers[?contains(LoadBalancerName,`k8s-`)].LoadBalancerName' --output text
 
-# 5. only now
+# 6. only now
 terraform destroy
 ```
 

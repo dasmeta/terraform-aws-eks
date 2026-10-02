@@ -504,6 +504,54 @@ else
   echo "  none -- no image references the retired repository, so the kyverno rewrite policy is not needed here"
 fi
 
+hr "E9. WHAT WILL BLOCK A TEARDOWN DRAIN (read this before deleting nodepools, not after)"
+echo "  Deleting a nodepool drains its nodes through the eviction API, and nothing can reschedule the"
+echo "  evicted pods because the pool that would have hosted them is the one being deleted. So every"
+echo "  budget here converges on allowed=0 as its pods go Pending, and the drain stops with nothing in the"
+echo "  karpenter log to say why."
+echo
+echo "  This is why disruptionsAllowed is the WRONG number to check first. It is measured while pods can"
+echo "  still reschedule. A budget reading allowed=2 in steady state blocks the teardown just as hard once"
+echo "  there is nowhere to put the replacements. What matters is desiredHealthy, which does not move."
+echo
+echo "  Only budgets whose pods sit on KARPENTER nodes are listed. A budget over pods on the managed node"
+echo "  group -- coredns, the karpenter controller itself, the CSI controller -- is not part of this drain."
+echo
+knodes=$(kubectl get nodes -l karpenter.sh/nodepool -o json 2>/dev/null \
+  | jq -c '[.items[].metadata.name]' 2>/dev/null)
+if [ -z "$knodes" ] || [ "$knodes" = "[]" ]; then
+  echo "  no karpenter nodes -- nothing to drain"
+else
+  kpods=$(kubectl get pods -A -o json 2>/dev/null \
+    | jq -c --argjson kn "$knodes" '[.items[] | select(.spec.nodeName as $n | $kn | index($n))]' 2>/dev/null)
+  blockers=$(kubectl get pdb -A -o json 2>/dev/null | jq -r --argjson kpods "$kpods" '.items[]
+    | select(.status.desiredHealthy >= 1)
+    | . as $pdb
+    | (($pdb.spec.selector.matchLabels) // {}) as $sel
+    | select(($sel | length) > 0)
+    | [ $kpods[]
+        | select(.metadata.namespace == $pdb.metadata.namespace)
+        | (.metadata.labels // {}) as $pl
+        | select([ $sel | to_entries[] | ($pl[.key] == .value) ] | all) ] as $hit
+    | select(($hit | length) > 0)
+    | "  WILL BLOCK  \($pdb.metadata.namespace)/\($pdb.metadata.name)  desiredHealthy=\($pdb.status.desiredHealthy)  allowed_now=\($pdb.status.disruptionsAllowed)  pods_on_karpenter_nodes=\($hit | length)"' 2>/dev/null)
+  if [ -n "$blockers" ]; then
+    echo "$blockers"
+    echo
+    echo "  Remove these workloads BEFORE deleting the nodepools -- on a cluster being torn down there is"
+    echo "  nothing left to protect:  helm uninstall <release>   (or kubectl delete deploy <name> -n <ns>)"
+  else
+    echo "  none -- no budget covers a pod on a karpenter node"
+  fi
+  echo
+  echo "  Also uninstall any release whose own pods run on karpenter nodes before deleting the pools. Its"
+  echo "  helm uninstall waits on pods that can no longer schedule and burns its full timeout -- observed"
+  echo "  as 'context deadline exceeded' after 5m, on a release that had in fact already been removed."
+  onk=$(echo "$kpods" | jq -r '[.items? // .[] | .metadata.namespace] | unique | .[]' 2>/dev/null \
+    | grep -vE '^(kube-system|karpenter)$' | tr '\n' ' ')
+  [ -n "$onk" ] && echo "  namespaces with pods on karpenter nodes: $onk"
+fi
+
 hr "F1. INSTANCE TYPE MIX (burstable t-family throttles under load and is interrupted more often)"
 echo "  Read the POOL column with the capacity type. On-demand nodes in a pool that also permits spot are"
 echo "  paying on-demand rates without being asked to -- usually spot capacity was unavailable for the"
