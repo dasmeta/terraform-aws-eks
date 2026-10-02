@@ -121,6 +121,24 @@ locals {
   )
   karpenter_ami_alias = "${local.karpenter_ami_family}@latest"
 
+  # The AMIs currently running on the managed node group. Empty on a cluster with no managed nodes yet, which
+  # is the whole fresh-install case: the on-demand pool then falls back to the alias like the others, and the
+  # pin takes over on the next apply once the nodes exist. No hard failure either way.
+  managed_node_ami_ids = distinct([for i in data.aws_instance.managed_node : i.ami])
+
+  # An AMI id rather than an alias version, so there is no "1.34.10-20260915" to "al2023@v20260915" date
+  # mapping to get wrong. A mapping that was ever wrong would make the node class invalid and stop the pool
+  # provisioning entirely.
+  karpenter_on_demand_ami_id = try(data.aws_ami.managed_node[0].id, null)
+
+  # Suppressed when the consumer has set either AMI field on the on-demand node class. Needed because the
+  # submodule prefers amiSelectorTerms over amiAlias: injecting a derived amiSelectorTerms would silently
+  # beat a consumer's own amiAlias, so they would set it and nothing would change.
+  karpenter_on_demand_ami_is_overridden = (
+    try(var.karpenter.resource_configs_defaults["on-demand"].nodeClass.amiAlias, null) != null ||
+    try(var.karpenter.resource_configs_defaults["on-demand"].nodeClass.amiSelectorTerms, null) != null
+  )
+
   # The consumer's defaults bucket wins; the derived alias only fills the gap when they left it unset.
   # Written as a nested merge rather than a whole-object replacement so that setting any single field
   # keeps its siblings on the module defaults.
@@ -133,6 +151,19 @@ locals {
           nodeClass = merge(
             { amiAlias = local.karpenter_ami_alias },
             try(var.karpenter.resource_configs_defaults.default.nodeClass, {}),
+          )
+        }
+      )
+    },
+    # Absent when there are no managed nodes to read, or when the consumer set an AMI field themselves. In
+    # either case the on-demand preset keeps the module default and nothing changes.
+    local.karpenter_on_demand_ami_id == null || local.karpenter_on_demand_ami_is_overridden ? {} : {
+      on-demand = merge(
+        try(var.karpenter.resource_configs_defaults["on-demand"], {}),
+        {
+          nodeClass = merge(
+            { amiSelectorTerms = [{ id = local.karpenter_on_demand_ami_id }] },
+            try(var.karpenter.resource_configs_defaults["on-demand"].nodeClass, {}),
           )
         }
       )
