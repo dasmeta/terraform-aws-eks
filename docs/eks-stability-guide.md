@@ -82,6 +82,10 @@ you, and neither changes anything:
   there rather than adding alongside it. A hand-rolled on-demand pool should become a `nodeClassRef`
   reference with its restated defaults deleted — section 2.4 lists exactly which. Propose the deletions
   explicitly; leaving them is how a pool drifts away from the module over the next upgrade.
+- **Never conclude a pool is protected because it is named `on-demand`.** The node class is chosen by
+  `nodeClassRef.name` alone. Run the detection command in section 2.4 against the config and against the
+  live cluster, and report both outputs; a pool named `on-demand` with no `nodeClassRef` tracks the newest
+  AMI exactly like the spot pool does. In one fleet review this was true of 4 pools so named.
 - On a development or test cluster, set `node_groups_system_taint.enabled = false` rather than inheriting
   the production default. Section 1.4 explains why.
 - Use only the scripts in the table above. They are the whole toolset; there is no other entry point, and a
@@ -537,12 +541,57 @@ Most clusters that needed protected capacity before this release built it by han
 migrating rather than leaving alone — every setting they restate is one that can now drift away from the
 module's.
 
-**How to recognise one.** A node pool that is not named `on-demand` but carries any of:
+**The pool's NAME decides nothing.** The node class is selected by `nodeClassRef.name`, never by the name of
+the pool:
+
+```hcl
+key => contains(keys(var.resource_configs_defaults), try(value.template.spec.nodeClassRef.name, "default"))
+       ? try(value.template.spec.nodeClassRef.name, "default") : "default"
+```
+
+So a pool **called** `on-demand` that does not set `nodeClassRef` inherits the **default** class, keeps
+`amiAlias = al2023@latest`, and is drifted by every AWS AMI release — the precise behaviour the pin exists
+to prevent. It reads as already migrated and is not.
+
+This is not hypothetical. Reviewing the 12 karpenter-enabled environments in one fleet found **7
+on-demand-only pools across 5 environments with no `nodeClassRef`, and 4 of those were named `on-demand`**.
+A `gpu` pool in the same fleet *did* set `nodeClassRef.name: gpu`, so the mechanism was understood — it had
+simply never been applied to the pool that most needed it.
+
+**How to recognise one**, whatever it is called. A pool whose `nodeClassRef.name` is not `on-demand`, which
+carries any of:
 
 - a `karpenter.sh/capacity-type` requirement of `on-demand`
 - a `taints` entry reserving it for particular workloads
 - a `weight` above the general pool's
 - instance requirements narrowed by hand — categories, generation, cpu or memory bounds
+
+A pool permitting **both** `spot` and `on-demand` is a different case: leave it on the default class. It is
+general capacity that may happen to land on-demand, not protected capacity, and tracking the newest image is
+right for it.
+
+**Find them in a yaml-based setup** — on-demand-only pools that will not be pinned:
+
+```bash
+yq -r '(.variables.karpenter.resource_configs.nodePools // {}) | to_entries | .[]
+  | select([(.value.template.spec.requirements // [])[]
+            | select(.key == "karpenter.sh/capacity-type") | (.values | join("+"))]
+           | join("") == "on-demand")
+  | select((.value.template.spec.nodeClassRef.name // "") != "on-demand")
+  | "NEEDS nodeClassRef: " + .key' path/to/eks.yaml
+```
+
+**Or on a live cluster:**
+
+```bash
+kubectl get nodepool -o json | jq -r '.items[]
+  | select([.spec.template.spec.requirements[]?
+            | select(.key == "karpenter.sh/capacity-type") | .values[]] == ["on-demand"])
+  | select(.spec.template.spec.nodeClassRef.name != "on-demand")
+  | "NEEDS nodeClassRef: \(.metadata.name)"'
+```
+
+Empty output from either is the only acceptable result before calling the migration done.
 
 **What to replace it with.** The `nodeClassRef` reference above, and nothing else. Then delete every setting
 the preset already provides, because restating them is how they diverge:
@@ -605,6 +654,35 @@ Everything else is an ordinary node pool — adjust the taint key, add labels, p
 class. Nothing about it is special-cased.
 
 Costs on-demand capacity. Workloads must opt in — Phase 4 and section 3.6.
+
+#### Will attaching the class roll the nodes?
+
+Switching a pool onto the `on-demand` class changes its `amiSelectorTerms` from an alias to an id. Whether
+that replaces the running nodes depends on one comparison, and it is worth making **before** you apply
+rather than discovering afterwards:
+
+```bash
+# what the alias resolves to today
+aws ssm get-parameter --region <region> \
+  --name /aws/service/eks/optimized-ami/<k8s-version>/amazon-linux-2023/x86_64/standard/recommended/image_id \
+  --query Parameter.Value --output text
+
+# what the managed node groups are actually running, which is what the pool will be pinned to
+aws ec2 describe-instances --region <region> \
+  --filters "Name=tag:eks:cluster-name,Values=<cluster>" "Name=tag-key,Values=eks:nodegroup-name" \
+            "Name=instance-state-name,Values=running" \
+  --query 'Reservations[].Instances[].ImageId' --output text | tr ' ' '\n' | sort -u
+```
+
+- **Same id** — nothing drifts, the change is a no-op for running nodes. Expect this when the managed node
+  groups were created or upgraded recently, since both resolve to the newest image.
+- **Different ids** — the pool's nodes are on a newer image than the managed node groups and will be
+  replaced once, moving *back* to the managed groups' image. That is the intended end state, but it is a
+  real disruption: schedule it, and remember the pool's `Drifted` budget holds the roll until outside the
+  configured window.
+
+The second case is the normal one when karpenter is added to a cluster whose node groups were pinned weeks
+earlier.
 
 ---
 
