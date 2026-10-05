@@ -30,9 +30,13 @@ mock_provider "aws" {
     }
   }
 
-  # A managed node group instance running a CUSTOMER-OWNED image. The owner is deliberately not the EKS
-  # official account: an owners filter on the image-id lookup would exclude this and fail a supported
-  # configuration, which is why there is no owners filter.
+  # A managed node group running an image THIS ACCOUNT built, which the "self" entry in the lookup's owners
+  # list covers. Its name does not contain "al2023" but its description does, so this also exercises the
+  # description arm of the family derivation -- the arm that matters when the image is not an official EKS
+  # one and cannot be recognised from its name.
+  #
+  # Note what this canNOT assert: mocks do not evaluate the owners filter, so no test here proves an image
+  # from an unlisted account is rejected. That path needs a real AWS call.
   mock_data "aws_instances" {
     defaults = {
       ids = ["i-0ffffffffffffffff", "i-00000000000000001"]
@@ -40,12 +44,12 @@ mock_provider "aws" {
   }
   mock_data "aws_instance" {
     defaults = {
-      ami = "ami-0customerownedimage"
+      ami = "ami-0selfbuiltimage00"
     }
   }
   mock_data "aws_ami" {
     defaults = {
-      id          = "ami-0customerownedimage"
+      id          = "ami-0selfbuiltimage00"
       name        = "my-org-hardened-al2023-x86_64-1.35"
       description = "Hardened build of Amazon Linux 2023"
     }
@@ -66,7 +70,7 @@ variables {
 }
 
 # The pin applies by default, and the family comes off the image that was found -- not from configuration.
-# The mocked AMI is a customer build whose name does not contain "al2023" but whose DESCRIPTION says
+# The mocked AMI is a self-built image whose name does not contain "al2023" but whose DESCRIPTION says
 # Amazon Linux 2023, so this also covers the description arm of the family derivation.
 run "on_demand_pin_applies_and_family_comes_from_the_image" {
   command = plan
@@ -81,7 +85,7 @@ run "on_demand_pin_applies_and_family_comes_from_the_image" {
   }
 
   assert {
-    condition     = jsonencode(local.defaultEc2NodeClassOnDemand.amiSelectorTerms) == jsonencode([{ id = "ami-0customerownedimage" }])
+    condition     = jsonencode(local.defaultEc2NodeClassOnDemand.amiSelectorTerms) == jsonencode([{ id = "ami-0selfbuiltimage00" }])
     error_message = "The on-demand class should carry the discovered AMI id, got ${jsonencode(local.defaultEc2NodeClassOnDemand.amiSelectorTerms)}"
   }
 

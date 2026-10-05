@@ -68,9 +68,19 @@ data "aws_instance" "managed_node" {
 data "aws_ami" "managed_node" {
   count = local.onDemandAmiAuto ? 1 : 0
 
-  # No owners filter. The image-id below is one we just observed on a running node, which is authoritative
-  # on its own, and a managed node group may legitimately run a customer-owned image (per-group ami_id) that
-  # an official-account filter would exclude -- failing the lookup on a supported configuration.
+  # Selection is by exact image-id read off an instance already running in this cluster, so there is no set
+  # to choose from. owners is here as a trust assertion rather than a selector: it fails the lookup loudly if
+  # the managed nodes are ever running an image from outside these accounts, instead of adopting it silently.
+  #
+  #   602401143452  the official Amazon EKS optimized AMI account for commercial regions. GovCloud and China
+  #                 publish under different accounts, so a managed node group there needs the explicit
+  #                 on-demand amiSelectorTerms override, which skips this lookup. The gpu lookup below
+  #                 already carries the same constraint.
+  #   self          a managed node group may legitimately run an image this account built, via its per-group
+  #                 ami_id. Without this, that supported configuration fails with no matching AMI. An image
+  #                 SHARED from another account still needs the explicit override.
+  owners = ["602401143452", "self"]
+
   filter {
     name   = "image-id"
     values = [data.aws_instance.managed_node[0].ami]
