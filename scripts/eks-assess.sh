@@ -415,12 +415,25 @@ echo "  Read from the LIVE object, which is all that exists before the upgrade. 
 echo "  release whose values ALREADY set pdb.allowZeroEvictions renders fine on 0.4.0, but the released"
 echo "  chart ignores that key so nothing here distinguishes it. Check the values of anything listed before"
 echo "  assuming it needs changing -- if the flag is already there, it is a false alarm."
-echo "-- these renders will FAIL after the base chart upgrade and need correcting first:"
-kubectl get pdb -A -o json 2>/dev/null | jq -r '.items[]
+# Captured rather than piped straight out. Printed directly, an empty result and a failed query look
+# identical -- and both sat under a heading announcing renders that will FAIL, so a clean cluster read as
+# an alarming one and a broken read read as a clean one.
+if ! e3_pdbs=$(kubectl get pdb -A -o json 2>&1); then
+  echo "  QUERY FAILED -- could not list PodDisruptionBudgets, so this section proves nothing:"
+  printf '    %s\n' "$(echo "$e3_pdbs" | head -2)"
+elif ! e3_at_risk=$(printf '%s' "$e3_pdbs" | jq -r '.items[]
   | select((.metadata.annotations // {})["dasmeta.io/zero-evictions"] == null)
   | select(.spec.minAvailable != null and .status.expectedPods != null)
   | select((.spec.minAvailable | tostring | test("%") | not) and ((.spec.minAvailable | tonumber) >= .status.expectedPods))
-  | "  AT RISK  \(.metadata.namespace)/\(.metadata.name)  minAvailable=\(.spec.minAvailable) expectedPods=\(.status.expectedPods)"'
+  | "  AT RISK  \(.metadata.namespace)/\(.metadata.name)  minAvailable=\(.spec.minAvailable) expectedPods=\(.status.expectedPods)"' 2>&1); then
+  echo "  QUERY FAILED -- the budget list could not be parsed, so this section proves nothing:"
+  printf '    %s\n' "$(echo "$e3_at_risk" | head -2)"
+elif [ -n "$e3_at_risk" ]; then
+  echo "-- these renders will FAIL after the base chart upgrade and need correcting first:"
+  echo "$e3_at_risk"
+else
+  echo "  none -- no live budget has minAvailable at or above its replica count"
+fi
 
 hr "E4. STATEFUL / SINGLETON WORKLOADS ON SPOT"
 kubectl get nodes -l karpenter.sh/capacity-type=spot -o name 2>/dev/null | sed 's|node/||' > /tmp/_ka_spot.txt
