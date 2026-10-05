@@ -13,6 +13,67 @@ on the step rather than buried in a footnote.
 
 ---
 
+## ⚠ Read this before anything else: on-demand capacity is not protected by its capacity type
+
+**A node pool that requires `karpenter.sh/capacity-type: on-demand` is still replaced when AWS publishes a
+new EKS AMI, unless it also sets `nodeClassRef.name: on-demand`.**
+
+On-demand is a *billing* guarantee. It says nothing about the image a node runs or when that node is
+replaced. The protection against AMI-driven replacement comes from the node class, and the node class is
+selected by `nodeClassRef.name` — **never** by the pool's capacity type, and **never** by the pool's name.
+
+```yaml
+karpenter:
+  resource_configs:
+    nodePools:
+      on-demand:                          # the NAME does nothing
+        template:
+          spec:
+            nodeClassRef:
+              name: on-demand             # <- THIS is what protects it. Without this line the pool
+                                          #    tracks al2023@latest and every AWS AMI release drifts it.
+            requirements:
+              - key: karpenter.sh/capacity-type
+                operator: In
+                values: ["on-demand"]     # billing only -- no protection from this line
+```
+
+Get this wrong and the failure is silent and delayed: the pool looks right, behaves right for weeks, then
+AWS publishes an AMI and karpenter drains the nodes holding exactly the workloads that were put on
+on-demand *because* they must not be interrupted. Nothing in the config says it is going to happen.
+
+This is the single most commonly missed setting in the whole document. A review of 12 karpenter-enabled
+environments found **7 on-demand-only pools across 5 of them missing it — 4 of those pools were named
+`on-demand`**, which is what makes it so easy to miss: the name reads as if the protection is already there.
+
+**Check every cluster you touch, in the config and on the cluster.** Both must return nothing:
+
+```bash
+# in the yaml config
+yq -r '(.variables.karpenter.resource_configs.nodePools // {}) | to_entries | .[]
+  | select([(.value.template.spec.requirements // [])[]
+            | select(.key == "karpenter.sh/capacity-type") | (.values | join("+"))]
+           | join("") == "on-demand")
+  | select((.value.template.spec.nodeClassRef.name // "") != "on-demand")
+  | "UNPROTECTED: " + .key' path/to/eks.yaml
+
+# on the live cluster
+kubectl get nodepool -o json | jq -r '.items[]
+  | select([.spec.template.spec.requirements[]?
+            | select(.key == "karpenter.sh/capacity-type") | .values[]] == ["on-demand"])
+  | select(.spec.template.spec.nodeClassRef.name != "on-demand")
+  | "UNPROTECTED: \(.metadata.name)"'
+```
+
+A pool permitting **both** `spot` and `on-demand` is a different thing and should stay on the default class:
+it is general capacity that may land on-demand, not protected capacity, and tracking the newest image is
+correct for it.
+
+Section 2.4 has the migration, including which hand-rolled settings to delete once the class supplies them,
+and how to tell in advance whether attaching the class will roll the nodes.
+
+---
+
 ## How to use this document
 
 Work top to bottom. Each phase has an **entry gate** — do not start it until the gate passes. Each step says
@@ -70,6 +131,11 @@ you, and neither changes anything:
 
 ### If you are an AI agent
 
+- **Check on-demand pools for `nodeClassRef.name: on-demand` before anything else**, with the two commands
+  in the callout at the top of this document, and report both outputs. A pool is not protected by requiring
+  the on-demand capacity type, and is not protected by being *named* `on-demand`. Getting this wrong leaves
+  the cluster's least interruptible workloads exposed to every AWS AMI release, and nothing in the config
+  shows it. In one fleet review 4 pools named `on-demand` were unprotected.
 - Run the assessment **first** and report what it found before proposing any change. The output determines
   which later steps apply.
 - Do not batch phases. Several steps are destructive if their precondition is unmet.

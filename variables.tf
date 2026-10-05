@@ -920,11 +920,16 @@ variable "nvidia_gpu_driver" {
 
 variable "karpenter" {
   type = object({
-    enabled                   = optional(bool, true)
-    configs                   = optional(any, {})                               # karpenter chart configs, merged on top of module defaults (replicas=2, priorityClassName=system-cluster-critical). Lowering replicas to 1 leaves the controller with no failover during any restart; see modules/karpenter/variables.tf. Options: https://github.com/aws/karpenter-provider-aws/blob/v1.14.1/charts/karpenter/values.yaml
-    resource_configs          = optional(any, { nodePools = { general = {} } }) # karpenter resources creation configs, available options can be fount here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources
-    resource_configs_defaults = optional(any, {})                               # the default used for karpenter node pool creation, the available values to override/set can be found in karpenter submodule corresponding variable modules/karpenter/values.tf
-    controller_resources      = optional(any, null)                             # resources for the karpenter controller container; defaults to requests 250m/512Mi with a 1Gi memory limit and deliberately no cpu limit, see modules/karpenter/variables.tf
+    enabled          = optional(bool, true)
+    configs          = optional(any, {})                               # karpenter chart configs, merged on top of module defaults (replicas=2, priorityClassName=system-cluster-critical). Lowering replicas to 1 leaves the controller with no failover during any restart; see modules/karpenter/variables.tf. Options: https://github.com/aws/karpenter-provider-aws/blob/v1.14.1/charts/karpenter/values.yaml
+    resource_configs = optional(any, { nodePools = { general = {} } }) # karpenter resources creation configs, available options can be fount here: https://github.com/dasmeta/helm/tree/karpenter-resources-0.1.0/charts/karpenter-resources
+    # IMPORTANT, for any nodePool that should NOT be replaced when AWS publishes a new EKS AMI: set
+    # template.spec.nodeClassRef.name = "on-demand". Requiring the on-demand CAPACITY TYPE does not protect
+    # a pool, and neither does naming the pool "on-demand" -- the node class is selected by nodeClassRef.name
+    # alone. Without it the pool follows al2023@latest and drifts on every AMI release. See the callout at
+    # the top of docs/eks-stability-guide.md.
+    resource_configs_defaults = optional(any, {})   # the default used for karpenter node pool creation, the available values to override/set can be found in karpenter submodule corresponding variable modules/karpenter/values.tf
+    controller_resources      = optional(any, null) # resources for the karpenter controller container; defaults to requests 250m/512Mi with a 1Gi memory limit and deliberately no cpu limit, see modules/karpenter/variables.tf
   })
   default = {
     enabled = true
