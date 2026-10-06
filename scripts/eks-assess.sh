@@ -297,6 +297,51 @@ kubectl get nodes -o json 2>/dev/null | jq -r '[.items[].status.nodeInfo.osImage
 echo "-- kubelet versions (a spread means nodes are not being rotated):"
 kubectl get nodes -o json 2>/dev/null | jq -r '[.items[].status.nodeInfo.kubeletVersion] | group_by(.) | map({v: .[0], count: length}) | .[] | "  \(.count)x \(.v)"'
 
+hr "D1b. ON-DEMAND POOLS NOT PROTECTED FROM AMI REPLACEMENT (the most missed setting)"
+echo "  Requiring the on-demand capacity type is a BILLING choice and protects nothing. A pool is only held"
+echo "  on its current image by nodeClassRef.name = on-demand. Naming the pool \"on-demand\" does nothing"
+echo "  either -- the class is selected by nodeClassRef.name alone."
+echo
+echo "  A pool listed as UNPROTECTED below is drained and replaced whenever AWS publishes a new EKS AMI,"
+echo "  taking with it exactly the workloads that were put on on-demand because they must not be"
+echo "  interrupted. Nothing in the pool's own config shows this is going to happen."
+echo
+echo "  A pool permitting BOTH spot and on-demand is not listed: it is general capacity that may land"
+echo "  on-demand, and following the newest image is correct for it."
+echo
+if ! d1b_np=$(kubectl get nodepool -o json 2>&1); then
+  echo "  QUERY FAILED -- could not list NodePools, so this section proves nothing:"
+  printf '    %s\n' "$(echo "$d1b_np" | head -2)"
+elif ! d1b_all=$(printf '%s' "$d1b_np" | jq -r '.items[]
+  | ([.spec.template.spec.requirements[]? | select(.key == "karpenter.sh/capacity-type") | .values[]] | unique) as $cap
+  | "  \(.metadata.name)\tclass=\(.spec.template.spec.nodeClassRef.name // "<unset>")\tcapacity=\($cap | if length == 0 then ["spot","on-demand"] else . end | join("+"))"' 2>&1); then
+  echo "  QUERY FAILED -- the NodePool list could not be parsed, so this section proves nothing:"
+  printf '    %s\n' "$(echo "$d1b_all" | head -2)"
+else
+  if [ -n "$d1b_all" ]; then
+    echo "-- every pool, its node class and the capacity it accepts:"
+    printf '%s\n' "$d1b_all" | column -t -s "$(printf '\t')" 2>/dev/null || printf '%s\n' "$d1b_all"
+    echo
+  fi
+  d1b_bad=$(printf '%s' "$d1b_np" | jq -r '.items[]
+    | ([.spec.template.spec.requirements[]? | select(.key == "karpenter.sh/capacity-type") | .values[]] | unique) as $cap
+    | select($cap == ["on-demand"])
+    | select((.spec.template.spec.nodeClassRef.name // "") != "on-demand")
+    | "  UNPROTECTED  \(.metadata.name)  class=\(.spec.template.spec.nodeClassRef.name // "<unset>")  -- set nodeClassRef.name: on-demand"' 2>/dev/null)
+  if [ -n "$d1b_bad" ]; then
+    echo "$d1b_bad"
+    echo
+    echo "  Fix each one by setting template.spec.nodeClassRef.name = \"on-demand\" on the pool, then delete"
+    echo "  the settings the preset now supplies -- the table in the stability guide's section 2.4 lists"
+    echo "  exactly which. Check first whether that will roll the nodes: it only does so when the alias"
+    echo "  currently resolves to a different image than the managed node groups are running."
+  elif [ -n "$d1b_all" ]; then
+    echo "  none -- every on-demand-only pool references the on-demand node class"
+  else
+    echo "  no node pools found"
+  fi
+fi
+
 hr "D2. DISRUPTION POSTURE"
 kubectl get nodepool -o json 2>/dev/null | jq -r '.items[] |
   "\(.metadata.name):

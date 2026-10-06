@@ -69,6 +69,11 @@ A pool permitting **both** `spot` and `on-demand` is a different thing and shoul
 it is general capacity that may land on-demand, not protected capacity, and tracking the newest image is
 correct for it.
 
+**The assessment checks this too.** Section **D1b** of `eks-assess.sh` lists every pool with its node class
+and flags the unprotected ones, so this does not depend on anyone remembering to run the commands above. It
+also distinguishes a failed query from a clean result — an empty D1b is only meaningful when it says `none`.
+Run the config check above *before* the upgrade and D1b *after*, and expect them to agree.
+
 Section 2.4 has the migration, including which hand-rolled settings to delete once the class supplies them,
 and how to tell in advance whether attaching the class will roll the nodes.
 
@@ -131,11 +136,13 @@ you, and neither changes anything:
 
 ### If you are an AI agent
 
-- **Check on-demand pools for `nodeClassRef.name: on-demand` before anything else**, with the two commands
-  in the callout at the top of this document, and report both outputs. A pool is not protected by requiring
-  the on-demand capacity type, and is not protected by being *named* `on-demand`. Getting this wrong leaves
-  the cluster's least interruptible workloads exposed to every AWS AMI release, and nothing in the config
-  shows it. In one fleet review 5 pools named `on-demand` were unprotected.
+- **Report assessment section D1b verbatim, and treat anything it marks `UNPROTECTED` as part of the
+  upgrade, not as optional follow-up.** D1b lists every node pool with its node class, and flags the
+  on-demand-only pools that will still be replaced on the next AWS AMI release. A pool is not protected by
+  requiring the on-demand capacity type, and is not protected by being *named* `on-demand`. Getting this
+  wrong leaves the cluster's least interruptible workloads exposed, and nothing in the pool's own config
+  shows it. In one fleet review 5 pools named `on-demand` were unprotected. The callout at the top of this
+  document has the equivalent check against the yaml config, for use before the module is upgraded.
 - Run the assessment **first** and report what it found before proposing any change. The output determines
   which later steps apply.
 - Do not batch phases. Several steps are destructive if their precondition is unmet.
