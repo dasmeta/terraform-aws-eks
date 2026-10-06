@@ -346,7 +346,22 @@ was already right costs credibility you will want later.
 
 ## Phase 1 — Upgrade the module
 
-**Entry gate**: Phase 0 complete, findings recorded and shared.
+**Entry gate**: Phase 0 complete, findings recorded and shared, **and the runner is on Terraform 1.8 or
+newer**.
+
+The module declares `required_version = ">= 1.8"`. That is not a preference: the addon merge uses
+`provider::deepmerge::mergo`, and provider-defined functions landed in Terraform 1.8. Earlier releases
+declared `~> 1.3` but already needed 1.8 for that call, so the constraint was understated rather than
+loosened — nothing that worked before stops working, but a runner below 1.8 now fails at `init` with a
+clear version error instead of failing later on an unknown function.
+
+Check before you start, because a Terraform Cloud workspace pins its own version independently of the
+repository:
+
+```bash
+terraform version        # locally
+# in Terraform Cloud: Workspace -> Settings -> General -> Terraform Version
+```
 
 The change itself is one line in the setup's YAML:
 
