@@ -309,12 +309,22 @@ echo
 echo "  A pool permitting BOTH spot and on-demand is not listed: it is general capacity that may land"
 echo "  on-demand, and following the newest image is correct for it."
 echo
+# The capacity a pool accepts, evaluated the way karpenter does: start from every capacity type and apply
+# each capacity-type requirement by its OPERATOR. Reading only the values is wrong in both directions --
+# NotIn [on-demand] is a spot-only pool that must not be flagged, and NotIn [spot] is an on-demand-only pool
+# that must be.
+d1b_cap='def cap: reduce ((.spec.template.spec.requirements // [])[] | select(.key == "karpenter.sh/capacity-type")) as $r
+    (["on-demand", "spot"];
+     if   $r.operator == "In"           then map(select(. as $v | $r.values | any(.[]; . == $v)))
+     elif $r.operator == "NotIn"        then map(select(. as $v | $r.values | any(.[]; . == $v) | not))
+     elif $r.operator == "DoesNotExist" then []
+     else . end);
+  '
 if ! d1b_np=$(kubectl get nodepool -o json 2>&1); then
   echo "  QUERY FAILED -- could not list NodePools, so this section proves nothing:"
   printf '    %s\n' "$(echo "$d1b_np" | head -2)"
-elif ! d1b_all=$(printf '%s' "$d1b_np" | jq -r '.items[]
-  | ([.spec.template.spec.requirements[]? | select(.key == "karpenter.sh/capacity-type") | .values[]] | unique) as $cap
-  | "  \(.metadata.name)\tclass=\(.spec.template.spec.nodeClassRef.name // "<unset>")\tcapacity=\($cap | if length == 0 then ["spot","on-demand"] else . end | join("+"))"' 2>&1); then
+elif ! d1b_all=$(printf '%s' "$d1b_np" | jq -r "$d1b_cap"'.items[]
+  | "  \(.metadata.name)\tclass=\(.spec.template.spec.nodeClassRef.name // "<unset>")\tcapacity=\(cap | if length == 0 then "<none>" else join("+") end)"' 2>&1); then
   echo "  QUERY FAILED -- the NodePool list could not be parsed, so this section proves nothing:"
   printf '    %s\n' "$(echo "$d1b_all" | head -2)"
 else
@@ -323,9 +333,8 @@ else
     printf '%s\n' "$d1b_all" | column -t -s "$(printf '\t')" 2>/dev/null || printf '%s\n' "$d1b_all"
     echo
   fi
-  d1b_bad=$(printf '%s' "$d1b_np" | jq -r '.items[]
-    | ([.spec.template.spec.requirements[]? | select(.key == "karpenter.sh/capacity-type") | .values[]] | unique) as $cap
-    | select($cap == ["on-demand"])
+  d1b_bad=$(printf '%s' "$d1b_np" | jq -r "$d1b_cap"'.items[]
+    | select(cap | (any(.[]; . == "on-demand") and (any(.[]; . == "spot") | not)))
     | select((.spec.template.spec.nodeClassRef.name // "") != "on-demand")
     | "  UNPROTECTED  \(.metadata.name)  class=\(.spec.template.spec.nodeClassRef.name // "<unset>")  -- set nodeClassRef.name: on-demand"' 2>/dev/null)
   if [ -n "$d1b_bad" ]; then
@@ -333,8 +342,10 @@ else
     echo
     echo "  Fix each one by setting template.spec.nodeClassRef.name = \"on-demand\" on the pool, then delete"
     echo "  the settings the preset now supplies -- the table in the stability guide's section 2.4 lists"
-    echo "  exactly which. Check first whether that will roll the nodes: it only does so when the alias"
-    echo "  currently resolves to a different image than the managed node groups are running."
+    echo "  exactly which. Expect the change to REPLACE the pool's existing nodes once, whatever image they"
+    echo "  run: nodeClassRef is part of the NodePool template hash, so karpenter treats every node built"
+    echo "  under the old reference as drifted. Schedule it as a roll -- the pool's Drifted budget and its"
+    echo "  PDBs set the pace."
   elif [ -n "$d1b_all" ]; then
     echo "  none -- every on-demand-only pool references the on-demand node class"
   else

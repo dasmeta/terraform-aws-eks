@@ -50,20 +50,37 @@ environments found **9 on-demand-only pools across 7 of them missing it — 5 of
 
 ```bash
 # in the yaml config
-yq -r '(.variables.karpenter.resource_configs.nodePools // {}) | to_entries | .[]
-  | select([(.value.template.spec.requirements // [])[]
-            | select(.key == "karpenter.sh/capacity-type") | (.values | join("+"))]
-           | join("") == "on-demand")
-  | select((.value.template.spec.nodeClassRef.name // "") != "on-demand")
-  | "UNPROTECTED: " + .key' path/to/eks.yaml
+yq -o=json '.variables.karpenter.resource_configs.nodePools // {}' path/to/eks.yaml | jq -r '
+  def cap: reduce ((.template.spec.requirements // [])[] | select(.key == "karpenter.sh/capacity-type")) as $r
+    (["on-demand", "spot"];
+     if   $r.operator == "In"           then map(select(. as $v | $r.values | any(.[]; . == $v)))
+     elif $r.operator == "NotIn"        then map(select(. as $v | $r.values | any(.[]; . == $v) | not))
+     elif $r.operator == "DoesNotExist" then []
+     else . end);
+  to_entries[] | .key as $name | .value
+  | select(cap | (any(.[]; . == "on-demand") and (any(.[]; . == "spot") | not)))
+  | select((.template.spec.nodeClassRef.name // "") != "on-demand")
+  | "UNPROTECTED: \($name)"'
 
-# on the live cluster
-kubectl get nodepool -o json | jq -r '.items[]
-  | select([.spec.template.spec.requirements[]?
-            | select(.key == "karpenter.sh/capacity-type") | .values[]] == ["on-demand"])
-  | select(.spec.template.spec.nodeClassRef.name != "on-demand")
+# on the live cluster -- the same check as assessment section D1b
+kubectl get nodepool -o json | jq -r '
+  def cap: reduce ((.spec.template.spec.requirements // [])[] | select(.key == "karpenter.sh/capacity-type")) as $r
+    (["on-demand", "spot"];
+     if   $r.operator == "In"           then map(select(. as $v | $r.values | any(.[]; . == $v)))
+     elif $r.operator == "NotIn"        then map(select(. as $v | $r.values | any(.[]; . == $v) | not))
+     elif $r.operator == "DoesNotExist" then []
+     else . end);
+  .items[]
+  | select(cap | (any(.[]; . == "on-demand") and (any(.[]; . == "spot") | not)))
+  | select((.spec.template.spec.nodeClassRef.name // "") != "on-demand")
   | "UNPROTECTED: \(.metadata.name)"'
 ```
+
+**The requirement's operator matters, not just its values.** Both commands start from every capacity type and
+apply each `karpenter.sh/capacity-type` requirement the way karpenter does. A check that reads only the
+values gets it wrong in both directions: `NotIn [on-demand]` is a *spot-only* pool and must not be touched —
+attaching the on-demand class to it would change its capacity type and add a taint — while `NotIn [spot]` is
+an on-demand-only pool that needs the reference just as much as `In [on-demand]` does.
 
 A pool permitting **both** `spot` and `on-demand` is a different thing and should stay on the default class:
 it is general capacity that may land on-demand, not protected capacity, and tracking the newest image is
@@ -658,28 +675,10 @@ A pool permitting **both** `spot` and `on-demand` is a different case: leave it 
 general capacity that may happen to land on-demand, not protected capacity, and tracking the newest image is
 right for it.
 
-**Find them in a yaml-based setup** — on-demand-only pools that will not be pinned:
-
-```bash
-yq -r '(.variables.karpenter.resource_configs.nodePools // {}) | to_entries | .[]
-  | select([(.value.template.spec.requirements // [])[]
-            | select(.key == "karpenter.sh/capacity-type") | (.values | join("+"))]
-           | join("") == "on-demand")
-  | select((.value.template.spec.nodeClassRef.name // "") != "on-demand")
-  | "NEEDS nodeClassRef: " + .key' path/to/eks.yaml
-```
-
-**Or on a live cluster:**
-
-```bash
-kubectl get nodepool -o json | jq -r '.items[]
-  | select([.spec.template.spec.requirements[]?
-            | select(.key == "karpenter.sh/capacity-type") | .values[]] == ["on-demand"])
-  | select(.spec.template.spec.nodeClassRef.name != "on-demand")
-  | "NEEDS nodeClassRef: \(.metadata.name)"'
-```
-
-Empty output from either is the only acceptable result before calling the migration done.
+**Find them** with the two commands in the callout at the top of this document — one for the yaml config,
+one for a live cluster — or with assessment section D1b. They are kept in that one place on purpose, so that
+a correction to the check cannot reach one copy and miss another. Empty output from both is the only
+acceptable result before calling the migration done.
 
 **What to replace it with.** The `nodeClassRef` reference above, and nothing else. Then delete every setting
 the preset already provides, because restating them is how they diverge:
