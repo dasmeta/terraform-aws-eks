@@ -537,26 +537,49 @@ echo "  on an admission webhook staying healthy (section B3) in order to get a w
 # read pods and reported "none" on a cluster whose specs were entirely unmigrated -- a kyverno policy was
 # rewriting every one of them. Disabling that policy, which 3.0.0 does by default, then sent every new pod
 # to the retired repository and they failed to pull. The spec is what survives the webhook going away.
-spec_hits=$(kubectl get deploy,sts,ds -A -o json 2>/dev/null | jq -r '
-  .items[]
+# Every read is checked. "none" here is advice to DISABLE a policy, so it may only be printed when the
+# workloads were actually read: a denied list printed the same "not needed" as a clean cluster, and acting on
+# that removes a load-bearing rewrite. JSON goes to jq through a pipe from a shell builtin, never as an
+# argument, so a large cluster cannot exceed the argument-size limit.
+e8_spec_jq='.items[]
   | .kind as $k | .metadata.namespace as $ns | .metadata.name as $n
   | (.spec.template.spec.containers[]?, .spec.template.spec.initContainers[]?)
   | select(.image | test("(^|/)bitnami/"))
-  | "  SWITCH  \($ns)/\($k | ascii_downcase)/\($n)  \(.image)"' | sort -u)
-cron_hits=$(kubectl get cronjob -A -o json 2>/dev/null | jq -r '
-  .items[]
+  | "  SWITCH  \($ns)/\($k | ascii_downcase)/\($n)  \(.image)"'
+e8_cron_jq='.items[]
   | .metadata.namespace as $ns | .metadata.name as $n
   | (.spec.jobTemplate.spec.template.spec.containers[]?, .spec.jobTemplate.spec.template.spec.initContainers[]?)
   | select(.image | test("(^|/)bitnami/"))
-  | "  SWITCH  \($ns)/cronjob/\($n)  \(.image)"' | sort -u)
-hits=$(printf '%s\n%s' "$spec_hits" "$cron_hits" | grep -v '^$' || true)
+  | "  SWITCH  \($ns)/cronjob/\($n)  \(.image)"'
+e8_fail=""
+spec_hits=""; cron_hits=""
+if ! e8_wl=$(kubectl get deploy,sts,ds -A -o json 2>&1); then
+  e8_fail="deployments/statefulsets/daemonsets: $(printf '%s' "$e8_wl" | head -1)"
+elif ! spec_hits=$(printf '%s' "$e8_wl" | jq -r "$e8_spec_jq" 2>&1); then
+  e8_fail="deployments/statefulsets/daemonsets could not be parsed: $(printf '%s' "$spec_hits" | head -1)"; spec_hits=""
+fi
+if ! e8_cj=$(kubectl get cronjob -A -o json 2>&1); then
+  e8_fail="${e8_fail:+$e8_fail; }cronjobs: $(printf '%s' "$e8_cj" | head -1)"
+elif ! cron_hits=$(printf '%s' "$e8_cj" | jq -r "$e8_cron_jq" 2>&1); then
+  e8_fail="${e8_fail:+$e8_fail; }cronjobs could not be parsed: $(printf '%s' "$cron_hits" | head -1)"; cron_hits=""
+fi
+hits=$(printf '%s\n%s\n' "$spec_hits" "$cron_hits" | grep -v '^$' | sort -u || true)
 
 # Is a policy actively rewriting these images? Checked by looking for the POLICY rather than by comparing
 # pod images to specs: a workload that legitimately migrated also runs bitnamilegacy, so pod images alone
-# cannot tell "being rewritten" from "already fixed". The policy's presence is unambiguous.
-rewriter=$(kubectl get clusterpolicy,policy -A -o json 2>/dev/null \
-  | jq -r '.items[]? | select((.spec | tostring) | test("bitnamilegacy"))
-           | "\(.kind)/\(.metadata.name)"' | sort -u | head -3)
+# cannot tell "being rewritten" from "already fixed". The policy's presence is unambiguous. A cluster with
+# no kyverno has no policy CRDs, which is a definite "no rewriter", not a failure; anything else is unknown.
+rewriter=""; e8_rw_unknown=""
+if ! e8_pol=$(kubectl get clusterpolicy,policy -A -o json 2>&1); then
+  if ! printf '%s' "$e8_pol" | grep -q "doesn't have a resource type"; then
+    e8_rw_unknown=$(printf '%s' "$e8_pol" | head -1)
+  fi
+elif ! rewriter=$(printf '%s' "$e8_pol" | jq -r '.items[]? | select((.spec | tostring) | test("bitnamilegacy"))
+           | "\(.kind)/\(.metadata.name)"' 2>&1); then
+  e8_rw_unknown="policy list could not be parsed"; rewriter=""
+fi
+rewriter=$(printf '%s\n' "$rewriter" | grep -v '^$' | sort -u | head -3 || true)
+
 if [ -n "$hits" ]; then
   echo "$hits"
   echo "  -> replace the 'bitnami/' path with 'bitnamilegacy/' in the chart values for each of these,"
@@ -568,8 +591,16 @@ if [ -n "$hits" ]; then
     echo "  That rewrite is load-bearing. Remove it -- kyverno is OFF by default from 3.0.0 -- and every"
     echo "  workload above stops pulling, as soon as its next pod is created rather than immediately."
     echo "  Fix the specs FIRST, then drop the policy. The order is the whole point."
+  elif [ -n "$e8_rw_unknown" ]; then
+    echo
+    echo "  COULD NOT CHECK whether a policy is rewriting these ($e8_rw_unknown). Assume one is, and fix"
+    echo "  the specs before touching kyverno."
   fi
-else
+fi
+if [ -n "$e8_fail" ]; then
+  echo "  QUERY FAILED -- $e8_fail"
+  echo "  The list above, if any, is INCOMPLETE. Do not conclude the kyverno rewrite policy is unneeded."
+elif [ -z "$hits" ]; then
   echo "  none -- no image references the retired repository, so the kyverno rewrite policy is not needed here"
 fi
 
