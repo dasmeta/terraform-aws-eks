@@ -42,8 +42,8 @@ Get this wrong and the failure is silent and delayed: the pool looks right, beha
 AWS publishes an AMI and karpenter drains the nodes holding exactly the workloads that were put on
 on-demand *because* they must not be interrupted. Nothing in the config says it is going to happen.
 
-This is the single most commonly missed setting in the whole document. A review of 12 karpenter-enabled
-environments found **7 on-demand-only pools across 5 of them missing it — 4 of those pools were named
+This is the single most commonly missed setting in the whole document. A review of 14 karpenter-enabled
+environments found **9 on-demand-only pools across 7 of them missing it — 5 of those pools were named
 `on-demand`**, which is what makes it so easy to miss: the name reads as if the protection is already there.
 
 **Check every cluster you touch, in the config and on the cluster.** Both must return nothing:
@@ -135,7 +135,7 @@ you, and neither changes anything:
   in the callout at the top of this document, and report both outputs. A pool is not protected by requiring
   the on-demand capacity type, and is not protected by being *named* `on-demand`. Getting this wrong leaves
   the cluster's least interruptible workloads exposed to every AWS AMI release, and nothing in the config
-  shows it. In one fleet review 4 pools named `on-demand` were unprotected.
+  shows it. In one fleet review 5 pools named `on-demand` were unprotected.
 - Run the assessment **first** and report what it found before proposing any change. The output determines
   which later steps apply.
 - Do not batch phases. Several steps are destructive if their precondition is unmet.
@@ -619,8 +619,8 @@ So a pool **called** `on-demand` that does not set `nodeClassRef` inherits the *
 `amiAlias = al2023@latest`, and is drifted by every AWS AMI release — the precise behaviour the pin exists
 to prevent. It reads as already migrated and is not.
 
-This is not hypothetical. Reviewing the 12 karpenter-enabled environments in one fleet found **7
-on-demand-only pools across 5 environments with no `nodeClassRef`, and 4 of those were named `on-demand`**.
+This is not hypothetical. Reviewing the 14 karpenter-enabled environments in one fleet found **9
+on-demand-only pools across 7 environments with no `nodeClassRef`, and 5 of those were named `on-demand`**.
 A `gpu` pool in the same fleet *did* set `nodeClassRef.name: gpu`, so the mechanism was understood — it had
 simply never been applied to the pool that most needed it.
 
