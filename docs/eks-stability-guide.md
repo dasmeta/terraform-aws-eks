@@ -92,7 +92,7 @@ also distinguishes a failed query from a clean result — an empty D1b is only m
 Run the config check above *before* the upgrade and D1b *after*, and expect them to agree.
 
 Section 2.4 has the migration, including which hand-rolled settings to delete once the class supplies them,
-and how to tell in advance whether attaching the class will roll the nodes.
+and what to expect when the reference is added: it replaces the pool's existing nodes once, whatever image they run.
 
 ---
 
@@ -697,6 +697,12 @@ the preset already provides, because restating them is how they diverge:
 Keep anything that is genuinely specific to the cluster — a different instance family because the workload
 needs one, a second taint, a lower ceiling. Those are decisions; the rows above are defaults.
 
+**The `taints` row needs a check before you delete it.** A pool's own taints replace the preset's rather than
+adding to it, so deleting a pool taint whose key differs from `dedicated=on-demand` leaves its workloads
+tolerating a taint that no longer exists and *not* tolerating the one that does. Delete it only if every
+workload on the pool already tolerates `dedicated=on-demand`; otherwise keep the pool's taint. The next
+subsection explains why getting this wrong strands them: the migration replaces the nodes.
+
 **Leave a one-line comment**, not a paragraph. The config should say what is deliberate, and the reader can
 find the rest in the module:
 
@@ -742,34 +748,49 @@ class. Nothing about it is special-cased.
 
 Costs on-demand capacity. Workloads must opt in — Phase 4 and section 3.6.
 
-#### Will attaching the class roll the nodes?
+#### Attaching the class replaces the pool's nodes — once
 
-Switching a pool onto the `on-demand` class changes its `amiSelectorTerms` from an alias to an id. Whether
-that replaces the running nodes depends on one comparison, and it is worth making **before** you apply
-rather than discovering afterwards:
+**Plan it as a roll, every time.** Setting `nodeClassRef.name: on-demand` on an existing pool changes the
+NodePool's template, and `nodeClassRef` is part of the template hash karpenter uses for drift. The drift
+controller checks that hash *before* it looks at images, so every node the pool built under the old reference
+is marked `Drifted` and replaced — **even when both node classes resolve to exactly the same AMI**. Comparing
+image ids does not tell you whether the nodes will roll; they will.
+
+It happens once. After the replacements the pool is on the managed node groups' image and stays there until
+you move it.
+
+What sets the timing and the pace:
+
+- **When** — the pool's `Drifted` budget. A pool on the on-demand preset blocks `Drifted` during the
+  configured window, so the roll waits until outside it. A pool declaring its own `disruption.budgets` uses
+  those instead.
+- **How fast** — the pool's PDBs and its `nodes` budget. Drift is voluntary disruption, so each replacement
+  is started and Ready before the old node drains.
+- **Whether workloads come back** — the taint. A pool's own `taints` *replace* the preset's
+  `dedicated=on-demand:NoSchedule` rather than adding to it, so the section above's advice to delete a
+  restated taint is only safe when every workload on the pool already tolerates `dedicated=on-demand`. If they
+  tolerate a different key — a pool reserved with `nodegroup=backup`, say — keep the pool's own taint. Deleting
+  it swaps the taint, and because the migration rolls the nodes, those workloads cannot schedule onto the
+  replacements and stay Pending.
+
+**What the image comparison is still for:** knowing which image the replacement nodes will land on.
 
 ```bash
-# what the alias resolves to today
+# what the alias resolves to today -- the image the pool's nodes are probably on now
 aws ssm get-parameter --region <region> \
   --name /aws/service/eks/optimized-ami/<k8s-version>/amazon-linux-2023/x86_64/standard/recommended/image_id \
   --query Parameter.Value --output text
 
-# what the managed node groups are actually running, which is what the pool will be pinned to
+# what the managed node groups are running -- the image the replacements will be pinned to
 aws ec2 describe-instances --region <region> \
   --filters "Name=tag:eks:cluster-name,Values=<cluster>" "Name=tag-key,Values=eks:nodegroup-name" \
             "Name=instance-state-name,Values=running" \
   --query 'Reservations[].Instances[].ImageId' --output text | tr ' ' '\n' | sort -u
 ```
 
-- **Same id** — nothing drifts, the change is a no-op for running nodes. Expect this when the managed node
-  groups were created or upgraded recently, since both resolve to the newest image.
-- **Different ids** — the pool's nodes are on a newer image than the managed node groups and will be
-  replaced once, moving *back* to the managed groups' image. That is the intended end state, but it is a
-  real disruption: schedule it, and remember the pool's `Drifted` budget holds the roll until outside the
-  configured window.
-
-The second case is the normal one when karpenter is added to a cluster whose node groups were pinned weeks
-earlier.
+Different ids are normal when karpenter was added to a cluster whose node groups were pinned weeks earlier:
+the replacements move *back* to the managed groups' older image. That is the intended end state — the next
+AMI change is the one you make yourself — but check the workloads are fine on it before the window opens.
 
 ---
 
