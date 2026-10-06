@@ -31,13 +31,36 @@ data "aws_instances" "managed_nodes" {
     name   = "tag-key"
     values = ["eks:nodegroup-name"]
   }
+  # Only instances whose architecture the on-demand pools accept. Without this an ARM managed group -- or an
+  # ARM instance that happens to sort first in a mixed cluster -- would pin an ARM image into a class whose
+  # pools require amd64, leaving karpenter no compatible image/instance pair and protected pods Pending.
+  filter {
+    name   = "architecture"
+    values = local.onDemandEc2Archs
+  }
 
   lifecycle {
+    precondition {
+      condition     = length(local.onDemandEc2Archs) > 0
+      error_message = <<-EOT
+        The node pools that reference the on-demand node class require architectures with nothing in
+        common, so no single pinned image can serve them all.
+
+        One image has exactly one architecture, and every pool using this class gets that image. Give the
+        pools a common kubernetes.io/arch, move the odd one to its own node class, or pin this class
+        explicitly with karpenter.resource_configs_defaults["on-demand"].nodeClass.amiSelectorTerms.
+      EOT
+    }
+
     postcondition {
       condition     = length(self.ids) > 0
       error_message = <<-EOT
-        No running EKS managed node group instance was found for cluster "${var.cluster_name}", so the
-        on-demand karpenter pool's AMI cannot be derived from one.
+        No running EKS managed node group instance of architecture ${join("/", local.onDemandEc2Archs)} was
+        found for cluster "${var.cluster_name}", so the on-demand karpenter pool's AMI cannot be derived from one.
+
+        The architecture comes from the kubernetes.io/arch requirement of the pools using the on-demand node
+        class. If the managed node groups run a different architecture, either align them or pin the class
+        explicitly as below.
 
         Karpenter cannot run on a cluster in this state anyway: its controller is not schedulable onto
         karpenter-provisioned nodes, so it needs at least one managed node group with running instances.
@@ -84,6 +107,31 @@ data "aws_ami" "managed_node" {
   filter {
     name   = "image-id"
     values = [data.aws_instance.managed_node[0].ami]
+  }
+
+  lifecycle {
+    # Defence in depth behind the instance filter: never pin an image the pools cannot run.
+    postcondition {
+      condition     = contains(local.onDemandEc2Archs, self.architecture)
+      error_message = "AMI ${self.id} is ${self.architecture}, but the pools using the on-demand node class accept only ${join("/", local.onDemandEc2Archs)}. Pin the class explicitly with karpenter.resource_configs_defaults[\"on-demand\"].nodeClass.amiSelectorTerms."
+    }
+
+    # No silent default family. The matchers are evaluated on self here, not through the derived local, so
+    # the check cannot depend on the value it is checking.
+    postcondition {
+      condition = local.onDemandAmiFamilyOverride != null || anytrue([
+        for m in local.amiFamilyMatchers : anytrue([
+          for t in m.tokens : strcontains(lower(join(" ", [for x in [self.name, self.description] : x if x != null])), t)
+        ])
+      ])
+      error_message = <<-EOT
+        Cannot tell the bootstrap family of AMI ${self.id} ("${self.name}") from its name or description,
+        which the managed node groups are running and the on-demand pool would be pinned to.
+
+        Guessing would boot the pool with the wrong bootstrap, so set it explicitly:
+        karpenter.resource_configs_defaults["on-demand"].nodeClass.amiFamily = "AL2023" | "AL2" | "Bottlerocket"
+      EOT
+    }
   }
 }
 

@@ -49,9 +49,10 @@ mock_provider "aws" {
   }
   mock_data "aws_ami" {
     defaults = {
-      id          = "ami-0selfbuiltimage00"
-      name        = "my-org-hardened-al2023-x86_64-1.35"
-      description = "Hardened build of Amazon Linux 2023"
+      id           = "ami-0selfbuiltimage00"
+      name         = "my-org-hardened-al2023-x86_64-1.35"
+      architecture = "x86_64"
+      description  = "Hardened build of Amazon Linux 2023"
     }
   }
 }
@@ -195,4 +196,238 @@ run "consumer_ami_family_overrides_the_derived_one" {
     condition     = local.onDemandAmiAuto == true
     error_message = "Setting only amiFamily must still leave the id derivation on"
   }
+}
+
+# --- review round 2 ---------------------------------------------------------------------------------------
+# The direct EC2NodeClass override path must switch discovery off just like the preset path. Discovery is
+# forced to find NO managed instance here: if the gate missed this path, the lookup would run and its
+# postcondition would fail the plan.
+run "direct_ec2nodeclass_override_skips_the_lookup" {
+  command = plan
+
+  module {
+    source = "./modules/karpenter"
+  }
+
+  variables {
+    resource_configs = {
+      nodePools = { general = {} }
+      ec2NodeClasses = {
+        "on-demand" = {
+          amiSelectorTerms = [{ id = "ami-0directpin000000" }]
+          amiFamily        = "AL2023"
+        }
+      }
+    }
+  }
+
+  override_data {
+    target = data.aws_instances.managed_nodes
+    values = { ids = [] }
+  }
+
+  assert {
+    condition     = local.onDemandAmiAuto == false
+    error_message = "A direct ec2NodeClasses pin must disable the derivation"
+  }
+}
+
+# A self-built AL2 image says so only in its description. It must be recognised, not defaulted to AL2023.
+run "self_built_al2_is_recognised_from_its_description" {
+  command = plan
+
+  module {
+    source = "./modules/karpenter"
+  }
+
+  override_data {
+    target = data.aws_ami.managed_node
+    values = {
+      id           = "ami-0selfbuiltal2000"
+      name         = "org-hardened-node"
+      description  = "Hardened Amazon Linux 2"
+      architecture = "x86_64"
+    }
+  }
+
+  assert {
+    condition     = local.defaultEc2NodeClassOnDemand.amiFamily == "AL2"
+    error_message = "Expected AL2 from the description, got ${jsonencode(try(local.defaultEc2NodeClassOnDemand.amiFamily, null))}"
+  }
+}
+
+run "renamed_bottlerocket_is_recognised" {
+  command = plan
+
+  module {
+    source = "./modules/karpenter"
+  }
+
+  override_data {
+    target = data.aws_ami.managed_node
+    values = {
+      id           = "ami-0renamedbr000000"
+      name         = "org-br-node"
+      description  = "Bottlerocket OS 1.20.0"
+      architecture = "x86_64"
+    }
+  }
+
+  assert {
+    condition     = local.defaultEc2NodeClassOnDemand.amiFamily == "Bottlerocket"
+    error_message = "Expected Bottlerocket, got ${jsonencode(try(local.defaultEc2NodeClassOnDemand.amiFamily, null))}"
+  }
+}
+
+# Metadata that names no known family must FAIL rather than fall back to AL2023.
+run "unknown_family_fails_rather_than_guessing" {
+  command = plan
+
+  module {
+    source = "./modules/karpenter"
+  }
+
+  override_data {
+    target = data.aws_ami.managed_node
+    values = {
+      id           = "ami-0unknownfamily00"
+      name         = "org-node"
+      description  = "Ubuntu 22.04 LTS"
+      architecture = "x86_64"
+    }
+  }
+
+  expect_failures = [data.aws_ami.managed_node]
+}
+
+# ...and an explicit family is the documented way through.
+run "unknown_family_is_accepted_with_an_explicit_family" {
+  command = plan
+
+  module {
+    source = "./modules/karpenter"
+  }
+
+  variables {
+    resource_configs_defaults = {
+      "on-demand" = { nodeClass = { amiFamily = "AL2" } }
+    }
+  }
+
+  override_data {
+    target = data.aws_ami.managed_node
+    values = {
+      id           = "ami-0unknownfamily00"
+      name         = "org-node"
+      description  = "Ubuntu 22.04 LTS"
+      architecture = "x86_64"
+    }
+  }
+
+  assert {
+    condition     = local.defaultEc2NodeClassOnDemand.amiFamily == "AL2"
+    error_message = "The explicit amiFamily must be used"
+  }
+}
+
+# The preset requires amd64, so discovery is restricted to x86_64 instances...
+run "default_preset_restricts_discovery_to_x86" {
+  command = plan
+
+  module {
+    source = "./modules/karpenter"
+  }
+
+  assert {
+    condition     = local.onDemandEc2Archs == ["x86_64"]
+    error_message = "Expected discovery restricted to x86_64, got ${jsonencode(local.onDemandEc2Archs)}"
+  }
+}
+
+# ...and an ARM image is refused even if one gets through, rather than pinned into amd64 pools.
+run "arm_image_is_refused_for_amd64_pools" {
+  command = plan
+
+  module {
+    source = "./modules/karpenter"
+  }
+
+  override_data {
+    target = data.aws_ami.managed_node
+    values = {
+      id           = "ami-0armimage0000000"
+      name         = "amazon-eks-node-al2023-arm64-standard-1.35-v20260930"
+      description  = "EKS-optimized Kubernetes node based on Amazon Linux 2023"
+      architecture = "arm64"
+    }
+  }
+
+  expect_failures = [data.aws_ami.managed_node]
+}
+
+# A pool on the on-demand class that declares its own arch replaces the preset's, so an ARM pool
+# discovers from ARM instances and accepts an ARM image.
+run "arm_pool_on_the_class_discovers_arm" {
+  command = plan
+
+  module {
+    source = "./modules/karpenter"
+  }
+
+  variables {
+    resource_configs = {
+      nodePools = {
+        protected-arm = {
+          template = {
+            spec = {
+              nodeClassRef = { name = "on-demand" }
+              requirements = [{ key = "kubernetes.io/arch", operator = "In", values = ["arm64"] }]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  override_data {
+    target = data.aws_ami.managed_node
+    values = {
+      id           = "ami-0armimage0000000"
+      name         = "amazon-eks-node-al2023-arm64-standard-1.35-v20260930"
+      description  = "EKS-optimized Kubernetes node based on Amazon Linux 2023"
+      architecture = "arm64"
+    }
+  }
+
+  assert {
+    condition     = local.onDemandEc2Archs == ["arm64"]
+    error_message = "Expected discovery restricted to arm64, got ${jsonencode(local.onDemandEc2Archs)}"
+  }
+}
+
+# Two pools on the class with no architecture in common cannot share one pinned image.
+run "pools_with_no_common_arch_fail" {
+  command = plan
+
+  module {
+    source = "./modules/karpenter"
+  }
+
+  variables {
+    resource_configs = {
+      nodePools = {
+        protected-x86 = { template = { spec = { nodeClassRef = { name = "on-demand" } } } }
+        protected-arm = {
+          template = {
+            spec = {
+              nodeClassRef = { name = "on-demand" }
+              requirements = [{ key = "kubernetes.io/arch", operator = "In", values = ["arm64"] }]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [data.aws_instances.managed_nodes]
 }

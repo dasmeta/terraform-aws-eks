@@ -53,9 +53,10 @@ mock_provider "aws" {
 
   mock_data "aws_ami" {
     defaults = {
-      id          = "ami-00000000000000001"
-      name        = "amazon-eks-node-al2023-x86_64-standard-1.34-v20260101"
-      description = "EKS-optimized Kubernetes node based on Amazon Linux 2023"
+      id           = "ami-00000000000000001"
+      name         = "amazon-eks-node-al2023-x86_64-standard-1.34-v20260101"
+      architecture = "x86_64"
+      description  = "EKS-optimized Kubernetes node based on Amazon Linux 2023"
     }
   }
 }
