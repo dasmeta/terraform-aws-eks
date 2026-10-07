@@ -85,6 +85,13 @@ data "aws_instance" "managed_node" {
   # AMIs are briefly present and which one sorts first is arbitrary -- instance ids are random, not ordered
   # by age -- so an apply during a roll may move the pin. The pool's Drifted budget gates the consequence to
   # outside working hours, and once the roll finishes there is only one AMI left to find.
+  #
+  # SUPPORTED SHAPE: ONE managed node group, which hosts the karpenter controller and the cluster's own
+  # components while workloads run on karpenter nodes (see var.node_groups). With several managed groups on
+  # different AMIs, replacing or scaling an instance can change which id sorts first and so move the pin on
+  # an unrelated apply. That is an accepted gap, not a new one: before 3.0.0 this took an UNSORTED ids[0]
+  # across every instance in the cluster. A cluster with more than one managed node group should pin the
+  # class explicitly with resource_configs_defaults["on-demand"].nodeClass.amiSelectorTerms.
   instance_id = sort(data.aws_instances.managed_nodes[0].ids)[0]
 }
 
@@ -95,13 +102,17 @@ data "aws_ami" "managed_node" {
   # to choose from. owners is here as a trust assertion rather than a selector: it fails the lookup loudly if
   # the managed nodes are ever running an image from outside these accounts, instead of adopting it silently.
   #
-  #   602401143452  the official Amazon EKS optimized AMI account for commercial regions. GovCloud and China
-  #                 publish under different accounts, so a managed node group there needs the explicit
-  #                 on-demand amiSelectorTerms override, which skips this lookup. The gpu lookup below
-  #                 already carries the same constraint.
-  #   self          a managed node group may legitimately run an image this account built, via its per-group
-  #                 ami_id. Without this, that supported configuration fails with no matching AMI. An image
-  #                 SHARED from another account still needs the explicit override.
+  # SUPPORTED SCOPE, deliberately: managed node groups on the official Amazon EKS optimized AMIs, in
+  # commercial regions. That is all this module has ever documented or offered -- no input, example or guide
+  # covers a custom node group image -- and the gpu lookup below has carried this same owner since before
+  # 3.0.0, so other partitions were never supported either.
+  #
+  #   602401143452  the official Amazon EKS optimized AMI account for commercial regions
+  #   self          tolerated so an image built in this account does not hard-fail; not a support commitment
+  #
+  # Outside that scope -- an image shared from a central image account, or GovCloud/China where EKS
+  # publishes under different accounts -- pin the class explicitly with
+  # resource_configs_defaults["on-demand"].nodeClass.amiSelectorTerms, which skips this lookup entirely.
   owners = ["602401143452", "self"]
 
   filter {
