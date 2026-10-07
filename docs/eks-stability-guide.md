@@ -1348,8 +1348,12 @@ kubectl delete svc --all-namespaces --field-selector spec.type=LoadBalancer
 #    DO NOT check disruptionsAllowed and conclude you are clear. It is measured while pods can still
 #    reschedule, so it says nothing about a teardown. Measured on one teardown: http-echo read
 #    allowed=2 healthy=5/3 beforehand, and allowed=0 healthy=3/3 once the pools were gone -- two pods
-#    held three nodes for nine minutes. desiredHealthy is the number that does not move, which is what
-#    E9 reports.
+#    held three nodes for nine minutes. E9 instead compares each budget's minimum (desiredHealthy)
+#    with the healthy pods that will still be running OFF the karpenter nodes, so it neither misses a
+#    budget nor names one whose replicas elsewhere already satisfy it.
+#
+#    If E9 prints QUERY FAILED, stop: it could not read nodes, pods or budgets, so it has not looked.
+#    Only "none" or a list of WILL BLOCK lines is an answer.
 
 # 3. uninstall the releases whose own pods run on karpenter nodes, BEFORE step 4
 #    A helm uninstall waits on its pods terminating. Once the pools are gone those pods can never

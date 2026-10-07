@@ -605,52 +605,122 @@ elif [ -z "$hits" ]; then
 fi
 
 hr "E9. WHAT WILL BLOCK A TEARDOWN DRAIN (read this before deleting nodepools, not after)"
-echo "  Deleting a nodepool drains its nodes through the eviction API, and nothing can reschedule the"
-echo "  evicted pods because the pool that would have hosted them is the one being deleted. So every"
-echo "  budget here converges on allowed=0 as its pods go Pending, and the drain stops with nothing in the"
-echo "  karpenter log to say why."
+echo "  Deleting a nodepool drains its nodes through the eviction API, and the evicted pods cannot come back"
+echo "  on karpenter capacity, because the pool that would have hosted them is the one being deleted. A"
+echo "  PodDisruptionBudget then refuses every eviction that would leave it below its minimum, and the"
+echo "  drain stops with nothing in the karpenter log to say why."
 echo
-echo "  This is why disruptionsAllowed is the WRONG number to check first. It is measured while pods can"
-echo "  still reschedule. A budget reading allowed=2 in steady state blocks the teardown just as hard once"
-echo "  there is nowhere to put the replacements. What matters is desiredHealthy, which does not move."
+echo "  So the question per budget is: once the karpenter nodes are gone, how many healthy pods it covers"
+echo "  are still running ELSEWHERE, compared with the minimum it requires (desiredHealthy). Too few, and"
+echo "  it blocks. The budget's current disruptionsAllowed does not answer this -- it is measured while"
+echo "  replacements can still be scheduled, so a budget reading allowed=2 today can block completely."
 echo
-echo "  Only budgets whose pods sit on KARPENTER nodes are listed. A budget over pods on the managed node"
-echo "  group -- coredns, the karpenter controller itself, the CSI controller -- is not part of this drain."
+echo "  Only budgets covering at least one pod on a KARPENTER node are listed. Pods are matched with the"
+echo "  budget's full selector -- matchLabels and matchExpressions together, and an empty selector {}"
+echo "  covering every pod in the namespace."
 echo
-knodes=$(kubectl get nodes -l karpenter.sh/nodepool -o json 2>/dev/null \
-  | jq -c '[.items[].metadata.name]' 2>/dev/null)
-if [ -z "$knodes" ] || [ "$knodes" = "[]" ]; then
-  echo "  no karpenter nodes -- nothing to drain"
+# Every read goes to a file and is checked, and jq reads the files with --slurpfile, so a large cluster
+# never passes its pod list as a command-line argument. Any failure means this section proves nothing --
+# printing "none" after a failed read is how a teardown gate tells you it is safe without having looked.
+e9_fail=""
+if ! e9_dir=$(mktemp -d 2>/dev/null) || [ -z "$e9_dir" ]; then
+  e9_fail="could not create a temporary directory"; e9_dir=""
 else
-  kpods=$(kubectl get pods -A -o json 2>/dev/null \
-    | jq -c --argjson kn "$knodes" '[.items[] | select(.spec.nodeName as $n | $kn | index($n))]' 2>/dev/null)
-  blockers=$(kubectl get pdb -A -o json 2>/dev/null | jq -r --argjson kpods "$kpods" '.items[]
-    | select(.status.desiredHealthy >= 1)
-    | . as $pdb
-    | (($pdb.spec.selector.matchLabels) // {}) as $sel
-    | select(($sel | length) > 0)
-    | [ $kpods[]
-        | select(.metadata.namespace == $pdb.metadata.namespace)
-        | (.metadata.labels // {}) as $pl
-        | select([ $sel | to_entries[] | ($pl[.key] == .value) ] | all) ] as $hit
-    | select(($hit | length) > 0)
-    | "  WILL BLOCK  \($pdb.metadata.namespace)/\($pdb.metadata.name)  desiredHealthy=\($pdb.status.desiredHealthy)  allowed_now=\($pdb.status.disruptionsAllowed)  pods_on_karpenter_nodes=\($hit | length)"' 2>/dev/null)
-  if [ -n "$blockers" ]; then
-    echo "$blockers"
+  kubectl get nodes -l karpenter.sh/nodepool -o json > "$e9_dir/nodes.json" 2> "$e9_dir/err" \
+    || e9_fail="nodes: $(head -1 "$e9_dir/err")"
+  kubectl get pods -A -o json > "$e9_dir/pods.json" 2> "$e9_dir/err" \
+    || e9_fail="${e9_fail:+$e9_fail; }pods: $(head -1 "$e9_dir/err")"
+  kubectl get pdb -A -o json > "$e9_dir/pdbs.json" 2> "$e9_dir/err" \
+    || e9_fail="${e9_fail:+$e9_fail; }poddisruptionbudgets: $(head -1 "$e9_dir/err")"
+fi
+
+e9_jq() { # $1 = jq program; reads the three files, never argv
+  jq -r -n --slurpfile nodes "$e9_dir/nodes.json" --slurpfile pods "$e9_dir/pods.json" \
+    --slurpfile pdbs "$e9_dir/pdbs.json" "$1"
+}
+
+# Kubernetes label-selector semantics. matchLabels and matchExpressions are ANDed; an empty selector {}
+# matches every pod in the namespace (policy/v1); a missing selector matches none. NotIn and
+# DoesNotExist are satisfied by a pod that does not carry the key at all.
+e9_lib='
+def selects($sel; $labels):
+  if $sel == null then false
+  else
+    ([($sel.matchLabels // {}) | to_entries[] | ($labels[.key] == .value)] | all)
+    and
+    ([($sel.matchExpressions // [])[] | . as $e |
+      if   $e.operator == "In"           then ($labels | has($e.key)) and any(($e.values // [])[]; . == $labels[$e.key])
+      elif $e.operator == "NotIn"        then (($labels | has($e.key)) | not) or (any(($e.values // [])[]; . == $labels[$e.key]) | not)
+      elif $e.operator == "Exists"       then ($labels | has($e.key))
+      elif $e.operator == "DoesNotExist" then ($labels | has($e.key) | not)
+      else false end] | all)
+  end;
+def healthy: (.metadata.deletionTimestamp == null)
+  and any((.status.conditions // [])[]; .type == "Ready" and .status == "True");
+def on_karpenter($kn): .spec.nodeName as $n | any($kn[]; . == $n);
+($nodes[0].items | map(.metadata.name)) as $kn
+'
+
+if [ -n "$e9_fail" ]; then
+  echo "  QUERY FAILED -- $e9_fail"
+  echo "  This section proves nothing. Do not delete the nodepools on the strength of it."
+elif ! e9_nodes=$(e9_jq '$nodes[0].items | length' 2>&1); then
+  echo "  QUERY FAILED -- the node list could not be parsed: $(printf '%s' "$e9_nodes" | head -1)"
+  echo "  This section proves nothing. Do not delete the nodepools on the strength of it."
+elif [ "$e9_nodes" = "0" ]; then
+  echo "  no karpenter nodes -- nothing to drain"
+elif ! e9_verdicts=$(e9_jq "$e9_lib"'
+  | $pdbs[0].items[] | . as $pdb
+  | ($pdb.status.desiredHealthy // 0) as $need
+  | [ $pods[0].items[] | select(.metadata.namespace == $pdb.metadata.namespace)
+      | select(selects($pdb.spec.selector; (.metadata.labels // {}))) ] as $covered
+  | ([ $covered[] | select(on_karpenter($kn)) ] | length) as $onk
+  | ([ $covered[] | select(on_karpenter($kn) | not) | select(healthy) ] | length) as $left
+  | select($onk > 0)
+  | (if $left >= $need then "CLEARS" else "BLOCK" end)
+    + "\t\($pdb.metadata.namespace)/\($pdb.metadata.name)\t\($need)\t\($left)\t\($onk)"' 2>&1); then
+  echo "  QUERY FAILED -- the budgets or pods could not be evaluated: $(printf '%s' "$e9_verdicts" | head -1)"
+  echo "  This section proves nothing. Do not delete the nodepools on the strength of it."
+else
+  e9_block=$(printf '%s\n' "$e9_verdicts" | grep '^BLOCK' || true)
+  e9_clear=$(printf '%s\n' "$e9_verdicts" | grep '^CLEARS' || true)
+  if [ -n "$e9_block" ]; then
+    printf '%s\n' "$e9_block" | while IFS="$(printf '\t')" read -r _ name need left onk; do
+      echo "  WILL BLOCK  $name  -- needs $need healthy, $left would be left outside karpenter nodes ($onk on them)"
+    done
     echo
     echo "  Remove these workloads BEFORE deleting the nodepools -- on a cluster being torn down there is"
     echo "  nothing left to protect:  helm uninstall <release>   (or kubectl delete deploy <name> -n <ns>)"
+  elif [ -n "$e9_clear" ]; then
+    echo "  none -- every budget covering a karpenter-node pod keeps enough healthy pods elsewhere"
   else
     echo "  none -- no budget covers a pod on a karpenter node"
   fi
+  if [ -n "$e9_clear" ]; then
+    echo
+    echo "  -- not blocking, because enough healthy pods stay up outside the karpenter nodes:"
+    printf '%s\n' "$e9_clear" | while IFS="$(printf '\t')" read -r _ name need left onk; do
+      echo "     $name  -- needs $need, $left left elsewhere ($onk on karpenter nodes)"
+    done
+  fi
+  echo
+  echo "  Assumes evicted pods cannot reschedule onto the managed node group, which holds when it carries the"
+  echo "  system taint (the default with karpenter). Where they can, a listed blocker may clear on its own."
   echo
   echo "  Also uninstall any release whose own pods run on karpenter nodes before deleting the pools. Its"
   echo "  helm uninstall waits on pods that can no longer schedule and burns its full timeout -- observed"
   echo "  as 'context deadline exceeded' after 5m, on a release that had in fact already been removed."
-  onk=$(echo "$kpods" | jq -r '[.items? // .[] | .metadata.namespace] | unique | .[]' 2>/dev/null \
-    | grep -vE '^(kube-system|karpenter)$' | tr '\n' ' ')
-  [ -n "$onk" ] && echo "  namespaces with pods on karpenter nodes: $onk"
+  if e9_ns=$(e9_jq "$e9_lib"'
+      | [ $pods[0].items[] | select(on_karpenter($kn))
+          | select(((.metadata.ownerReferences // []) | any(.[]; .kind == "DaemonSet")) | not)
+          | .metadata.namespace ]
+      | unique[] | select(. != "kube-system" and . != "karpenter")' 2>/dev/null); then
+    [ -n "$e9_ns" ] && echo "  namespaces with pods on karpenter nodes: $(printf '%s' "$e9_ns" | tr '\n' ' ')"
+  else
+    echo "  (could not list the namespaces with pods on karpenter nodes)"
+  fi
 fi
+[ -n "$e9_dir" ] && rm -rf "$e9_dir"
 
 hr "F1. INSTANCE TYPE MIX (burstable t-family throttles under load and is interrupted more often)"
 echo "  Read the POOL column with the capacity type. On-demand nodes in a pool that also permits spot are"
