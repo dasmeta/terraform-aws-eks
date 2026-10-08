@@ -23,6 +23,29 @@ mock_provider "aws" {
   mock_data "aws_caller_identity" {
     defaults = { account_id = "111111111111" }
   }
+
+  # The on-demand pool derives its AMI from a running managed node group instance (modules/karpenter/data.tf),
+  # so these three must be mocked or that lookup's postcondition fails every run block in the file.
+  mock_data "aws_instances" {
+    defaults = {
+      ids = ["i-00000000000000001", "i-00000000000000002"]
+    }
+  }
+
+  mock_data "aws_instance" {
+    defaults = {
+      ami = "ami-00000000000000001"
+    }
+  }
+
+  mock_data "aws_ami" {
+    defaults = {
+      id           = "ami-00000000000000001"
+      name         = "amazon-eks-node-al2023-x86_64-standard-1.34-v20260101"
+      architecture = "x86_64"
+      description  = "EKS-optimized Kubernetes node based on Amazon Linux 2023"
+    }
+  }
 }
 mock_provider "helm" {}
 mock_provider "kubernetes" {}

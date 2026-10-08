@@ -297,6 +297,62 @@ kubectl get nodes -o json 2>/dev/null | jq -r '[.items[].status.nodeInfo.osImage
 echo "-- kubelet versions (a spread means nodes are not being rotated):"
 kubectl get nodes -o json 2>/dev/null | jq -r '[.items[].status.nodeInfo.kubeletVersion] | group_by(.) | map({v: .[0], count: length}) | .[] | "  \(.count)x \(.v)"'
 
+hr "D1b. ON-DEMAND POOLS NOT PROTECTED FROM AMI REPLACEMENT (the most missed setting)"
+echo "  Requiring the on-demand capacity type is a BILLING choice and protects nothing. A pool is only held"
+echo "  on its current image by nodeClassRef.name = on-demand. Naming the pool \"on-demand\" does nothing"
+echo "  either -- the class is selected by nodeClassRef.name alone."
+echo
+echo "  A pool listed as UNPROTECTED below is drained and replaced whenever AWS publishes a new EKS AMI,"
+echo "  taking with it exactly the workloads that were put on on-demand because they must not be"
+echo "  interrupted. Nothing in the pool's own config shows this is going to happen."
+echo
+echo "  A pool permitting BOTH spot and on-demand is not listed: it is general capacity that may land"
+echo "  on-demand, and following the newest image is correct for it."
+echo
+# The capacity a pool accepts, evaluated the way karpenter does: start from every capacity type and apply
+# each capacity-type requirement by its OPERATOR. Reading only the values is wrong in both directions --
+# NotIn [on-demand] is a spot-only pool that must not be flagged, and NotIn [spot] is an on-demand-only pool
+# that must be.
+d1b_cap='def cap: reduce ((.spec.template.spec.requirements // [])[] | select(.key == "karpenter.sh/capacity-type")) as $r
+    (["on-demand", "spot"];
+     if   $r.operator == "In"           then map(select(. as $v | $r.values | any(.[]; . == $v)))
+     elif $r.operator == "NotIn"        then map(select(. as $v | $r.values | any(.[]; . == $v) | not))
+     elif $r.operator == "DoesNotExist" then []
+     else . end);
+  '
+if ! d1b_np=$(kubectl get nodepool -o json 2>&1); then
+  echo "  QUERY FAILED -- could not list NodePools, so this section proves nothing:"
+  printf '    %s\n' "$(echo "$d1b_np" | head -2)"
+elif ! d1b_all=$(printf '%s' "$d1b_np" | jq -r "$d1b_cap"'.items[]
+  | "  \(.metadata.name)\tclass=\(.spec.template.spec.nodeClassRef.name // "<unset>")\tcapacity=\(cap | if length == 0 then "<none>" else join("+") end)"' 2>&1); then
+  echo "  QUERY FAILED -- the NodePool list could not be parsed, so this section proves nothing:"
+  printf '    %s\n' "$(echo "$d1b_all" | head -2)"
+else
+  if [ -n "$d1b_all" ]; then
+    echo "-- every pool, its node class and the capacity it accepts:"
+    printf '%s\n' "$d1b_all" | column -t -s "$(printf '\t')" 2>/dev/null || printf '%s\n' "$d1b_all"
+    echo
+  fi
+  d1b_bad=$(printf '%s' "$d1b_np" | jq -r "$d1b_cap"'.items[]
+    | select(cap | (any(.[]; . == "on-demand") and (any(.[]; . == "spot") | not)))
+    | select((.spec.template.spec.nodeClassRef.name // "") != "on-demand")
+    | "  UNPROTECTED  \(.metadata.name)  class=\(.spec.template.spec.nodeClassRef.name // "<unset>")  -- set nodeClassRef.name: on-demand"' 2>/dev/null)
+  if [ -n "$d1b_bad" ]; then
+    echo "$d1b_bad"
+    echo
+    echo "  Fix each one by setting template.spec.nodeClassRef.name = \"on-demand\" on the pool, then delete"
+    echo "  the settings the preset now supplies -- the table in the stability guide's section 2.4 lists"
+    echo "  exactly which. Expect the change to REPLACE the pool's existing nodes once, whatever image they"
+    echo "  run: nodeClassRef is part of the NodePool template hash, so karpenter treats every node built"
+    echo "  under the old reference as drifted. Schedule it as a roll -- the pool's Drifted budget and its"
+    echo "  PDBs set the pace."
+  elif [ -n "$d1b_all" ]; then
+    echo "  none -- every on-demand-only pool references the on-demand node class"
+  else
+    echo "  no node pools found"
+  fi
+fi
+
 hr "D2. DISRUPTION POSTURE"
 kubectl get nodepool -o json 2>/dev/null | jq -r '.items[] |
   "\(.metadata.name):
@@ -415,12 +471,25 @@ echo "  Read from the LIVE object, which is all that exists before the upgrade. 
 echo "  release whose values ALREADY set pdb.allowZeroEvictions renders fine on 0.4.0, but the released"
 echo "  chart ignores that key so nothing here distinguishes it. Check the values of anything listed before"
 echo "  assuming it needs changing -- if the flag is already there, it is a false alarm."
-echo "-- these renders will FAIL after the base chart upgrade and need correcting first:"
-kubectl get pdb -A -o json 2>/dev/null | jq -r '.items[]
+# Captured rather than piped straight out. Printed directly, an empty result and a failed query look
+# identical -- and both sat under a heading announcing renders that will FAIL, so a clean cluster read as
+# an alarming one and a broken read read as a clean one.
+if ! e3_pdbs=$(kubectl get pdb -A -o json 2>&1); then
+  echo "  QUERY FAILED -- could not list PodDisruptionBudgets, so this section proves nothing:"
+  printf '    %s\n' "$(echo "$e3_pdbs" | head -2)"
+elif ! e3_at_risk=$(printf '%s' "$e3_pdbs" | jq -r '.items[]
   | select((.metadata.annotations // {})["dasmeta.io/zero-evictions"] == null)
   | select(.spec.minAvailable != null and .status.expectedPods != null)
   | select((.spec.minAvailable | tostring | test("%") | not) and ((.spec.minAvailable | tonumber) >= .status.expectedPods))
-  | "  AT RISK  \(.metadata.namespace)/\(.metadata.name)  minAvailable=\(.spec.minAvailable) expectedPods=\(.status.expectedPods)"'
+  | "  AT RISK  \(.metadata.namespace)/\(.metadata.name)  minAvailable=\(.spec.minAvailable) expectedPods=\(.status.expectedPods)"' 2>&1); then
+  echo "  QUERY FAILED -- the budget list could not be parsed, so this section proves nothing:"
+  printf '    %s\n' "$(echo "$e3_at_risk" | head -2)"
+elif [ -n "$e3_at_risk" ]; then
+  echo "-- these renders will FAIL after the base chart upgrade and need correcting first:"
+  echo "$e3_at_risk"
+else
+  echo "  none -- no live budget has minAvailable at or above its replica count"
+fi
 
 hr "E4. STATEFUL / SINGLETON WORKLOADS ON SPOT"
 kubectl get nodes -l karpenter.sh/capacity-type=spot -o name 2>/dev/null | sed 's|node/||' > /tmp/_ka_spot.txt
@@ -463,18 +532,195 @@ echo "  Bitnami moved its free images to the \`bitnamilegacy\` repository. Pin t
 echo "  OWN image config -- a values override, a chart upgrade -- and not with the kyverno mutating policy."
 echo "  That policy was a stopgap for the cutover. Keeping it means every pod creation in the cluster depends"
 echo "  on an admission webhook staying healthy (section B3) in order to get a working image reference."
-hits=$(kubectl get pods -A -o json 2>/dev/null | jq -r '
-  .items[] | .metadata.namespace as $ns
-  | (.spec.containers[]?, .spec.initContainers[]?)
+# Read the WORKLOAD SPEC, not the running pod. A mutating admission webhook rewrites the image on its way
+# in, so a pod can show bitnamilegacy while its own deployment still says bitnami. This check previously
+# read pods and reported "none" on a cluster whose specs were entirely unmigrated -- a kyverno policy was
+# rewriting every one of them. Disabling that policy, which 3.0.0 does by default, then sent every new pod
+# to the retired repository and they failed to pull. The spec is what survives the webhook going away.
+# Every read is checked. "none" here is advice to DISABLE a policy, so it may only be printed when the
+# workloads were actually read: a denied list printed the same "not needed" as a clean cluster, and acting on
+# that removes a load-bearing rewrite. JSON goes to jq through a pipe from a shell builtin, never as an
+# argument, so a large cluster cannot exceed the argument-size limit.
+e8_spec_jq='.items[]
+  | .kind as $k | .metadata.namespace as $ns | .metadata.name as $n
+  | (.spec.template.spec.containers[]?, .spec.template.spec.initContainers[]?)
   | select(.image | test("(^|/)bitnami/"))
-  | "  SWITCH  \($ns)  \(.image)"' | sort -u)
+  | "  SWITCH  \($ns)/\($k | ascii_downcase)/\($n)  \(.image)"'
+e8_cron_jq='.items[]
+  | .metadata.namespace as $ns | .metadata.name as $n
+  | (.spec.jobTemplate.spec.template.spec.containers[]?, .spec.jobTemplate.spec.template.spec.initContainers[]?)
+  | select(.image | test("(^|/)bitnami/"))
+  | "  SWITCH  \($ns)/cronjob/\($n)  \(.image)"'
+e8_fail=""
+spec_hits=""; cron_hits=""
+if ! e8_wl=$(kubectl get deploy,sts,ds -A -o json 2>&1); then
+  e8_fail="deployments/statefulsets/daemonsets: $(printf '%s' "$e8_wl" | head -1)"
+elif ! spec_hits=$(printf '%s' "$e8_wl" | jq -r "$e8_spec_jq" 2>&1); then
+  e8_fail="deployments/statefulsets/daemonsets could not be parsed: $(printf '%s' "$spec_hits" | head -1)"; spec_hits=""
+fi
+if ! e8_cj=$(kubectl get cronjob -A -o json 2>&1); then
+  e8_fail="${e8_fail:+$e8_fail; }cronjobs: $(printf '%s' "$e8_cj" | head -1)"
+elif ! cron_hits=$(printf '%s' "$e8_cj" | jq -r "$e8_cron_jq" 2>&1); then
+  e8_fail="${e8_fail:+$e8_fail; }cronjobs could not be parsed: $(printf '%s' "$cron_hits" | head -1)"; cron_hits=""
+fi
+hits=$(printf '%s\n%s\n' "$spec_hits" "$cron_hits" | grep -v '^$' | sort -u || true)
+
+# Is a policy actively rewriting these images? Checked by looking for the POLICY rather than by comparing
+# pod images to specs: a workload that legitimately migrated also runs bitnamilegacy, so pod images alone
+# cannot tell "being rewritten" from "already fixed". The policy's presence is unambiguous. A cluster with
+# no kyverno has no policy CRDs, which is a definite "no rewriter", not a failure; anything else is unknown.
+rewriter=""; e8_rw_unknown=""
+if ! e8_pol=$(kubectl get clusterpolicy,policy -A -o json 2>&1); then
+  if ! printf '%s' "$e8_pol" | grep -q "doesn't have a resource type"; then
+    e8_rw_unknown=$(printf '%s' "$e8_pol" | head -1)
+  fi
+elif ! rewriter=$(printf '%s' "$e8_pol" | jq -r '.items[]? | select((.spec | tostring) | test("bitnamilegacy"))
+           | "\(.kind)/\(.metadata.name)"' 2>&1); then
+  e8_rw_unknown="policy list could not be parsed"; rewriter=""
+fi
+rewriter=$(printf '%s\n' "$rewriter" | grep -v '^$' | sort -u | head -3 || true)
+
 if [ -n "$hits" ]; then
   echo "$hits"
   echo "  -> replace the 'bitnami/' path with 'bitnamilegacy/' in the chart values for each of these,"
-  echo "     then set kyverno.enabled = false (it is false by default from 2.30.0)."
-else
+  echo "     then set kyverno.enabled = false (it is false by default from 3.0.0)."
+  if [ -n "$rewriter" ]; then
+    echo
+    echo "  AND A POLICY IS CURRENTLY REWRITING THEM, so these specs are only working because of it:"
+    printf '    %s\n' $rewriter
+    echo "  That rewrite is load-bearing. Remove it -- kyverno is OFF by default from 3.0.0 -- and every"
+    echo "  workload above stops pulling, as soon as its next pod is created rather than immediately."
+    echo "  Fix the specs FIRST, then drop the policy. The order is the whole point."
+  elif [ -n "$e8_rw_unknown" ]; then
+    echo
+    echo "  COULD NOT CHECK whether a policy is rewriting these ($e8_rw_unknown). Assume one is, and fix"
+    echo "  the specs before touching kyverno."
+  fi
+fi
+if [ -n "$e8_fail" ]; then
+  echo "  QUERY FAILED -- $e8_fail"
+  echo "  The list above, if any, is INCOMPLETE. Do not conclude the kyverno rewrite policy is unneeded."
+elif [ -z "$hits" ]; then
   echo "  none -- no image references the retired repository, so the kyverno rewrite policy is not needed here"
 fi
+
+hr "E9. WHAT WILL BLOCK A TEARDOWN DRAIN (read this before deleting nodepools, not after)"
+echo "  Deleting a nodepool drains its nodes through the eviction API, and the evicted pods cannot come back"
+echo "  on karpenter capacity, because the pool that would have hosted them is the one being deleted. A"
+echo "  PodDisruptionBudget then refuses every eviction that would leave it below its minimum, and the"
+echo "  drain stops with nothing in the karpenter log to say why."
+echo
+echo "  So the question per budget is: once the karpenter nodes are gone, how many healthy pods it covers"
+echo "  are still running ELSEWHERE, compared with the minimum it requires (desiredHealthy). Too few, and"
+echo "  it blocks. The budget's current disruptionsAllowed does not answer this -- it is measured while"
+echo "  replacements can still be scheduled, so a budget reading allowed=2 today can block completely."
+echo
+echo "  Only budgets covering at least one pod on a KARPENTER node are listed. Pods are matched with the"
+echo "  budget's full selector -- matchLabels and matchExpressions together, and an empty selector {}"
+echo "  covering every pod in the namespace."
+echo
+# Every read goes to a file and is checked, and jq reads the files with --slurpfile, so a large cluster
+# never passes its pod list as a command-line argument. Any failure means this section proves nothing --
+# printing "none" after a failed read is how a teardown gate tells you it is safe without having looked.
+e9_fail=""
+if ! e9_dir=$(mktemp -d 2>/dev/null) || [ -z "$e9_dir" ]; then
+  e9_fail="could not create a temporary directory"; e9_dir=""
+else
+  kubectl get nodes -l karpenter.sh/nodepool -o json > "$e9_dir/nodes.json" 2> "$e9_dir/err" \
+    || e9_fail="nodes: $(head -1 "$e9_dir/err")"
+  kubectl get pods -A -o json > "$e9_dir/pods.json" 2> "$e9_dir/err" \
+    || e9_fail="${e9_fail:+$e9_fail; }pods: $(head -1 "$e9_dir/err")"
+  kubectl get pdb -A -o json > "$e9_dir/pdbs.json" 2> "$e9_dir/err" \
+    || e9_fail="${e9_fail:+$e9_fail; }poddisruptionbudgets: $(head -1 "$e9_dir/err")"
+fi
+
+e9_jq() { # $1 = jq program; reads the three files, never argv
+  jq -r -n --slurpfile nodes "$e9_dir/nodes.json" --slurpfile pods "$e9_dir/pods.json" \
+    --slurpfile pdbs "$e9_dir/pdbs.json" "$1"
+}
+
+# Kubernetes label-selector semantics. matchLabels and matchExpressions are ANDed; an empty selector {}
+# matches every pod in the namespace (policy/v1); a missing selector matches none. NotIn and
+# DoesNotExist are satisfied by a pod that does not carry the key at all.
+e9_lib='
+def selects($sel; $labels):
+  if $sel == null then false
+  else
+    ([($sel.matchLabels // {}) | to_entries[] | ($labels[.key] == .value)] | all)
+    and
+    ([($sel.matchExpressions // [])[] | . as $e |
+      if   $e.operator == "In"           then ($labels | has($e.key)) and any(($e.values // [])[]; . == $labels[$e.key])
+      elif $e.operator == "NotIn"        then (($labels | has($e.key)) | not) or (any(($e.values // [])[]; . == $labels[$e.key]) | not)
+      elif $e.operator == "Exists"       then ($labels | has($e.key))
+      elif $e.operator == "DoesNotExist" then ($labels | has($e.key) | not)
+      else false end] | all)
+  end;
+def healthy: (.metadata.deletionTimestamp == null)
+  and any((.status.conditions // [])[]; .type == "Ready" and .status == "True");
+def on_karpenter($kn): .spec.nodeName as $n | any($kn[]; . == $n);
+($nodes[0].items | map(.metadata.name)) as $kn
+'
+
+if [ -n "$e9_fail" ]; then
+  echo "  QUERY FAILED -- $e9_fail"
+  echo "  This section proves nothing. Do not delete the nodepools on the strength of it."
+elif ! e9_nodes=$(e9_jq '$nodes[0].items | length' 2>&1); then
+  echo "  QUERY FAILED -- the node list could not be parsed: $(printf '%s' "$e9_nodes" | head -1)"
+  echo "  This section proves nothing. Do not delete the nodepools on the strength of it."
+elif [ "$e9_nodes" = "0" ]; then
+  echo "  no karpenter nodes -- nothing to drain"
+elif ! e9_verdicts=$(e9_jq "$e9_lib"'
+  | $pdbs[0].items[] | . as $pdb
+  | ($pdb.status.desiredHealthy // 0) as $need
+  | [ $pods[0].items[] | select(.metadata.namespace == $pdb.metadata.namespace)
+      | select(selects($pdb.spec.selector; (.metadata.labels // {}))) ] as $covered
+  | ([ $covered[] | select(on_karpenter($kn)) ] | length) as $onk
+  | ([ $covered[] | select(on_karpenter($kn) | not) | select(healthy) ] | length) as $left
+  | select($onk > 0)
+  | (if $left >= $need then "CLEARS" else "BLOCK" end)
+    + "\t\($pdb.metadata.namespace)/\($pdb.metadata.name)\t\($need)\t\($left)\t\($onk)"' 2>&1); then
+  echo "  QUERY FAILED -- the budgets or pods could not be evaluated: $(printf '%s' "$e9_verdicts" | head -1)"
+  echo "  This section proves nothing. Do not delete the nodepools on the strength of it."
+else
+  e9_block=$(printf '%s\n' "$e9_verdicts" | grep '^BLOCK' || true)
+  e9_clear=$(printf '%s\n' "$e9_verdicts" | grep '^CLEARS' || true)
+  if [ -n "$e9_block" ]; then
+    printf '%s\n' "$e9_block" | while IFS="$(printf '\t')" read -r _ name need left onk; do
+      echo "  WILL BLOCK  $name  -- needs $need healthy, $left would be left outside karpenter nodes ($onk on them)"
+    done
+    echo
+    echo "  Remove these workloads BEFORE deleting the nodepools -- on a cluster being torn down there is"
+    echo "  nothing left to protect:  helm uninstall <release>   (or kubectl delete deploy <name> -n <ns>)"
+  elif [ -n "$e9_clear" ]; then
+    echo "  none -- every budget covering a karpenter-node pod keeps enough healthy pods elsewhere"
+  else
+    echo "  none -- no budget covers a pod on a karpenter node"
+  fi
+  if [ -n "$e9_clear" ]; then
+    echo
+    echo "  -- not blocking, because enough healthy pods stay up outside the karpenter nodes:"
+    printf '%s\n' "$e9_clear" | while IFS="$(printf '\t')" read -r _ name need left onk; do
+      echo "     $name  -- needs $need, $left left elsewhere ($onk on karpenter nodes)"
+    done
+  fi
+  echo
+  echo "  Assumes evicted pods cannot reschedule onto the managed node group, which holds when it carries the"
+  echo "  system taint (the default with karpenter). Where they can, a listed blocker may clear on its own."
+  echo
+  echo "  Also uninstall any release whose own pods run on karpenter nodes before deleting the pools. Its"
+  echo "  helm uninstall waits on pods that can no longer schedule and burns its full timeout -- observed"
+  echo "  as 'context deadline exceeded' after 5m, on a release that had in fact already been removed."
+  if e9_ns=$(e9_jq "$e9_lib"'
+      | [ $pods[0].items[] | select(on_karpenter($kn))
+          | select(((.metadata.ownerReferences // []) | any(.[]; .kind == "DaemonSet")) | not)
+          | .metadata.namespace ]
+      | unique[] | select(. != "kube-system" and . != "karpenter")' 2>/dev/null); then
+    [ -n "$e9_ns" ] && echo "  namespaces with pods on karpenter nodes: $(printf '%s' "$e9_ns" | tr '\n' ' ')"
+  else
+    echo "  (could not list the namespaces with pods on karpenter nodes)"
+  fi
+fi
+[ -n "$e9_dir" ] && rm -rf "$e9_dir"
 
 hr "F1. INSTANCE TYPE MIX (burstable t-family throttles under load and is interrupted more often)"
 echo "  Read the POOL column with the capacity type. On-demand nodes in a pool that also permits spot are"

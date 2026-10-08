@@ -121,6 +121,8 @@ locals {
   )
   karpenter_ami_alias = "${local.karpenter_ami_family}@latest"
 
+
+
   # The consumer's defaults bucket wins; the derived alias only fills the gap when they left it unset.
   # Written as a nested merge rather than a whole-object replacement so that setting any single field
   # keeps its siblings on the module defaults.

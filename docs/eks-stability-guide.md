@@ -13,6 +13,89 @@ on the step rather than buried in a footnote.
 
 ---
 
+## ⚠ Read this before anything else: on-demand capacity is not protected by its capacity type
+
+**A node pool that requires `karpenter.sh/capacity-type: on-demand` is still replaced when AWS publishes a
+new EKS AMI, unless it also sets `nodeClassRef.name: on-demand`.**
+
+On-demand is a *billing* guarantee. It says nothing about the image a node runs or when that node is
+replaced. The protection against AMI-driven replacement comes from the node class, and the node class is
+selected by `nodeClassRef.name` — **never** by the pool's capacity type, and **never** by the pool's name.
+
+```yaml
+karpenter:
+  resource_configs:
+    nodePools:
+      on-demand:                          # the NAME does nothing
+        template:
+          spec:
+            nodeClassRef:
+              name: on-demand             # <- THIS is what protects it. Without this line the pool
+                                          #    tracks al2023@latest and every AWS AMI release drifts it.
+            requirements:
+              - key: karpenter.sh/capacity-type
+                operator: In
+                values: ["on-demand"]     # billing only -- no protection from this line
+```
+
+Get this wrong and the failure is silent and delayed: the pool looks right, behaves right for weeks, then
+AWS publishes an AMI and karpenter drains the nodes holding exactly the workloads that were put on
+on-demand *because* they must not be interrupted. Nothing in the config says it is going to happen.
+
+This is the single most commonly missed setting in the whole document. A review of 14 karpenter-enabled
+environments found **9 on-demand-only pools across 7 of them missing it — 5 of those pools were named
+`on-demand`**, which is what makes it so easy to miss: the name reads as if the protection is already there.
+
+**Check every cluster you touch, in the config and on the cluster.** Both must return nothing:
+
+```bash
+# in the yaml config
+yq -o=json '.variables.karpenter.resource_configs.nodePools // {}' path/to/eks.yaml | jq -r '
+  def cap: reduce ((.template.spec.requirements // [])[] | select(.key == "karpenter.sh/capacity-type")) as $r
+    (["on-demand", "spot"];
+     if   $r.operator == "In"           then map(select(. as $v | $r.values | any(.[]; . == $v)))
+     elif $r.operator == "NotIn"        then map(select(. as $v | $r.values | any(.[]; . == $v) | not))
+     elif $r.operator == "DoesNotExist" then []
+     else . end);
+  to_entries[] | .key as $name | .value
+  | select(cap | (any(.[]; . == "on-demand") and (any(.[]; . == "spot") | not)))
+  | select((.template.spec.nodeClassRef.name // "") != "on-demand")
+  | "UNPROTECTED: \($name)"'
+
+# on the live cluster -- the same check as assessment section D1b
+kubectl get nodepool -o json | jq -r '
+  def cap: reduce ((.spec.template.spec.requirements // [])[] | select(.key == "karpenter.sh/capacity-type")) as $r
+    (["on-demand", "spot"];
+     if   $r.operator == "In"           then map(select(. as $v | $r.values | any(.[]; . == $v)))
+     elif $r.operator == "NotIn"        then map(select(. as $v | $r.values | any(.[]; . == $v) | not))
+     elif $r.operator == "DoesNotExist" then []
+     else . end);
+  .items[]
+  | select(cap | (any(.[]; . == "on-demand") and (any(.[]; . == "spot") | not)))
+  | select((.spec.template.spec.nodeClassRef.name // "") != "on-demand")
+  | "UNPROTECTED: \(.metadata.name)"'
+```
+
+**The requirement's operator matters, not just its values.** Both commands start from every capacity type and
+apply each `karpenter.sh/capacity-type` requirement the way karpenter does. A check that reads only the
+values gets it wrong in both directions: `NotIn [on-demand]` is a *spot-only* pool and must not be touched —
+attaching the on-demand class to it would change its capacity type and add a taint — while `NotIn [spot]` is
+an on-demand-only pool that needs the reference just as much as `In [on-demand]` does.
+
+A pool permitting **both** `spot` and `on-demand` is a different thing and should stay on the default class:
+it is general capacity that may land on-demand, not protected capacity, and tracking the newest image is
+correct for it.
+
+**The assessment checks this too.** Section **D1b** of `eks-assess.sh` lists every pool with its node class
+and flags the unprotected ones, so this does not depend on anyone remembering to run the commands above. It
+also distinguishes a failed query from a clean result — an empty D1b is only meaningful when it says `none`.
+Run the config check above *before* the upgrade and D1b *after*, and expect them to agree.
+
+Section 2.4 has the migration, including which hand-rolled settings to delete once the class supplies them,
+and what to expect when the reference is added: it replaces the pool's existing nodes once, whatever image they run.
+
+---
+
 ## How to use this document
 
 Work top to bottom. Each phase has an **entry gate** — do not start it until the gate passes. Each step says
@@ -70,6 +153,13 @@ you, and neither changes anything:
 
 ### If you are an AI agent
 
+- **Report assessment section D1b verbatim, and treat anything it marks `UNPROTECTED` as part of the
+  upgrade, not as optional follow-up.** D1b lists every node pool with its node class, and flags the
+  on-demand-only pools that will still be replaced on the next AWS AMI release. A pool is not protected by
+  requiring the on-demand capacity type, and is not protected by being *named* `on-demand`. Getting this
+  wrong leaves the cluster's least interruptible workloads exposed, and nothing in the pool's own config
+  shows it. In one fleet review 5 pools named `on-demand` were unprotected. The callout at the top of this
+  document has the equivalent check against the yaml config, for use before the module is upgraded.
 - Run the assessment **first** and report what it found before proposing any change. The output determines
   which later steps apply.
 - Do not batch phases. Several steps are destructive if their precondition is unmet.
@@ -78,6 +168,16 @@ you, and neither changes anything:
   drift is often the finding. One cluster in this fleet has a config declaring one controller replica while
   running two.
 - When you report a finding, give the evidence (the command output), not a summary of it.
+- Read the cluster's own configuration before proposing node pool changes, and migrate what is already
+  there rather than adding alongside it. A hand-rolled on-demand pool should become a `nodeClassRef`
+  reference with its restated defaults deleted — section 2.4 lists exactly which. Propose the deletions
+  explicitly; leaving them is how a pool drifts away from the module over the next upgrade.
+- **Never conclude a pool is protected because it is named `on-demand`.** The node class is chosen by
+  `nodeClassRef.name` alone. Run the detection command in section 2.4 against the config and against the
+  live cluster, and report both outputs; a pool named `on-demand` with no `nodeClassRef` tracks the newest
+  AMI exactly like the spot pool does. In one fleet review this was true of 4 pools so named.
+- On a development or test cluster, set `node_groups_system_taint.enabled = false` rather than inheriting
+  the production default. Section 1.4 explains why.
 - Use only the scripts in the table above. They are the whole toolset; there is no other entry point, and a
   step that seems to need one it does not have is a defect in this document.
 
@@ -263,7 +363,22 @@ was already right costs credibility you will want later.
 
 ## Phase 1 — Upgrade the module
 
-**Entry gate**: Phase 0 complete, findings recorded and shared.
+**Entry gate**: Phase 0 complete, findings recorded and shared, **and the runner is on Terraform 1.8 or
+newer**.
+
+The module declares `required_version = ">= 1.8"`. That is not a preference: the addon merge uses
+`provider::deepmerge::mergo`, and provider-defined functions landed in Terraform 1.8. Earlier releases
+declared `~> 1.3` but already needed 1.8 for that call, so the constraint was understated rather than
+loosened — nothing that worked before stops working, but a runner below 1.8 now fails at `init` with a
+clear version error instead of failing later on an unknown function.
+
+Check before you start, because a Terraform Cloud workspace pins its own version independently of the
+repository:
+
+```bash
+terraform version        # locally
+# in Terraform Cloud: Workspace -> Settings -> General -> Terraform Version
+```
 
 The change itself is one line in the setup's YAML:
 
@@ -360,13 +475,19 @@ controller. That is the intent, not a side effect.
 > pods currently on system nodes stay until they are next rescheduled and then migrate — the change is
 > gradual, but the node replacement itself is not.
 
-Opt out where the isolation is not worth the capacity, typically development and test:
+**On a development or test cluster, turn this off.** The taint exists so application workloads cannot crowd
+the controller that provisions their capacity — a production concern. On dev the managed nodes are capacity
+you have already paid for, the point is to use all of it, and reserving two nodes for system components on a
+small cluster is a meaningful fraction of the whole thing. Set it explicitly rather than leaving the
+production default to apply by accident:
 
 ```yaml
 variables:
   node_groups_system_taint:
-    enabled: false
+    enabled: false   # dev/test: use the whole cluster. Leave ON (default) for production.
 ```
+
+Keep it on for production and staging, where the isolation is the point.
 
 ### 1.5 This upgrade does not touch storage
 
@@ -519,6 +640,86 @@ variables:
                 name: on-demand
 ```
 
+#### If the cluster already has a hand-rolled on-demand pool
+
+Most clusters that needed protected capacity before this release built it by hand, and those pools are worth
+migrating rather than leaving alone — every setting they restate is one that can now drift away from the
+module's.
+
+**The pool's NAME decides nothing.** The node class is selected by `nodeClassRef.name`, never by the name of
+the pool:
+
+```hcl
+key => contains(keys(var.resource_configs_defaults), try(value.template.spec.nodeClassRef.name, "default"))
+       ? try(value.template.spec.nodeClassRef.name, "default") : "default"
+```
+
+So a pool **called** `on-demand` that does not set `nodeClassRef` inherits the **default** class, keeps
+`amiAlias = al2023@latest`, and is drifted by every AWS AMI release — the precise behaviour the pin exists
+to prevent. It reads as already migrated and is not.
+
+This is not hypothetical. Reviewing the 14 karpenter-enabled environments in one fleet found **9
+on-demand-only pools across 7 environments with no `nodeClassRef`, and 5 of those were named `on-demand`**.
+A `gpu` pool in the same fleet *did* set `nodeClassRef.name: gpu`, so the mechanism was understood — it had
+simply never been applied to the pool that most needed it.
+
+**How to recognise one**, whatever it is called. A pool whose `nodeClassRef.name` is not `on-demand`, which
+carries any of:
+
+- a `karpenter.sh/capacity-type` requirement of `on-demand`
+- a `taints` entry reserving it for particular workloads
+- a `weight` above the general pool's
+- instance requirements narrowed by hand — categories, generation, cpu or memory bounds
+
+A pool permitting **both** `spot` and `on-demand` is a different case: leave it on the default class. It is
+general capacity that may happen to land on-demand, not protected capacity, and tracking the newest image is
+right for it.
+
+**Find them** with the two commands in the callout at the top of this document — one for the yaml config,
+one for a live cluster — or with assessment section D1b. They are kept in that one place on purpose, so that
+a correction to the check cannot reach one copy and miss another. Empty output from both is the only
+acceptable result before calling the migration done.
+
+**What to replace it with.** The `nodeClassRef` reference above, and nothing else. Then delete every setting
+the preset already provides, because restating them is how they diverge:
+
+| Delete | The preset's value |
+| --- | --- |
+| `karpenter.sh/capacity-type` requirement | `In [on-demand]` |
+| `taints` | `dedicated=on-demand:NoSchedule` |
+| `weight` | `50`, above the general pool so it wins for pods that tolerate the taint |
+| instance category / generation / cpu / memory requirements | `t,c,m,r`, generation `>2`, memory `>3000` and `<131073`, cpu `<33`, `amd64` |
+| `consolidationPolicy` / `consolidateAfter` | `WhenEmpty` at `15m` — a node holding a protected workload is never consolidated |
+| `expireAfter` | `Never` |
+| `limits` | `cpu: 1000` |
+| `disruption.budgets` | `10%` plus a window blocking `Drifted` |
+
+Keep anything that is genuinely specific to the cluster — a different instance family because the workload
+needs one, a second taint, a lower ceiling. Those are decisions; the rows above are defaults.
+
+**The `taints` row needs a check before you delete it.** A pool's own taints replace the preset's rather than
+adding to it, so deleting a pool taint whose key differs from `dedicated=on-demand` leaves its workloads
+tolerating a taint that no longer exists and *not* tolerating the one that does. Delete it only if every
+workload on the pool already tolerates `dedicated=on-demand`; otherwise keep the pool's taint. The next
+subsection explains why getting this wrong strands them: the migration replaces the nodes.
+
+**Leave a one-line comment**, not a paragraph. The config should say what is deliberate, and the reader can
+find the rest in the module:
+
+```yaml
+        # on-demand node class carries the taint, weight, instance filter and disruption budget
+        on-demand:
+          template:
+            spec:
+              nodeClassRef:
+                name: on-demand
+              # kept deliberately: this cluster's metrics store needs r-family memory ratios
+              requirements:
+                - key: karpenter.k8s.aws/instance-category
+                  operator: In
+                  values: ["r"]
+```
+
 The preset supplies `weight = 50`, the on-demand requirement, an instance filter admitting burstable while
 excluding the specialised families, a memory floor above the 2GiB shapes, the `dedicated=on-demand` taint,
 `WhenEmpty` consolidation and the standard capacity ceiling. Override any of them on the pool.
@@ -546,6 +747,50 @@ Everything else is an ordinary node pool — adjust the taint key, add labels, p
 class. Nothing about it is special-cased.
 
 Costs on-demand capacity. Workloads must opt in — Phase 4 and section 3.6.
+
+#### Attaching the class replaces the pool's nodes — once
+
+**Plan it as a roll, every time.** Setting `nodeClassRef.name: on-demand` on an existing pool changes the
+NodePool's template, and `nodeClassRef` is part of the template hash karpenter uses for drift. The drift
+controller checks that hash *before* it looks at images, so every node the pool built under the old reference
+is marked `Drifted` and replaced — **even when both node classes resolve to exactly the same AMI**. Comparing
+image ids does not tell you whether the nodes will roll; they will.
+
+It happens once. After the replacements the pool is on the managed node groups' image and stays there until
+you move it.
+
+What sets the timing and the pace:
+
+- **When** — the pool's `Drifted` budget. A pool on the on-demand preset blocks `Drifted` during the
+  configured window, so the roll waits until outside it. A pool declaring its own `disruption.budgets` uses
+  those instead.
+- **How fast** — the pool's PDBs and its `nodes` budget. Drift is voluntary disruption, so each replacement
+  is started and Ready before the old node drains.
+- **Whether workloads come back** — the taint. A pool's own `taints` *replace* the preset's
+  `dedicated=on-demand:NoSchedule` rather than adding to it, so the section above's advice to delete a
+  restated taint is only safe when every workload on the pool already tolerates `dedicated=on-demand`. If they
+  tolerate a different key — a pool reserved with `nodegroup=backup`, say — keep the pool's own taint. Deleting
+  it swaps the taint, and because the migration rolls the nodes, those workloads cannot schedule onto the
+  replacements and stay Pending.
+
+**What the image comparison is still for:** knowing which image the replacement nodes will land on.
+
+```bash
+# what the alias resolves to today -- the image the pool's nodes are probably on now
+aws ssm get-parameter --region <region> \
+  --name /aws/service/eks/optimized-ami/<k8s-version>/amazon-linux-2023/x86_64/standard/recommended/image_id \
+  --query Parameter.Value --output text
+
+# what the managed node groups are running -- the image the replacements will be pinned to
+aws ec2 describe-instances --region <region> \
+  --filters "Name=tag:eks:cluster-name,Values=<cluster>" "Name=tag-key,Values=eks:nodegroup-name" \
+            "Name=instance-state-name,Values=running" \
+  --query 'Reservations[].Instances[].ImageId' --output text | tr ' ' '\n' | sort -u
+```
+
+Different ids are normal when karpenter was added to a cluster whose node groups were pinned weeks earlier:
+the replacements move *back* to the managed groups' older image. That is the intended end state — the next
+AMI change is the one you make yourself — but check the workloads are fine on it before the window opens.
 
 ---
 
@@ -1090,24 +1335,46 @@ observed failing on the node security group with the sleeps in place.
 kubectl delete ingress --all --all-namespaces
 kubectl delete svc --all-namespaces --field-selector spec.type=LoadBalancer
 
-# 2. clear anything that blocks a drain, or step 3 waits forever
-#    Deleting a nodepool DRAINS its nodes through the eviction API. A budget permitting zero evictions
-#    (E1) or a karpenter.sh/do-not-disrupt pod (D4) refuses that eviction, and terminationGracePeriod is
-#    unset by default -- deliberately, so a workload marked always-up stays up -- so karpenter waits with
-#    no deadline. `kubectl get nodeclaims` simply never empties, and nothing says why.
-./scripts/eks-assess.sh | sed -n '/D4\./,/E2\./p'   # what holds each node, and what holds it
-#    Then remove those workloads first. On a cluster being destroyed there is nothing left to protect:
-#    kubectl delete deploy <name> -n <ns>     (or `helm uninstall <release>`)
+# 2. clear anything that blocks a drain, or step 4 waits forever
+#    Deleting a nodepool DRAINS its nodes through the eviction API, and the evicted pods cannot
+#    reschedule, because the pool that would have taken them is the one being deleted. So the budgets
+#    converge on allowed=0 as their pods go Pending, karpenter waits with no deadline (terminationGrace-
+#    Period is unset by default, deliberately), `kubectl get nodeclaims` never empties, and nothing in
+#    the karpenter log says why.
+./scripts/eks-assess.sh | sed -n '/E9\./,/F1\./p'   # what will block, before it blocks
+#    Then remove those workloads. On a cluster being destroyed there is nothing left to protect:
+#    helm uninstall <release>     (or `kubectl delete deploy <name> -n <ns>`)
+#
+#    DO NOT check disruptionsAllowed and conclude you are clear. It is measured while pods can still
+#    reschedule, so it says nothing about a teardown. Measured on one teardown: http-echo read
+#    allowed=2 healthy=5/3 beforehand, and allowed=0 healthy=3/3 once the pools were gone -- two pods
+#    held three nodes for nine minutes. E9 instead compares each budget's minimum (desiredHealthy)
+#    with the healthy pods that will still be running OFF the karpenter nodes, so it neither misses a
+#    budget nor names one whose replicas elsewhere already satisfy it.
+#
+#    If E9 prints QUERY FAILED, stop: it could not read nodes, pods or budgets, so it has not looked.
+#    Only "none" or a list of WILL BLOCK lines is an answer.
 
-# 3. let karpenter terminate its own instances
+# 3. uninstall the releases whose own pods run on karpenter nodes, BEFORE step 4
+#    A helm uninstall waits on its pods terminating. Once the pools are gone those pods can never
+#    schedule, so it burns its whole timeout and fails the destroy -- observed on keda as
+#    `context deadline exceeded` after 5m10s, on a release that had in fact already been removed from
+#    the cluster. Check `helm list -A` before any state surgery; re-running `terraform destroy` is
+#    enough, because the release really is gone. Uninstalling the same release while nodes were still
+#    up took seconds.
+helm list -A       # anything whose pods sit on karpenter nodes (E9 lists the namespaces)
+
+# 4. let karpenter terminate its own instances
 kubectl delete nodepool --all
 kubectl get nodeclaims          # wait until this is empty
+#    With steps 2 and 3 done this takes under a minute. Nine minutes with no progress means step 2
+#    missed something.
 
-# 4. confirm the cloud resources are actually gone, not just the objects
+# 5. confirm the cloud resources are actually gone, not just the objects
 aws elbv2 describe-load-balancers --region <region> \
   --query 'LoadBalancers[?contains(LoadBalancerName,`k8s-`)].LoadBalancerName' --output text
 
-# 5. only now
+# 6. only now
 terraform destroy
 ```
 

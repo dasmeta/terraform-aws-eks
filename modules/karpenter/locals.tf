@@ -38,16 +38,114 @@ locals {
   # Identical in shape to the default class. It exists as its own class because the defaults preset is
   # selected by nodeClassRef name, so a pool referencing "on-demand" inherits that preset's requirements,
   # taints, weight, disruption and limits without restating any of them.
-  defaultEc2NodeClassOnDemand = {
+  # amiFamily is REQUIRED by the CRD whenever amiSelectorTerms carries an `id` rather than an `alias`: with
+  # an alias the family is implied, with a raw id karpenter cannot infer the bootstrap format and rejects the
+  # class with "must specify amiFamily if amiSelectorTerms does not contain an alias". That rejection happens
+  # server-side on APPLY, so a plan looks clean and the failure only appears when the helm release patches.
+  #
+  # Emitted only when set, via a for-expression rather than a ternary: a rendered `amiFamily: null` is not
+  # the same as the field being absent, and the alias form must not carry one.
+  # Whether to derive the on-demand AMI from the managed node groups. False as soon as the consumer pinned
+  # the class themselves, which also skips the lookups in data.tf. Both inputs are variables, so this is
+  # known at plan time and can gate a count.
+  # The consumer can pin the on-demand class two ways: through the preset
+  # (resource_configs_defaults["on-demand"].nodeClass) or by overriding the rendered EC2NodeClass directly
+  # (resource_configs.ec2NodeClasses["on-demand"]), which main.tf hands the chart as a second values document,
+  # merged last. Either one switches the derivation off -- otherwise the lookup still runs, and its
+  # postconditions can fail a cluster that has already said exactly which image it wants.
+  onDemandDirectClass = try(var.resource_configs.ec2NodeClasses["on-demand"], {})
+
+  onDemandAmiAuto = (
+    var.resource_configs_defaults["on-demand"].nodeClass.amiSelectorTerms == null &&
+    var.resource_configs_defaults["on-demand"].nodeClass.amiAlias == null &&
+    try(local.onDemandDirectClass.amiSelectorTerms, null) == null
+  )
+
+  # A family the consumer supplied, on either path; the direct one wins, matching the chart's merge order.
+  onDemandAmiFamilyOverride = try(coalesce(
+    try(local.onDemandDirectClass.amiFamily, null),
+    var.resource_configs_defaults["on-demand"].nodeClass.amiFamily,
+  ), null)
+
+  # Recognising a bootstrap family from AMI metadata. Ordered, first match wins: AL2023 before AL2, because
+  # "amazon linux 2023" also contains "amazon linux 2". Matched against name and description together,
+  # lower-cased -- official EKS images say it in the name, self-built ones usually only in the description.
+  amiFamilyMatchers = [
+    { family = "AL2023", tokens = ["al2023", "amazon linux 2023"] },
+    { family = "Bottlerocket", tokens = ["bottlerocket"] },
+    { family = "AL2", tokens = ["amzn2", "amazonlinux2", "amazon linux 2"] },
+  ]
+
+  onDemandAmiText = local.onDemandAmiAuto ? lower(join(" ", [
+    for x in [data.aws_ami.managed_node[0].name, data.aws_ami.managed_node[0].description] : x if x != null
+  ])) : ""
+
+  # Read off the image we actually found, NOT from configuration: a node group can override ami_type, and
+  # a node booted with the wrong family gets the wrong bootstrap. There is deliberately NO fallback. An
+  # image these tokens cannot place stays null and data.aws_ami.managed_node's postcondition fails the plan
+  # asking for an explicit amiFamily -- guessing AL2023 for, say, a hardened AL2 build would boot it with
+  # the wrong bootstrap and nothing would say so.
+  onDemandAmiFamilyDerived = local.onDemandAmiAuto ? try([
+    for m in local.amiFamilyMatchers : m.family if anytrue([for t in m.tokens : strcontains(local.onDemandAmiText, t)])
+  ][0], null) : null
+
+  # Architectures the on-demand class must serve. The pinned image has exactly one, so it has to suit every
+  # pool that references this class. Requirements merge by key (see nodePools below), so a pool's own
+  # kubernetes.io/arch replaces the preset's, and a pool without one inherits it. Each branch evaluates to a
+  # set of strings, so the conditional never has to unify differently-shaped requirement objects.
+  archUniverse = ["amd64", "arm64"]
+  onDemandPresetArchSet = setsubtract(
+    length(flatten([for r in var.resource_configs_defaults["on-demand"].requirements : r.values if r.key == "kubernetes.io/arch" && r.operator == "In"])) > 0
+    ? setintersection(toset(local.archUniverse), toset(flatten([for r in var.resource_configs_defaults["on-demand"].requirements : r.values if r.key == "kubernetes.io/arch" && r.operator == "In"])))
+    : toset(local.archUniverse),
+    toset(flatten([for r in var.resource_configs_defaults["on-demand"].requirements : r.values if r.key == "kubernetes.io/arch" && r.operator == "NotIn"]))
+  )
+  onDemandPoolArchSets = [
+    for k, v in try(var.resource_configs.nodePools, {}) : (
+      anytrue([for r in try(v.template.spec.requirements, []) : r.key == "kubernetes.io/arch"])
+      ? setsubtract(
+        length(flatten([for r in try(v.template.spec.requirements, []) : r.values if r.key == "kubernetes.io/arch" && r.operator == "In"])) > 0
+        ? setintersection(toset(local.archUniverse), toset(flatten([for r in try(v.template.spec.requirements, []) : r.values if r.key == "kubernetes.io/arch" && r.operator == "In"])))
+        : toset(local.archUniverse),
+        toset(flatten([for r in try(v.template.spec.requirements, []) : r.values if r.key == "kubernetes.io/arch" && r.operator == "NotIn"]))
+      )
+      : local.onDemandPresetArchSet
+    ) if local.poolDefaultsKey[k] == "on-demand"
+  ]
+  # With no pool referencing the class yet, the preset is the contract a future pool will inherit.
+  onDemandArchs = sort(tolist(setintersection(
+    concat(length(local.onDemandPoolArchSets) > 0 ? local.onDemandPoolArchSets : [local.onDemandPresetArchSet])...
+  )))
+  # The same architectures in EC2's vocabulary, for the instance filter and the image check.
+  onDemandEc2Archs = [for a in local.onDemandArchs : a == "amd64" ? "x86_64" : a]
+
+  # amiFamily is MANDATORY whenever amiSelectorTerms carries an id rather than an alias: the CRD rejects the
+  # class with "must specify amiFamily if amiSelectorTerms does not contain an alias". It rejects it on
+  # APPLY, not at plan, so a missing family surfaces when the helm release patches rather than in review.
+  # Key presence is decided by config-known conditions so the rendered object's shape never depends on a
+  # value that is only known after apply.
+  defaultEc2NodeClassOnDemandAmiFamily = (
+    local.onDemandAmiFamilyOverride != null
+    ? { amiFamily = local.onDemandAmiFamilyOverride }
+    : local.onDemandAmiAuto ? { amiFamily = local.onDemandAmiFamilyDerived } : {}
+  )
+
+  defaultEc2NodeClassOnDemand = merge(local.defaultEc2NodeClassOnDemandAmiFamily, {
     tags                = var.tags
     role                = module.this.node_iam_role_name
     subnetSelectorTerms = [for id in var.subnet_ids : { id = id }]
     securityGroupSelectorTerms = [
       { tags = { "karpenter.sh/discovery" = var.cluster_name, "Name" = "${var.cluster_name}-node" } }
     ]
-    amiSelectorTerms = coalesce(
-      var.resource_configs_defaults["on-demand"].nodeClass.amiSelectorTerms,
-      [{ alias = coalesce(
+    # The derived pin only applies when the consumer set neither AMI field. Their own amiSelectorTerms wins
+    # outright; their own amiAlias falls through to the alias branch below. Checked in that order because the
+    # submodule prefers amiSelectorTerms, so injecting a derived one would silently beat a consumer's alias.
+    amiSelectorTerms = (
+      var.resource_configs_defaults["on-demand"].nodeClass.amiSelectorTerms != null
+      ? var.resource_configs_defaults["on-demand"].nodeClass.amiSelectorTerms
+      : local.onDemandAmiAuto
+      ? [{ id = data.aws_instance.managed_node[0].ami }]
+      : [{ alias = coalesce(
         var.resource_configs_defaults["on-demand"].nodeClass.amiAlias,
         var.resource_configs_defaults["default"].nodeClass.amiAlias,
         "al2023@latest"
@@ -56,7 +154,7 @@ locals {
     detailedMonitoring  = var.resource_configs_defaults["on-demand"].nodeClass.detailedMonitoring
     metadataOptions     = var.resource_configs_defaults["on-demand"].nodeClass.metadataOptions
     blockDeviceMappings = var.resource_configs_defaults["on-demand"].nodeClass.blockDeviceMappings
-  }
+  })
 
   defaultEc2NodeClassGpu = {
     tags                = var.tags
