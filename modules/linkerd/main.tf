@@ -5,6 +5,9 @@
  *  - check and set more default values for default setup, for example the plain helm charts components do not have resources requests/limits and in low resource situations this can result some issues
  *  - consider moving this submodule to general/shared module as this module is not eks specific and it can be used with any k8s setup
  *
+ * Set `prometheus_cadvisor_enabled = false` when a separate monitoring collector
+ * already supplies container metrics. See [rollout and verification](../../docs/linkerd-cadvisor.md).
+ *
  * ## basic usage example
  * ```terraform
  * module "this" {
@@ -64,6 +67,16 @@ resource "helm_release" "this_viz" {
   skip_crds        = true
 
   values = [jsonencode(local.default_configs_viz), jsonencode(var.configs_viz)]
+
+  # The upstream chart hardcodes this job; scrapeConfigs only appends jobs.
+  # Remove it before Helm takes ownership, rather than patching live resources.
+  dynamic "postrender" {
+    for_each = var.prometheus_cadvisor_enabled || !try(var.configs_viz.prometheus.enabled, true) ? [] : [true]
+    content {
+      binary_path = "/bin/sh"
+      args        = ["${path.module}/scripts/without-cadvisor.sh", "${var.namespace}-viz"]
+    }
+  }
 
   depends_on = [helm_release.this]
 }

@@ -1002,16 +1002,17 @@ module "namespaces_and_docker_auth" {
 module "linkerd" {
   count = var.create && var.linkerd.enabled ? 1 : 0
 
-  source             = "./modules/linkerd"
-  chart_repository   = var.linkerd.chart_repository
-  crds_chart_version = var.linkerd.crds_chart_version
-  chart_version      = var.linkerd.chart_version
-  viz_chart_version  = var.linkerd.viz_chart_version
-  configs            = var.linkerd.configs
-  configs_crds       = var.linkerd.configs_crds
-  configs_viz        = var.linkerd.configs_viz
-  crds_create        = var.linkerd.crds_create
-  viz_create         = var.linkerd.viz_create
+  source                      = "./modules/linkerd"
+  chart_repository            = var.linkerd.chart_repository
+  crds_chart_version          = var.linkerd.crds_chart_version
+  chart_version               = var.linkerd.chart_version
+  viz_chart_version           = var.linkerd.viz_chart_version
+  configs                     = var.linkerd.configs
+  configs_crds                = var.linkerd.configs_crds
+  configs_viz                 = var.linkerd.configs_viz
+  prometheus_cadvisor_enabled = var.linkerd.prometheus_cadvisor_enabled
+  crds_create                 = var.linkerd.crds_create
+  viz_create                  = var.linkerd.viz_create
 
   depends_on = [module.eks-core-components-and-alb]
 }
