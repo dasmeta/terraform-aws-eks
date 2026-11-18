@@ -838,6 +838,91 @@ if [ -n "${REGION}" ] && [ -n "${CLUSTER}" ]; then
   fi
 fi
 
+hr "U1. KUBERNETES MINOR UPGRADE READINESS (run before every cluster_version bump)"
+# Things that do not show up as a problem until the control plane has already moved, which is the one step
+# that cannot simply be re-applied backwards. Checked against the next minor after the current control plane.
+# E1 (zero-eviction budgets) belongs to this list too: it fails the managed node group roll.
+if [ -n "$cp_ver" ]; then
+  cp_minor="$(printf '%s' "$cp_ver" | cut -d. -f2)"
+  echo "  control plane is 1.${cp_minor}; checking readiness for 1.$((cp_minor + 1))"
+fi
+if ! u1_nodes="$(kubectl get nodes -o json 2>&1)"; then
+  echo "  node read FAILED -- the node checks below were NOT run:"
+  printf '%s\n' "$u1_nodes" | sed 's/^/    /' | head -3
+else
+  # AWS publishes no Amazon Linux 2 EKS AMI after 1.32. The module refuses the plan for its own node groups,
+  # but nodes from anything else -- a hand-made group, a self-managed ASG -- only fail when they roll.
+  u1_al2="$(echo "$u1_nodes" | jq -r '.items[] | select(.status.nodeInfo.osImage | test("Amazon Linux 2$|Amazon Linux 2 "))
+    | "  AL2 NODE  \(.metadata.name)  \(.status.nodeInfo.osImage) -- no AL2 AMI exists after 1.32; move this capacity to AL2023 first"')"
+  if [ -n "$u1_al2" ]; then printf '%s\n' "$u1_al2"; else echo "  Amazon Linux 2 nodes: none"; fi
+  # 1.35 is the last minor that runs on containerd 1.x. EKS AMIs for 1.34+ ship 2.x, so a 1.x node is an old or
+  # custom image, and it blocks the 1.36 upgrade rather than this one.
+  echo "$u1_nodes" | jq -r '.items[] | select(.status.nodeInfo.containerRuntimeVersion | test("^containerd://1\\."))
+    | "  CONTAINERD 1.x  \(.metadata.name)  \(.status.nodeInfo.containerRuntimeVersion) -- last supported on 1.35; replace before 1.36"'
+  echo "  container runtimes:"
+  echo "$u1_nodes" | jq -r '[.items[].status.nodeInfo.containerRuntimeVersion] | group_by(.) | map("    \(length)x \(.[0])")[]'
+  # Fargate keeps cgroup v1 and is managed by AWS, so it is not a blocker -- but its pods only move to the new
+  # kubelet when they are recreated, which nothing does automatically.
+  fg="$(echo "$u1_nodes" | jq '[.items[] | select(.metadata.labels["eks.amazonaws.com/compute-type"] == "fargate")] | length')"
+  [ "${fg:-0}" -gt 0 ] && echo "  ${fg} Fargate node(s): restart their workloads after the upgrade, they do not follow the control plane"
+fi
+
+# kube-proxy IPVS mode is deprecated from 1.35. Still works; it is the migration to plan, not a blocker.
+if u1_kp="$(kubectl -n kube-system get cm kube-proxy-config -o jsonpath='{.data.config}' 2>/dev/null)"; then
+  u1_mode="$(printf '%s\n' "$u1_kp" | awk '/^mode:/ {print $2}' | tr -d '"')"
+  echo "  kube-proxy mode: ${u1_mode:-iptables (default)}"
+  [ "$u1_mode" = "ipvs" ] && echo "    IPVS is deprecated from 1.35 -- plan the move to nftables mode"
+else
+  echo "  kube-proxy config not readable -- mode NOT checked"
+fi
+
+# ingress-nginx is retired upstream: it keeps running, but receives no fixes. Not an upgrade blocker.
+inx="$(kubectl get deploy -A -o json 2>/dev/null | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test("ingress-nginx/controller")))
+  | "\(.metadata.namespace)/\(.metadata.name)"')"
+if [ -n "$inx" ]; then echo "  ingress-nginx in use (retired upstream, no further fixes): $(echo $inx)"; else echo "  ingress-nginx controllers: none"; fi
+
+# A Helm release stuck mid-operation makes the next terraform apply on it fail with "another operation is in
+# progress" -- and the apply that bumps cluster_version also touches releases.
+stuck="$(kubectl get secrets -A -l owner=helm -o json 2>/dev/null | jq -r '[.items[] | select(.metadata.labels.status | test("^pending-|^failed$"))
+  | "\(.metadata.namespace)/\(.metadata.labels.name) (\(.metadata.labels.status))"] | unique[]')"
+if [ -n "$stuck" ]; then
+  echo "  HELM RELEASES NOT 'deployed' -- recover them before applying:"
+  printf '%s\n' "$stuck" | sed 's/^/    /'
+else
+  echo "  helm releases pending or failed: none"
+fi
+
+# Requests to deprecated APIs since the API server last restarted. EKS restarts it on its own, so an empty
+# result is weaker evidence than a non-empty one is.
+# Labels are parsed by name rather than position: the exposition format does not fix their order, and
+# `resource` is a suffix of `subresource`, so a positional pattern silently picks up the wrong one.
+dep="$(kubectl get --raw /metrics 2>/dev/null | awk '/^apiserver_requested_deprecated_apis\{/ {
+    s = $0; sub(/^[^{]*\{/, "", s); sub(/\}.*$/, "", s); n = split(s, kv, "\",")
+    delete l; for (i = 1; i <= n; i++) { split(kv[i], p, "=\""); gsub(/^,|"$/, "", p[1]); gsub(/"$/, "", p[2]); l[p[1]] = p[2] }
+    printf "%s/%s %s (%s)\n", (l["group"] == "" ? "core" : l["group"]), l["version"], l["resource"],
+      (l["removed_release"] == "" ? "deprecated, no removal scheduled" : "removed in " l["removed_release"])
+  }' | sort -u)"
+if [ -n "$dep" ]; then
+  echo "  deprecated APIs requested since the API server last restarted:"
+  printf '%s\n' "$dep" | sed 's/^/    /'
+else
+  echo "  deprecated API requests: none recorded (or the metrics endpoint is not readable)"
+fi
+
+# EKS's own upgrade checks: deprecated API usage from audit data, kubelet skew, add-on versions. They need
+# the aws CLI and refresh about once a day, so a fix made today may still show as failing.
+if [ -n "${REGION}" ] && [ -n "${CLUSTER}" ] && command -v aws >/dev/null 2>&1; then
+  if ins="$(aws eks list-insights --region "$REGION" --cluster-name "$CLUSTER" \
+      --query 'insights[].[insightStatus.status,kubernetesVersion,id,name]' --output text 2>&1)"; then
+    echo "  EKS upgrade insights (status, version, id, check):"
+    printf '%s\n' "$ins" | awk -F'\t' '{ printf "    %-8s %-6s %s  %s\n", $1, $2, $3, $4 }' | sort
+    echo "    anything not PASSING: aws eks describe-insight --region ${REGION} --cluster-name ${CLUSTER} --id <id>"
+  else
+    echo "  EKS upgrade insights query FAILED -- NOT checked:"
+    printf '%s\n' "$ins" | sed 's/^/    /' | head -3
+  fi
+fi
+
 rm -f /tmp/_ka_multi.txt /tmp/_ka_pdbns.txt /tmp/_ka_spot.txt
 echo
 echo "== done. read-only; nothing was changed."

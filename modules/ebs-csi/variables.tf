@@ -16,7 +16,7 @@ variable "addon_version" {
 
 variable "cluster_version" {
   type        = string
-  default     = "1.34"
+  default     = "1.35"
   description = "Version of eks cluster"
 }
 
