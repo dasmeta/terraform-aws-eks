@@ -13,6 +13,22 @@ variable "oidc_provider_arn" {
   type        = string
 }
 
+variable "wait_for" {
+  type        = any
+  default     = null
+  description = <<-EOT
+    Anything the karpenter helm releases and the on-demand AMI lookup must wait for -- typically the managed node
+    groups and the cluster version. It gates only those, through terraform_data.wait_for.
+
+    Use this instead of a module-level depends_on. A module-level depends_on defers EVERY data source in this
+    module, including the upstream submodule's aws_partition lookup that its node role policy ARNs are built from.
+    On any apply that also changes a dependency -- a cluster_version bump is the common one -- the ARNs then show
+    as unknown, the attachments are planned for replacement, and terraform detaches the node role's policies
+    early and re-attaches them only after the dependency has finished applying. Every karpenter node launched in
+    that window cannot pull images and never becomes Ready.
+  EOT
+}
+
 variable "cluster_endpoint" {
   type        = string
   description = "The eks cluster endpoint"

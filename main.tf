@@ -969,8 +969,10 @@ module "flagger" {
 module "karpenter" {
   count = var.create && var.karpenter.enabled ? 1 : 0
 
-  source                    = "./modules/karpenter"
-  cluster_name              = var.cluster_name
+  source = "./modules/karpenter"
+  # From the cluster module rather than var.cluster_name: the same value, but the reference orders the
+  # upstream IAM/SQS/pod-identity resources after the cluster exists, which the removed depends_on used to do.
+  cluster_name              = module.eks-cluster[0].cluster_name
   cluster_version           = var.cluster_version
   cluster_endpoint          = module.eks-cluster[0].host
   oidc_provider_arn         = module.eks-cluster[0].oidc_provider_arn
@@ -983,7 +985,19 @@ module "karpenter" {
   # Only forward when the consumer actually set something, so the submodule's own documented defaults apply otherwise.
   controller_resources = var.karpenter.controller_resources != null ? var.karpenter.controller_resources : {}
 
-  depends_on = [module.eks-core-components, module.priority_class]
+  # NO module-level depends_on here. It used to be `depends_on = [module.eks-core-components, module.priority_class]`,
+  # which deferred every data source in the karpenter subtree whenever the node groups had changes pending. On
+  # a cluster_version bump that turned the upstream node role policy ARNs unknown, so terraform detached
+  # AmazonEKSWorkerNodePolicy / AmazonEKS_CNI_Policy / AmazonEC2ContainerRegistryReadOnly at the start of the
+  # apply and re-attached them only after the node group roll -- every karpenter node launched in between could
+  # not pull images and stayed NotReady. The ordering it provided is kept through wait_for, which gates only the
+  # helm releases and the on-demand AMI lookup. cluster_version is in it so that a version bump still re-reads
+  # the managed nodes' AMI after they have rolled, in the same apply.
+  wait_for = {
+    cluster_version  = var.cluster_version
+    node_groups      = { for name, group in coalesce(module.eks-cluster[0].eks_managed_node_groups, {}) : name => group.node_group_id }
+    priority_classes = module.priority_class.created_names
+  }
 }
 
 module "namespaces_and_docker_auth" {

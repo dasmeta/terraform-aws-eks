@@ -8,15 +8,21 @@
 # The spot pool keeps the alias deliberately -- tracking the newest image is fine for capacity that is
 # already interruptible, and it gets the new image during its own disruption window.
 #
-# These lookups live HERE rather than at the root on purpose. The module call carries depends_on, which
-# defers every data source in the module until after the node groups exist, so a first create resolves the
-# pin in a single apply. Moving them to the root means they resolve during plan, before any node group
-# exists, which needs a second apply to pick up the pin.
+# These lookups live HERE rather than at the root on purpose. The instance lookup depends on
+# terraform_data.wait_for, whose input carries the managed node groups and the cluster version, so it is
+# deferred until after the node groups exist (first create) or have rolled (version bump) and resolves the pin
+# in a single apply. Moving it to the root means it resolves during plan, before any node group exists or
+# while the old AMI is still running, which needs a second apply to pick up the pin.
+#
+# The gate is a terraform_data dependency, not a module-level depends_on: the latter would also defer the
+# upstream submodule's partition lookup and break its node role policy attachments (see var.wait_for).
 
 # Skipped entirely when the consumer pinned the on-demand class themselves -- no reads, nothing to fail.
 # Both conditions come from a variable, so the counts are known at plan time.
 data "aws_instances" "managed_nodes" {
   count = local.onDemandAmiAuto ? 1 : 0
+
+  depends_on = [terraform_data.wait_for]
 
   instance_state_names = ["running"]
 
