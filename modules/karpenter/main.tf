@@ -109,7 +109,19 @@ resource "helm_release" "this_crds" {
   atomic           = var.atomic
   wait             = var.wait
 
-  depends_on = [module.this]
+  depends_on = [module.this, terraform_data.wait_for]
+}
+
+# The ordering gate for what must run after the cluster's nodes exist: the helm releases (through this_crds) and
+# the on-demand AMI lookup in data.tf. Deliberately NOT applied to module.this -- see var.wait_for for why a
+# module-wide dependency breaks the node role's policy attachments.
+#
+# Absent when nothing was passed (the submodule used on its own), so the lookup then reads at plan as it always
+# has there; depending on a resource with no instances defers nothing.
+resource "terraform_data" "wait_for" {
+  count = var.wait_for == null ? 0 : 1
+
+  input = var.wait_for
 }
 
 # installs karpenter operator helm package

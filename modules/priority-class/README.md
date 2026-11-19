@@ -33,6 +33,7 @@ No modules.
 
 | Name | Description |
 |------|-------------|
+| <a name="output_created_names"></a> [created\_names](#output\_created\_names) | Names of the priority classes as created in the cluster. Reference this to order something after they exist. |
 | <a name="output_priority_class"></a> [priority\_class](#output\_priority\_class) | n/a |
 | <a name="output_priority_class_map"></a> [priority\_class\_map](#output\_priority\_class\_map) | n/a |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

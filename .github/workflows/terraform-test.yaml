@@ -4,22 +4,25 @@ on:
   push:
     branches: [main, master]
 jobs:
+  # Every test mocks its providers (mock_provider "aws" etc.), so this job needs no AWS credentials and is
+  # gating: a failed test fails the check. It replaces the shared terraform-test action, which configures AWS
+  # credentials first and, with continue-on-error, reported success after that step failed and skipped
+  # `terraform test` entirely.
   terraform-test:
     runs-on: ubuntu-latest
-    permissions: {}
-    strategy:
-      matrix:
-        path:
-          - /
-
+    permissions:
+      contents: read
     steps:
-      - uses: dasmeta/reusable-actions-workflows/terraform-test@4.3.0
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
         with:
-          aws-region: ${{ secrets.AWS_REGION}}
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          path: ${{ matrix.path }}
-        continue-on-error: true
+          terraform_version: 1.13.0
+          terraform_wrapper: false
+      - run: terraform init -backend=false -input=false
+      - run: terraform test
+      # Cases that must FAIL (the AL2 plan guard). terraform test cannot expect an error raised inside a child
+      # module, so the script asserts the failure and its message itself.
+      - run: tests/negative/run.sh
 
   no-local-paths:
     name: no local filesystem paths

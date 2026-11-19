@@ -121,6 +121,14 @@ locals {
   )
   karpenter_ami_alias = "${local.karpenter_ami_family}@latest"
 
+  # Every AL2 (not AL2023) ami_type the configuration would create nodes from, named by where it is set, for
+  # the plan-time guard in data.tf. A group without its own ami_type inherits node_groups_default.
+  al2_ami_types_in_use = concat(
+    [for name, config in var.node_groups : "node_groups.${name}=${try(config.ami_type, local.karpenter_node_ami_type)}"
+    if startswith(try(config.ami_type, local.karpenter_node_ami_type), "AL2_")],
+    startswith(local.karpenter_node_ami_type, "AL2_") ? ["node_groups_default=${local.karpenter_node_ami_type}"] : []
+  )
+
 
 
   # The consumer's defaults bucket wins; the derived alias only fills the gap when they left it unset.

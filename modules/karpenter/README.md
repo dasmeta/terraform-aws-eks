@@ -53,6 +53,7 @@ module "karpenter" {
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | 5.100.0 |
 | <a name="provider_helm"></a> [helm](#provider\_helm) | 3.3.0 |
+| <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 | <a name="provider_time"></a> [time](#provider\_time) | 0.14.2 |
 
 ## Modules
@@ -69,6 +70,7 @@ module "karpenter" {
 | [helm_release.karpenter_nodes](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 | [helm_release.this](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 | [helm_release.this_crds](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
+| [terraform_data.wait_for](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 | [time_sleep.karpenter_teardown](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) | resource |
 | [aws_ami.gpu](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) | data source |
 | [aws_ami.managed_node](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) | data source |
@@ -99,6 +101,7 @@ module "karpenter" {
 | <a name="input_subnet_ids"></a> [subnet\_ids](#input\_subnet\_ids) | VPC subnet ids used for default Ec2NodeClass as subnet selector. | `list(string)` | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | Extra tags to attach to eks cluster. | `any` | `{}` | no |
 | <a name="input_wait"></a> [wait](#input\_wait) | Whether use helm deploy with --wait flag | `bool` | `true` | no |
+| <a name="input_wait_for"></a> [wait\_for](#input\_wait\_for) | Anything the karpenter helm releases and the on-demand AMI lookup must wait for -- typically the managed node<br/>groups and the cluster version. It gates only those, through terraform\_data.wait\_for.<br/><br/>Use this instead of a module-level depends\_on. A module-level depends\_on defers EVERY data source in this<br/>module, including the upstream submodule's aws\_partition lookup that its node role policy ARNs are built from.<br/>On any apply that also changes a dependency -- a cluster\_version bump is the common one -- the ARNs then show<br/>as unknown, the attachments are planned for replacement, and terraform detaches the node role's policies<br/>early and re-attaches them only after the dependency has finished applying. Every karpenter node launched in<br/>that window cannot pull images and never becomes Ready. | `any` | `null` | no |
 
 ## Outputs
 
