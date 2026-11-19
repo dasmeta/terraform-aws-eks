@@ -99,8 +99,8 @@ run "differently_shaped_node_groups_with_karpenter_disabled" {
 }
 
 # An AL2 group stays valid on a version that still has AL2 AMIs: the guard in data.tf must not block older
-# clusters. Its failing side (AL2 on 1.33+) cannot be asserted here -- `expect_failures` only accepts
-# objects in the module under test, and the guard lives one level down, behind the wrapper.
+# clusters. Its failing side (AL2 on 1.33+) is in tests/negative, run by tests/negative/run.sh: `expect_failures`
+# only accepts objects in the module under test, and the guard lives one level down, behind the wrapper.
 run "al2_node_group_still_plans_on_a_version_with_al2_amis" {
   command = plan
 
