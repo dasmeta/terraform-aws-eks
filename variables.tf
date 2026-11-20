@@ -1005,16 +1005,17 @@ variable "namespaces_and_docker_auth" {
 
 variable "linkerd" {
   type = object({
-    enabled            = optional(bool, true)
-    chart_repository   = optional(string, "https://helm.linkerd.io/edge") # Linkerd Helm repository to use for CRDs, control plane, and viz charts
-    crds_chart_version = optional(string, "2025.10.7")                    # linkerd-crds chart version
-    chart_version      = optional(string, "2025.10.7")                    # linkerd-control-plane chart version
-    viz_chart_version  = optional(string, "2025.10.7")                    # linkerd-viz chart version
-    configs            = optional(any, {})                                # allows to override default configs of linkerd main helm chart, check underlying sub-module module for more info
-    configs_crds       = optional(any, {})                                # allows to override default configs of the linkerd-crds helm chart, the module defaults installGatewayAPI to true; set it to false where another component already owns the Gateway API CRDs
-    configs_viz        = optional(any, {})                                # allows to override default configs of linkerd viz helm chart, check underlying sub-module module for more info
-    crds_create        = optional(bool, true)                             # whether to have linkerd crd installed
-    viz_create         = optional(bool, true)                             # whether to have linkerd monitoring/dashboard tooling installed
+    enabled                     = optional(bool, true)
+    chart_repository            = optional(string, "https://helm.linkerd.io/edge") # Linkerd Helm repository to use for CRDs, control plane, and viz charts
+    crds_chart_version          = optional(string, "2025.10.7")                    # linkerd-crds chart version
+    chart_version               = optional(string, "2025.10.7")                    # linkerd-control-plane chart version
+    viz_chart_version           = optional(string, "2025.10.7")                    # linkerd-viz chart version
+    configs                     = optional(any, {})                                # allows to override default configs of linkerd main helm chart, check underlying sub-module module for more info
+    configs_crds                = optional(any, {})                                # allows to override default configs of the linkerd-crds helm chart, the module defaults installGatewayAPI to true; set it to false where another component already owns the Gateway API CRDs
+    configs_viz                 = optional(any, {})                                # allows to override default configs of linkerd viz helm chart, check underlying sub-module module for more info
+    prometheus_cadvisor_enabled = optional(bool, true)                             # collect cluster-wide container metrics in Viz Prometheus; disable when another collector provides them
+    crds_create                 = optional(bool, true)                             # whether to have linkerd crd installed
+    viz_create                  = optional(bool, true)                             # whether to have linkerd monitoring/dashboard tooling installed
   })
   default = {
     enabled            = true

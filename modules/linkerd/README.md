@@ -5,6 +5,8 @@ TODOs:
  - check and set more default values for default setup, for example the plain helm charts components do not have resources requests/limits and in low resource situations this can result some issues
  - consider moving this submodule to general/shared module as this module is not eks specific and it can be used with any k8s setup
 
+Set `prometheus_cadvisor_enabled = false` when a separate collector provides container metrics. See [rollout and verification](../../docs/linkerd-cadvisor.md).
+
 ## basic usage example
 ```terraform
 module "this" {
@@ -58,6 +60,7 @@ module "this" {
 | <a name="input_crds_create"></a> [crds\_create](#input\_crds\_create) | Whether to create linkerd crds | `bool` | `true` | no |
 | <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | Create namespace if requested | `bool` | `true` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | The namespace to install main helm. | `string` | `"linkerd"` | no |
+| <a name="input_prometheus_cadvisor_enabled"></a> [prometheus\_cadvisor\_enabled](#input\_prometheus\_cadvisor\_enabled) | Collect cluster-wide cAdvisor metrics in Viz Prometheus. Set false only when another collector supplies container metrics. Requires POSIX sh and awk on the Terraform runner. | `bool` | `true` | no |
 | <a name="input_resourcesDefaults"></a> [resourcesDefaults](#input\_resourcesDefaults) | The default/shared container memory/cpu request/limits to use in all containers. For now we have only requests set to have minimal resources for services. | `any` | <pre>{<br/>  "cpu": {<br/>    "request": "100m"<br/>  },<br/>  "memory": {<br/>    "request": "128Mi"<br/>  }<br/>}</pre> | no |
 | <a name="input_viz_chart_version"></a> [viz\_chart\_version](#input\_viz\_chart\_version) | The dashboard/monitoring chart version for linkerd | `string` | `"2025.10.7"` | no |
 | <a name="input_viz_create"></a> [viz\_create](#input\_viz\_create) | Whether to create linkerd viz dashboards | `bool` | `true` | no |

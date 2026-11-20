@@ -88,3 +88,9 @@ variable "configs_viz" {
   default     = {}
   description = "Configurations to pass and override default ones for linkerd_viz. Check the helm chart available configs for specified var.viz_chart_version here: https://artifacthub.io/packages/helm/linkerd2/linkerd-viz"
 }
+
+variable "prometheus_cadvisor_enabled" {
+  type        = bool
+  default     = true
+  description = "Collect cluster-wide cAdvisor metrics in Viz Prometheus. Set false only when another collector supplies container metrics. Requires POSIX sh and awk on the Terraform runner."
+}

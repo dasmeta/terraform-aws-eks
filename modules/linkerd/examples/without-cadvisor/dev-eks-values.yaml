@@ -1,0 +1,5 @@
+# Merge into the dev EKS DSL only after upgrading its module pin to a release
+# containing prometheus_cadvisor_enabled. This is an example, not a new stack.
+variables:
+  linkerd:
+    prometheus_cadvisor_enabled: false
