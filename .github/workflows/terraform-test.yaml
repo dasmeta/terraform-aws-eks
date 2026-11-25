@@ -20,6 +20,8 @@ jobs:
           terraform_wrapper: false
       - run: terraform init -backend=false -input=false
       - run: terraform test
+      - run: terraform -chdir=modules/linkerd init -backend=false -input=false
+      - run: terraform -chdir=modules/linkerd test
       # Cases that must FAIL (the AL2 plan guard). terraform test cannot expect an error raised inside a child
       # module, so the script asserts the failure and its message itself.
       - run: tests/negative/run.sh
