@@ -13,6 +13,7 @@ locals {
   }
 
   default_configs = {
+    controllerImage         = "ghcr.io/linkerd/controller"
     identityTrustAnchorsPEM = module.identity_certificates_and_keys.identity.trustAnchorsPEM
     identity = {
       issuer = {
@@ -33,7 +34,14 @@ locals {
     proxyInjectorProxyResources = var.resourcesDefaults
     spValidatorResources        = var.resourcesDefaults
     proxy = {
+      image     = { name = "ghcr.io/linkerd/proxy" }
       resources = var.resourcesDefaults
+    }
+    proxyInit = {
+      image = { name = "ghcr.io/linkerd/proxy-init" }
+    }
+    debugContainer = {
+      image = { name = "ghcr.io/linkerd/debug" }
     }
     policyController = {
       resources = var.resourcesDefaults
@@ -41,6 +49,7 @@ locals {
   }
 
   default_configs_viz = {
+    defaultRegistry = "ghcr.io/linkerd"
     metricsAPI = {
       resources = var.resourcesDefaults
       proxy = {
